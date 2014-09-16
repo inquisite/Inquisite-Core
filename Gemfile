@@ -34,3 +34,6 @@ gem 'neo4j', '>= 3.0.0.rc.2'
 
 # Apache Cassandra Query Language (CQL) driver
 gem 'cql-rb', '>= 2.0.3'
+
+# Passenger web- and application server
+gem 'passenger', '~> 4.0.50'

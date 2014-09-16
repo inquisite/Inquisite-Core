@@ -41,6 +41,7 @@ GEM
     coffee-script-source (1.8.0)
     cql-rb (2.0.3)
       ione (~> 1)
+    daemon_controller (1.2.0)
     erubis (2.7.0)
     execjs (2.2.1)
     hike (1.2.3)
@@ -55,7 +56,6 @@ GEM
     jquery-rails (3.1.2)
       railties (>= 3.0, < 5.0)
       thor (>= 0.14, < 2.0)
-    json (1.8.1)
     json (1.8.1-java)
     mail (2.6.1)
       mime-types (>= 1.16, < 3)
@@ -80,6 +80,10 @@ GEM
       zip
     orm_adapter (0.5.0)
     os (0.9.6)
+    passenger (4.0.50)
+      daemon_controller (>= 1.2.0)
+      rack
+      rake (>= 0.8.1)
     rack (1.5.2)
     rack-test (0.6.2)
       rack (>= 1.0)
@@ -123,7 +127,6 @@ GEM
       therubyrhino_jar (>= 1.7.3)
     therubyrhino_jar (1.7.4)
     thor (0.19.1)
-    thread_safe (0.3.4)
     thread_safe (0.3.4-java)
     tilt (1.4.1)
     turbolinks (2.3.0)
@@ -144,6 +147,7 @@ DEPENDENCIES
   jbuilder (~> 2.0)
   jquery-rails
   neo4j (>= 3.0.0.rc.2)
+  passenger (~> 4.0.50)
   rails (= 4.1.6)
   sass-rails (~> 4.0.3)
   sdoc (~> 0.4.0)
