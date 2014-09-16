@@ -137,7 +137,6 @@ GEM
 
 PLATFORMS
   java
-  ruby
 
 DEPENDENCIES
   coffee-rails (~> 4.0.0)
