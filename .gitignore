@@ -28,4 +28,4 @@
 
 # Ignore neo4j DB
 
-.neo4j-db/
+/neo4j-db
