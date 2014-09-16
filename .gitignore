@@ -14,3 +14,18 @@
 # Ignore all logfiles and tempfiles.
 /log/*.log
 /tmp
+
+# Ignore RubyMine/JetBrains config
+.idea/
+
+# Ignore several other editor-specific temp files
+.DS_Store
+.settings
+.project
+*.un~
+*.sublime-*
+*.swp
+
+# Ignore neo4j DB
+
+.neo4j-db/

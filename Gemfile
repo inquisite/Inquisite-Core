@@ -29,4 +29,8 @@ gem 'sdoc', '~> 0.4.0',          group: :doc
 # Use Capistrano for deployment
 # gem 'capistrano-rails', group: :development
 
-gem "neo4j", "~> 3.0.0.rc.2"
+# Neo4j graph database
+gem 'neo4j', '>= 3.0.0.rc.2'
+
+# Apache Cassandra Query Language (CQL) driver
+gem 'cql-rb', '>= 2.0.3'
