@@ -30,7 +30,8 @@ gem 'sdoc', '~> 0.4.0',          group: :doc
 # gem 'capistrano-rails', group: :development
 
 # Neo4j graph database
-gem 'neo4j', '>= 3.0.0.rc.2'
+gem 'neo4j', '>= 3.0.0'
+gem 'neo4j-community'
 
 # Apache Cassandra Query Language (CQL) driver
 gem 'cql-rb', '>= 2.0.3'

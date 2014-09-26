@@ -75,6 +75,7 @@ GEM
       neo4j-core (= 3.0.0)
       orm_adapter (~> 0.5.0)
       railties (~> 4)
+    neo4j-community (2.1.4)
     neo4j-core (3.0.0)
       activesupport
       faraday (~> 0.9.0)
@@ -150,7 +151,8 @@ DEPENDENCIES
   cql-rb (>= 2.0.3)
   jbuilder (~> 2.0)
   jquery-rails
-  neo4j (>= 3.0.0.rc.2)
+  neo4j (>= 3.0.0)
+  neo4j-community
   rails (= 4.1.6)
   sass-rails (~> 4.0.3)
   sdoc (~> 0.4.0)
