@@ -36,3 +36,4 @@ gem 'neo4j-community'
 # Apache Cassandra Query Language (CQL) driver
 gem 'cql-rb', '>= 2.0.3'
 
+gem 'linecache'

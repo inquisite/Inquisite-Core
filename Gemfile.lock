@@ -61,10 +61,11 @@ GEM
       railties (>= 3.0, < 5.0)
       thor (>= 0.14, < 2.0)
     json (1.8.1-java)
+    linecache (0.46-java)
     mail (2.6.1)
       mime-types (>= 1.16, < 3)
     mime-types (2.3)
-    minitest (5.4.1)
+    minitest (5.4.2)
     multi_json (1.10.1)
     multi_xml (0.5.5)
     multipart-post (2.0.0)
@@ -151,6 +152,7 @@ DEPENDENCIES
   cql-rb (>= 2.0.3)
   jbuilder (~> 2.0)
   jquery-rails
+  linecache
   neo4j (>= 3.0.0)
   neo4j-community
   rails (= 4.1.6)
