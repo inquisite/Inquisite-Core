@@ -32,7 +32,6 @@ gem 'sdoc', '~> 0.4.0',          group: :doc
 # Neo4j graph database
 gem 'neo4j', '>= 3.0.0'
 gem 'neo4j-community'
-gem 'neo4j-admin'
 
 # Apache Cassandra Query Language (CQL) driver
 gem 'cql-rb', '>= 2.0.3'
