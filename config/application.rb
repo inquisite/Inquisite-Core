@@ -23,8 +23,12 @@ module Inquisite
 
     # Configure where the embedded neo4j database should exist
     # Notice embedded db is only available for JRuby
-    config.neo4j.session_type = :embedded_db  # default #server_db
-    config.neo4j.session_path = File.expand_path('neo4j-db', Rails.root)
+   # config.neo4j.session_type = :embedded_db  # default #server_db
+   # config.neo4j.session_path = File.expand_path('neo4j-db', Rails.root)
+
+    config.neo4j.session_options = { basic_auth: { username: 'foo', password: 'bar'} }
+    config.neo4j.session_type = :server_db
+    config.neo4j.session_path = 'http://localhost:7474'
 
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration should go into files in config/initializers
