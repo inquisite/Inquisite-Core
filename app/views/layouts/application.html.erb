@@ -5,13 +5,92 @@
   <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
   <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
   <%= csrf_meta_tags %>
+
+  <link href="http://getbootstrap.com/dist/css/bootstrap.min.css" type="text/css" rel="stylesheet" />
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+  <style>
+    @import url(http://fonts.googleapis.com/css?family=Lato);
+    @import url(http://fonts.googleapis.com/css?family=Open+Sans);
+
+    body {
+        font-family: 'Lato', sans-serif;
+    }
+
+    .form-control {
+        border-radius: 0.5;
+        border: 1.3px solid gold;
+        box-shadow: none;
+        background: #eee;
+    }
+
+    .form-control:focus {
+        border-color: gold;
+        -webkit-box-shadow: inset 0 1px 1px gold;
+        box-shadow: none;
+    }
+  </style>
+  <script src="https://raw.githubusercontent.com/bassjobsen/Bootstrap-3-Typeahead/master/bootstrap3-typeahead.js"></script>
+  <script>
+      jQuery(document).ready(function()
+      {
+          $('#user_email, #user_password').addClass('form-control');
+          $('input[name=commit]').addClass('btn btn-success');
+          var array = [];
+          var colors = ["red", "green", "blue"];
+
+          for (var i in colors) {
+              array.push(colors[i]);
+          }
+          $('#search').typeahead({
+              source: ["red"]
+          });
+
+      });
+  </script>
 </head>
 <body>
+    <nav class="navbar navbar-default" role="navigation">
+      <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/"><i class="fa fa-folder-open"></i> Inquisite</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="/"><i class="fa fa-home"></i> Home</a></li>
+            <li><a href="#">Another link</a></li>
+          </ul>
+          <form class="navbar-form navbar-left" role="search">
+            <div class="form-group">
+              <input type="text" class="form-control" placeholder="Search data..." id="search" autocomplete="off">
+            </div>
+          </form>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="#">Link</a></li>
+            <% if user_signed_in? -%>
+                <li><%= link_to "sign out", destroy_user_session_path, method: :delete %></li>
+            <% else -%>
+                <li><p class="navbar-text">Not logged in</p></li>
+            <% end -%>
+          </ul>
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container-fluid -->
+    </nav>
+    <div class="container">
 
        <p class="notice"><%= notice %></p>
        <p class="alert"><%= alert %></p>
-       
-<%= yield %>
 
+
+<%= yield %>
+    </div>
 </body>
 </html>
