@@ -5,10 +5,16 @@ class ApplicationController < ActionController::Base
 
   def authenticate
     authenticate_or_request_with_http_basic do |email, password|
-      puts email
-      user = User.find_by(email: email)
-      !user.nil? && user.valid_password?(password)
+      @user = User.find_by(email: email)
+      !@user.nil? && @user.valid_password?(password)
     end
-    warden.custom_failure! if performed?
+
+    if performed?
+      warden.custom_failure!
+    else
+      # sign in user. this makes sure Devise's current_user
+      # function actually returns the user if used later
+      sign_in(@user)
+    end
   end
 end
