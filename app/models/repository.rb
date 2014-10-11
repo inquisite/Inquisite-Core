@@ -1,4 +1,4 @@
-class Inquisite::Repository 
+class Repository
   include Neo4j::ActiveNode
   property :name, type: String
   property :readme, type: String

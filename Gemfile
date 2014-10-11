@@ -41,3 +41,7 @@ gem 'linecache'
 # Authentication
 gem 'devise', '~> 3.4.0'
 gem 'devise-neo4j', '~> 2.0.0.alpha.1'
+# keep an eye on new versions for easy-to-integrate token authentication
+# they're working out a way to integreate other adapters than ActiveRecord
+# on GitHub right now.
+#gem 'simple_token_authentication'
