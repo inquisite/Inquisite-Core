@@ -3,19 +3,51 @@
 <head>
   <title>Inquisite</title>
   <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => false %>
-  <%= javascript_include_tag 'application', 'data-turbolinks-track' => false %>
+  <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+  <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300,600' rel='stylesheet' type='text/css'>
   <%= csrf_meta_tags %>
-
 </head>
-<body>
+<body data-spy="scroll" data-target=".navbar-collapse">
 
-    <div class="container">
-
-       <p class="notice"><%= notice %></p>
-       <p class="alert"><%= alert %></p>
-
-
-       <%= yield %>
+<nav class="navbar navbar-fixed-top navbar-default" id="top-navigation" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#menu-mobile">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a href="/" class="navbar-brand" style="margin-top: -8px;"><%= image_tag('inq-2-sm.png', width: '135', height: '40') %></a>
     </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="menu-mobile">
+
+      <ul class="nav navbar-nav navbar-right" >
+        <% if current_page?(:controller => '/home')  %>
+            <!-- Navbar for public site -->
+            <li class="active"><a href="#about" onCLick="$.scrollTo('#about', 800, {'axis':'y'});">About</a></li><li><a href="#features" onCLick="$.scrollTo('#features', 800, {'axis':'y'});">Features</a></li>
+            <li><a href="#community" onCLick="$.scrollTo('#community', 800, {'axis':'y'});">Community</a></li>
+            <li><a href="#team" onCLick="$.scrollTo('#team', 800, {'axis':'y'});">Team</a></li>
+            <li><%= link_to "Register", "users/sign_up" %></li>
+            <li><%= link_to "Login", "data" %></li>
+        <% elsif current_page?(:controller => '/data')  %>
+            <!-- Navbar for logged in user -->
+            <li><%= link_to "Dashboard", "data" %></li>
+            <li><%= link_to "Logout", destroy_user_session_path, :method => :delete %></li>
+        <% end %>
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+
+<div class="container">
+  <p class="notice"><%= notice %></p>
+  <p class="alert"><%= alert %></p>
+
+  <%= yield %>
+</div>
 </body>
 </html>

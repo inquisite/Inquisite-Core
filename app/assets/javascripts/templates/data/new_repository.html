@@ -1,0 +1,23 @@
+<h2>Create new repository</h2>
+<form name="newRepositoryForm" ng-submit="addNewRepository()" ng-controller="NewRepositoryController" novalidate>
+    <div class="form-group">
+        <p ng-show="newRepositoryForm.name.$invalid && !newRepositoryForm.name.$pristine" class="help-block">Repository name is required.</p>
+        <label>Name</label>
+        <input type="text" name="name" id="repositoryName" ng-model="repositoryName" ng-required="1" ng-maxlength="255" />
+    </div>
+    <div class="form-group">
+        <label>Description</label>
+        <textarea name="readme" cols="80" rows="5" id="repositoryReadme" ng-model="repositoryReadme"></textarea>
+    </div>
+    <div class="form-group">
+        <p ng-show="newRepositoryForm.repositoryWebsiteUrl.$error.url" class="help-block">URL is invalid.</p>
+        <p ng-show="newRepositoryForm.repositoryWebsiteUrl.$error.maxlength" class="help-block">URL too long.</p>
+        <label>Project web site URL</label>
+        <input type="url" name="repositoryWebsiteUrl" id="repositoryWebsiteUrl" ng-model="repositoryWebsiteUrl" ng-maxlength="255"/>
+    </div>
+
+    <div class="control-group">
+        <button type="submit" class="btn btn-success" ng-disabled="newRepositoryForm.$invalid">Create</button>
+        <button ng-click="cancel()" class="btn btn-default">Cancel</button>
+    </div>
+</form>

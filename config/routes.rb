@@ -3,7 +3,11 @@ Rails.application.routes.draw do
   devise_for :users
   root to: 'home#index'
 
-  get 'repository/add/:name', to: 'repositories#add'
+  get 'data', to: 'data#index'
+
+  get 'repository/add_repository', to: 'repositories#add_repository'
+  get 'repository/get_repository_list', to: 'repositories#get_repository_list'
+  resources :repository, only: [:index]
 
 
 

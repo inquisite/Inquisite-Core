@@ -55,3 +55,4 @@ gem 'devise-neo4j', '~> 2.0.0.alpha.1'
 #gem 'simple_token_authentication'
 
 gem 'bower-rails'
+gem 'angular-rails-templates'

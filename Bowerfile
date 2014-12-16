@@ -1,4 +1,8 @@
 asset 'angular'
+asset 'angular-route'
+asset 'angular-resource'
+asset 'angular-mocks'
+asset 'angular-animate'
 asset 'bootstrap-sass-official'
 asset 'fullpage'
 # vim: ft=ruby

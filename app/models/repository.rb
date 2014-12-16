@@ -1,6 +1,6 @@
 class Repository
   include Neo4j::ActiveNode
-  property :name, type: String
+  property :name, type: String, constraint: :unique
   property :readme, type: String
   property :web_site_url, type: String
   property :created_at, :type => DateTime
@@ -10,7 +10,7 @@ class Repository
   has_many :in, :collaborator, model_class: User, type: 'collaborator'
   has_many :in, :follower, model_class: User, type: 'follower'
 
-  def self.add_repository_for_user(name, user)
+  def self.add_repository_for_user(name, user, data)
     if(!user)
       raise("User must be defined")
     end
@@ -20,7 +20,7 @@ class Repository
 
     # TODO: is repository name unique for this user?
 
-    new_repo = Repository.new(name: name)
+    new_repo = Repository.new(name: name, readme: data[:readme], web_site_url: data[:web_site_url])
     new_repo.save
 
     Neo4j::Relationship.create('owner', new_repo, user)

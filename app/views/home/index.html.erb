@@ -1,19 +1,23 @@
-<div class="jumbotron">
-  <h1><i class="fa fa-pencil"></i> Welcome</h1>
-  <p>Welcome to Inquisite!</p>
-</div>
-
-<div class="container-fluid" ng-app="inquisite">
-  <div class="panel panel-success">
-    <div class="panel-heading">
-      <h1 ng-if="name">Hello, {{name}}</h1>
+<div class="container-fluid intro_row" id="about">
+  <div class="row">
+    <div class="col-sm-6 col-md-5 col-md-offset-1">
+      <h2>Inquisite is a collaborative research application built on social media principles. </h2>
+      <h4>Responding to the data-gathering potential of mobile devices, it provides the means to organize and analyze this new influx of information. Inquisite uses proven techniques developed for archival organization and social networks to create a system of tools designed to streamline all stages of the investigative process and encourage the formation of open research communities.
+      </h4>
     </div>
-    <div class="panel-body">
-      <form class="form-inline">
-        <div class="form-group">
-          <input class="form-control" type="text" placeholder="Enter your name" autofocus ng-model="name">
-        </div>
-      </form>
+    <div class="col-sm-6 col-md-5">
+      <div class="thumbnail">
+        <%= image_tag('inquisite_collage.png') %>
+      </div>
+    </div>
+
+  </div>	<!--end row-->
+</div>	<!--end container-fluid-->
+
+<div class="container-fluid">
+  <div class="row" id="aboutsub_std">
+    <div class="col-sm-12 col-md-10 col-md-offset-1">
+      <p>If you are a biologist, journalist, citizen scientist, activist, historian or anyone who wants to open up your research, Inquisite will connect you with users who can watch or join the effort to contextualize, discuss and interpret your data. </p>
     </div>
   </div>
 </div>
