@@ -5,21 +5,13 @@ require 'data_field.rb'
 class RepositoriesController < ApplicationController
 
   # Require user to be authenticated
-  before_filter :authenticate
+  #before_filter :authenticate
 
   #
   # List of repositories for user
   #
   def get_repository_list
-    qres = Neo4j::Session.query("match (u:User { uuid:'" + current_user.uuid + "'})--(repo:Repository) return repo").to_a
-
-    results = []
-    qres.each do |item|
-      result = {}
-      item.repo.attributes.each { |key, value| result[key] = value }
-      results.push(result)
-    end
-
+    results = Repository.get_repository_list_for_user(current_user)
     render json:results;
   end
 
@@ -51,6 +43,40 @@ class RepositoriesController < ApplicationController
     #@query = Neo4j::Session.query('MATCH (n:repository) WHERE n.name = "testmeown" RETURN n').to_a
     #@q = @query.pluck(":name");
 
+    render json:result
+  end
+
+  #
+  # Delete existing repository
+  #
+  def delete_repository
+    @repository_id = params[:repository_id]
+
+    begin
+      # delete repository repository node
+      repo = Repository.delete_repository_for_user(@repository_id, current_user)
+      if (!(result = {"status" => "OK", }))
+        result = {"status" => "ERR", "message" => "Failed" }
+      end
+    rescue Exception => e
+      result = {"status" => "ERR", "message" => e.message }
+    end
+    render json:result
+  end
+
+  #
+  # Check uniqueness of repository name
+  #
+  def check_name
+    @name = params[:name]
+
+    result = {:unique => false};
+    begin
+      result['unique'] = !(Repository.repository_name_exists?(@name))
+    rescue Exception => e
+      # noop
+      result['error'] = e.message;
+    end
     render json:result
   end
 

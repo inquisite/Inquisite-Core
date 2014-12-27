@@ -1,26 +1,53 @@
 <div class="container-fluid">
     <header class="row">
-         <h2 class="text-center col-md-12">Dashboard</h2>
+         <h2 class="text-center col-md-8 col-md-offset-2">Your repositories</h2>
+        <div class="col-md-2"><a href="/data#newRepository" class="btn btn-info">New repository</a></div>
     </header>
 
     <section>
         <div class="row">
-            <h3 class="text-center h2 col-md-10">Your repositories</h3>
-            <div class="col-md-2"><a href="/data#newRepository" class="btn btn-info">New repository</a></div>
-        </div>
-        <div class="row">
+            <h3 ng-show="repositories.length == 0">You don't have any repositories yet</h3>
             <ul class="list-unstyled">
                  <li ng-repeat="repository in repositories">
-                     <section class="well col-md-6 col-md-offset-3">
-                         <h1 class="h3 col-md-6 text-right" style="margin-top: 0"><a href="#">{{repository.name}}</a></h1>
+                     <section class="well col-md-8 col-md-offset-2 repositoryListItem">
+                         <h3><a ng-click="openEditor(repository);">{{repository.name}}</a></h3>
+                         <h5><small>{{repository.readme_short}}</small></h5>
 
-                         <div class="col-md-6">
-                             <button class="btn btn-info">Use</button>
-                             <button class="btn btn-danger">Delete</button>
+
+                         <div class="repositoryListControls">
+                             <button ng-click="openEditor(repository);" class="btn btn-info btn-sm">Use</button>
+                             <button ng-click="confirmDeleteRepository(repository);" class="btn btn-danger btn-sm">Delete</button>
                         </div>
+
+                         <div class="repositoryListTimestamps">
+                             <h6><small>
+                                 Created: {{repository.created_at_display}}<br/>
+                                 Last update: {{repository.updated_at_display}}</small></h6>
+                         </div>
                     </section>
                  </li>
             </ul>
         </div>
     </section>
 </div>
+
+<!-- The actual modal template, just a bit o bootstrap -->
+<script type="text/ng-template" id="delete_confirm.html">
+    <div class="modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" ng-click="close('Cancel')" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title">Are you sure you want to delete repository <em>{{repository.name}}</em>?</h4>
+                </div>
+                <div class="modal-body">
+                    <p><strong>This action cannot be undone!</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" ng-click="close('CANCEL')" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" ng-click="close('DELETE')" class="btn btn-primary" data-dismiss="modal">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

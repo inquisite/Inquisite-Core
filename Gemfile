@@ -54,5 +54,7 @@ gem 'devise-neo4j', '~> 2.0.0.alpha.1'
 # on GitHub right now.
 #gem 'simple_token_authentication'
 
+gem 'bootstrap-sass', '~> 3.2.0'
 gem 'bower-rails'
 gem 'angular-rails-templates'
+gem 'angular-ui-bootstrap-rails'

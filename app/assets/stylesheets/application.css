@@ -26,8 +26,10 @@
     display: block;
 }
 
-.page h1 	{ font-size:60px; }
-.page a     { margin-top:50px; }
+.page div.container-fluid {
+    width: 1000px;
+    padding: 50px;
+}
 
 /* slide in from the right */
 @keyframes slideInRight {

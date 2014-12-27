@@ -8,6 +8,9 @@ class User
   # uncomment the property definitions for those modules. Otherwise, the unused property definitions can be deleted.
   #
 
+
+  has_many :both, :owner, model_class: Repository, type: 'owner'
+
   # we use emails as identifiers
   #property :username, :type => String
   property :created_at, :type => DateTime

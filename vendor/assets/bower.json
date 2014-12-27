@@ -6,7 +6,11 @@
     "angular-resource": "latest",
     "angular-mocks": "latest",
     "angular-animate": "latest",
+    "angular-ui-bootstrap": "latest",
     "bootstrap-sass-official": "latest",
-    "fullpage": "latest"
+    "fullpage": "latest",
+    "angular-sanitize": "latest",
+    "angular-modal-service": "latest",
+    "moment": "latest"
   }
 }

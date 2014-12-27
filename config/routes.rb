@@ -7,6 +7,8 @@ Rails.application.routes.draw do
 
   get 'repository/add_repository', to: 'repositories#add_repository'
   get 'repository/get_repository_list', to: 'repositories#get_repository_list'
+  get 'repository/delete_repository/:repository_id', to: 'repositories#delete_repository'
+  get 'repository/check_name/:name', to: 'repositories#check_name'
   resources :repository, only: [:index]
 
 

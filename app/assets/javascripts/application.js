@@ -12,10 +12,16 @@
 //
 //= require jquery
 //= require jquery_ujs
+//= require bootstrap
 //= require angular/angular
 //= require angular-route/angular-route
 //= require angular-resource/angular-resource
 //= require angular-animate/angular-animate
 //= require angular-rails-templates
+//= require angular-ui-bootstrap
+//= require angular-ui-bootstrap-tpls
+//= require angular-sanitize
+//= require angular-modal-service/dst/angular-modal-service.js
 //= require bootstrap-sass-official
+//= require moment/min/moment.min
 //= require_tree .

@@ -2,7 +2,6 @@ require File.expand_path('../boot', __FILE__)
 
 # Pick the frameworks you want:
 require "active_model/railtie"
-# require "active_record/railtie"
 require "action_controller/railtie"
 require "action_mailer/railtie"
 require "action_view/railtie"
@@ -15,10 +14,11 @@ require "rails/test_unit/railtie"
 Bundler.require(*Rails.groups)
 
 
-
 module Inquisite
   class Application < Rails::Application
-    
+
+    config.cache_classes = false
+
     config.generators do |g|
       g.orm             :neo4j
     end
@@ -29,7 +29,6 @@ module Inquisite
     config.assets.paths << Rails.root.join("vendor","assets","bower_components","bootstrap-sass-official","assets","fonts")
     config.assets.precompile << %r(.*.(?:eot|svg|ttf|woff)$)
 
-    config.cache_classes = false
 
     # Configure where the embedded neo4j database should exist
     # Notice embedded db is only available for JRuby
