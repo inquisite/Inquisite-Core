@@ -3,9 +3,41 @@ import requests
 import collections
 import datetime
 import time
-from flask import Flask, request, Response
+from passlib.apps import custom_app_context as pwd_context
+from usermodel import User
+from functools import wraps
+from flask import Flask, request, session, escape, Response
 from neo4j.v1 import GraphDatabase, basic_auth
 app = Flask(__name__)
+
+
+def check_auth(username, password):
+  """This function is called to check if a username / password combination is valid."""
+
+  db_hash = ""
+  db_user = session.run("MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.password AS password")
+  if db_user:
+    for user in db_user:
+      db_hash = user['password']
+
+  return pwd_context.verify(password, db_hash)
+
+def authenticate():
+  """Sends a 401 response that enables basic auth"""
+  return Response('Could not verify your access level for that URL.\n'
+                  'You have to login with proper credentials', 401,
+                  {'WWW-Authenticate': 'Basic realm="Login Requrired"'})
+
+
+def requires_auth(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    auth = request.authorization
+    if not auth or not check_auth(auth.username, auth.password):
+      return authenticate()
+    return f(*args, **kwargs)
+  return decorated
+
 
 driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j","drumroll"))
 session = driver.session()
@@ -19,8 +51,48 @@ def index():
 
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
+# Login
+@app.route('/login', methods=['POST'])
+def login():
+
+  print "in login"
+
+  email  = request.args.get('username')
+  passwd = request.args.get('password')
+
+  if email is not None and passwd is not None:
+
+    db_user = session.run("MATCH (n:Person) WHERE n.email='" + email + "' RETURN n.name AS name, n.password AS password")
+    if db_user:
+      for user in db_user:
+
+        if pwd_context.verify(passwd, user['password']):
+
+          session['username'] = email
+          resp = (("status", "ok"),
+                  ("msg", email + " logged in successfully"))
+          
+    else:
+      resp = (("status", "err"),
+              ("msg", "That username was not found"))
+
+  else:
+    resp = (("status", "err"),
+            ("msg", "Username and password are required"))
+
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=200, mimetype="applications/json")  
+
+# Logout
+@app.route('/logout')
+@requires_auth
+def logout():
+  session.pop('username', None)
+
+
 # People
 @app.route('/people', methods=['GET'])
+@requires_auth
 def peopleList():
 
   persons = []
@@ -48,24 +120,44 @@ def addPerson():
   email    = request.args.get('email')
   url      = request.args.get('url')
   tagline  = request.args.get('tagline')
+  password = request.args.get('password')
 
-  ts            = time.time()
-  created_on    = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+  if password is not None:
+    print "password aint none"
+    user = User()
+    User.hash_password(user, password)
 
-  result = session.run("CREATE (n:Person {url: '" + url + "', name: '" + name + "', email: '" + email 
-    + "', location: '" + location + "', tagline: '" + tagline + "', created_on: '" + created_on + "'})") 
+    password_hash = user.password_hash
 
-  if result:
-    resp = (("status", "ok"),
+    print "name: " + name
+    print "location: " + location
+    print "email: " + email
+    print "url: " + url
+    print "tagline: " + tagline
+    print "password: " + password_hash
+
+    ts            = time.time()
+    created_on    = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+    result = session.run("CREATE (n:Person {url: '" + url + "', name: '" + name + "', email: '" + email 
+      + "', location: '" + location + "', tagline: '" + tagline + "', password: '" + password_hash + "', created_on: '" + created_on + "'})") 
+
+    if result:
+      resp = (("status", "ok"),
             ("msg", "Person added"))
+    else:
+      resp = (("status", "err"),
+            ("msg", "Something went wrong saving Person"))
+
   else:
     resp = (("status", "err"),
-            ("msg", "Something went wrong saving Person"))
+            ("msg", "User Password is required"))
 
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/edit', methods=['POST'])
+@requires_auth
 def editPerson(person_id):
  
   name     = request.args.get('name')
@@ -94,7 +186,7 @@ def editPerson(person_id):
   update_str = "%s" % ", ".join(map(str, update))
 
   updated_person = {}
-  result = session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str + 
+  yyresult = session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str + 
     " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
 
   for p in result:
@@ -116,6 +208,7 @@ def editPerson(person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/delete', methods=['POST'])
+@requires_auth
 def deletePerson(person_id):
   
   result = session.run("MATCH (n:Person) WHERE ID(n)=" + person_id + " OPTIONAL MATCH (n)-[r]-() DELETE r,n")
@@ -131,6 +224,7 @@ def deletePerson(person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/repos', methods=['GET'])
+@requires_auth
 def getPersonRepos(person_id):
 
   result = session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)=" + person_id + " RETURN n")
@@ -154,6 +248,7 @@ def getPersonRepos(person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/set_password', methods=['POST'])
+@requires_auth
 def setPassword(person_id):
 
   password  = request.args.get('password')
@@ -162,6 +257,7 @@ def setPassword(person_id):
 
 # Organizations
 @app.route('/organizations', methods=['GET'])
+@requires_auth
 def orgList():
   
   orgslist = []
@@ -182,6 +278,7 @@ def orgList():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/add', methods=['POST'])
+@requires_auth
 def addOrg():
 
   name     = request.args.get('name')
@@ -204,6 +301,7 @@ def addOrg():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/edit', methods=['POST'])
+@requires_auth
 def editOrg(org_id):
 
   name     = request.args.get('name')
@@ -253,6 +351,7 @@ def editOrg(org_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/delete', methods=['GET'])
+@requires_auth
 def deleteOrg(org_id):
 
   result = session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " OPTIONAL MATCH (o)-[r]-() DELETE r,o")
@@ -267,6 +366,7 @@ def deleteOrg(org_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/repos', methods=['GET'])
+@requires_auth
 def getOrgRepos(org_id):
 
   result = session.run("MATCH (n)<-[:PART_OF]-(o) WHERE ID(o)=" + org_id + " RETURN n")
@@ -281,6 +381,7 @@ def getOrgRepos(org_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/add_person/<person_id>', methods=['POST'])
+@requires_auth
 def addPersonToOrg(org_id, person_id):
 
   result = session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
@@ -297,6 +398,7 @@ def addPersonToOrg(org_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/remove_person/<person_id>', methods=['POST'])
+@requires_auth
 def removePersonFromOrg(org_id, person_id):
 
   result = session.run("START p=node(*) MATCH (p)-[rel:PART_OF]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + org_id + " DELETE rel")
@@ -311,6 +413,7 @@ def removePersonFromOrg(org_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/people', methods=['GET'])
+@requires_auth
 def getOrgPeople(org_id):
 
   org_people = []
@@ -333,6 +436,7 @@ def getOrgPeople(org_id):
 
 # Repositories
 @app.route('/repositories', methods=['GET'])
+@requires_auth
 def repoList():
 
   repos = []
@@ -351,6 +455,7 @@ def repoList():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/add', methods=['POST'])
+@requires_auth
 def addRepo():
 
   url    = request.args.get('url')
@@ -373,6 +478,7 @@ def addRepo():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/edit', methods=['POST'])
+@requires_auth
 def editRepo(repo_id):
 
   url    = request.args.get('url')
@@ -412,6 +518,7 @@ def editRepo(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/delete', methods=['GET'])
+@requires_auth
 def deleteRepo(repo_id):
 
   result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " OPTIONAL MATCH (o)-[r]-() DELETE r,o")
@@ -426,6 +533,7 @@ def deleteRepo(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/owner', methods=['GET'])
+@requires_auth
 def getRepoOwner(repo_id):
 
   owner = {}
@@ -449,6 +557,7 @@ def getRepoOwner(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>', methods=['GET'])
+@requires_auth
 def getRepoInfo(repo_id):
 
   repo = {}
@@ -469,6 +578,7 @@ def getRepoInfo(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/add_collaborator/<person_id>', methods=['POST'])
+@requires_auth
 def addRepoCollab(repo_id, person_id):
 
   result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
@@ -485,6 +595,7 @@ def addRepoCollab(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/remove_collaborator/<person_id>', methods=['POST'])
+@requires_auth
 def removeRepoCollab(repo_id, person_id):
 
   result = session.run("START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
@@ -499,6 +610,7 @@ def removeRepoCollab(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
  
 @app.route('/repositories/<repo_id>/add_follower/<person_id>', methods=['POST'])
+@requires_auth
 def addRepoFollower(repo_id, person_id):
 
   result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
@@ -514,6 +626,7 @@ def addRepoFollower(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/remove_follower/<person_id>', methods=['POST'])
+@requires_auth
 def removeRepoFollower(repo_id, person_id):
 
   result = session.run("START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
@@ -528,22 +641,26 @@ def removeRepoFollower(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/add_data_node', methods=['POST'])
+@requires_auth
 def addRepoData(repo_id):
 
   result = session.run()
 
 
 @app.route('/repositories/<repo_id>/query', methods=['POST'])
+@requires_auth
 def queryRepo(repo_id):
 
   result = session.run()
 
 @app.route('/repositories/<repo_id>/get_all_data', methods=['GET'])
+@requires_auth
 def getRepoData(repo_id):
 
   result = session.run()
 
 @app.route('/repositories/<repo_id>/set_entry_point', methods=['POST'])
+@requires_auth
 def setEntryPoint(repo_id):
 
   result = session.run()
