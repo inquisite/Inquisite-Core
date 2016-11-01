@@ -13,17 +13,22 @@ app = Flask(__name__)
 
 def check_auth(username, password):
   """This function is called to check if a username / password combination is valid."""
+  
+  retval = False
+  if username:
+    db_hash = ""
+    db_user = session.run("MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.password AS password")
+    if db_user:
+      for user in db_user:
+        db_hash = user['password']
 
-  db_hash = ""
-  db_user = session.run("MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.password AS password")
-  if db_user:
-    for user in db_user:
-      db_hash = user['password']
+    retval = pwd_context.verify(password, db_hash)
 
-  return pwd_context.verify(password, db_hash)
+  return retval
 
 def authenticate():
   """Sends a 401 response that enables basic auth"""
+
   return Response('Could not verify your access level for that URL.\n'
                   'You have to login with proper credentials', 401,
                   {'WWW-Authenticate': 'Basic realm="Login Requrired"'})
