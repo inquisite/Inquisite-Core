@@ -3,14 +3,63 @@ import requests
 import collections
 import datetime
 import time
+import logging
 from passlib.apps import custom_app_context as pwd_context
 from usermodel import User
-from functools import wraps
-from flask import Flask, request, session, escape, Response
+from functools import wraps, update_wrapper
+from flask import Flask, request, current_app, make_response, session, escape, Response
 from neo4j.v1 import GraphDatabase, basic_auth
 app = Flask(__name__)
 
 
+# Cross Domain
+# -- Based on http://flask.pocoo.org/snippets/56/
+# could be replaced with https://flask-cors.readthedocs.io/en/latest/
+def crossdomain(origin=None, methods=None, headers=None, max_age=21600, attatch_to_all=True, automatic_options=True):
+
+  if methods is not None:
+    methods = ', '.join(sorted(x.upper() for x in methods))
+  if headers is not None and not isinstance(headers, basestring):
+    headers = ', '.join(x.upper() for x in headers)
+  if not isinstance(origin, basestring):
+    origin = ', '.join(origin)
+  if isinstance(max_age, datetime.timedelta):
+    max_age = max_age.total_seconds()
+
+  def get_methods():
+    if methods is not None:
+      return methods
+
+    options_resp = current_app.make_default_options_response()
+    return options_resp.headers['allow']
+
+  def decorator(f):
+
+    def wrapped_function(*args, **kwargs):
+
+      if automatic_options and request.method == 'OPTIONS':
+        resp = current_app.make_default_options_response()
+      else:
+        resp = make_response(f(*args, **kwargs))
+
+      h = resp.headers
+ 
+      h['Access-Control-Allow-Origin'] = origin
+      h['Access-Control-Allow-Methods'] = get_methods()
+      h['Access-Control-Max-Age'] = str(max_age)
+      if headers is not None:
+        h['Access-Control-Allow-Headers'] = headers
+
+      resp.headers = h
+
+      return resp
+
+    f.provide_automatic_options = False
+    f.required_methods = ['OPTIONS']
+    return update_wrapper(wrapped_function, f)
+  return decorator
+
+# HTTP Basic Auth
 def check_auth(username, password):
   """This function is called to check if a username / password combination is valid."""
   
@@ -118,29 +167,30 @@ def peopleList():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/add', methods=['POST'])
+@crossdomain(origin='*')
 def addPerson():
 
-  name     = request.args.get('name')
-  location = request.args.get('location')
-  email    = request.args.get('email')
-  url      = request.args.get('url')
-  tagline  = request.args.get('tagline')
-  password = request.args.get('password')
+  logging.warning("in addPerson")
+
+  name     = request.form.get('name')
+  location = request.form.get('location')
+  email    = request.form.get('email')
+  url      = request.form.get('url')
+  tagline  = request.form.get('tagline')
+  password = request.form.get('password')
+
+  logging.warning( "name: " + name )
+  logging.warning( "location: " + location )
+  logging.warning( "email: " + email )
+  logging.warning( "url: " + url )
+  logging.warning( "tagline: " + tagline )
+  logging.warning( "password: " + password )
 
   if password is not None:
-    print "password aint none"
     user = User()
     User.hash_password(user, password)
 
     password_hash = user.password_hash
-
-    print "name: " + name
-    print "location: " + location
-    print "email: " + email
-    print "url: " + url
-    print "tagline: " + tagline
-    print "password: " + password_hash
-
     ts            = time.time()
     created_on    = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -149,7 +199,7 @@ def addPerson():
 
     if result:
       resp = (("status", "ok"),
-            ("msg", "Person added"))
+            ("msg", name + " added"))
     else:
       resp = (("status", "err"),
             ("msg", "Something went wrong saving Person"))
