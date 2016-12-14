@@ -1,0 +1,6 @@
+{
+  "auth_secret": "changethis",
+  "database_url": "db://whatever",
+  "database_user": "user",
+  "database_pass": "sample-pass"
+}

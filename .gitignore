@@ -29,3 +29,6 @@
 # Ignore neo4j DB
 
 /neo4j-db
+
+# Inquisite ignores
+config.json

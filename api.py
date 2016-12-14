@@ -5,97 +5,40 @@ import datetime
 import time
 import logging
 from passlib.apps import custom_app_context as pwd_context
-from usermodel import User
 from functools import wraps, update_wrapper
 from flask import Flask, request, current_app, make_response, session, escape, Response
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from werkzeug.security import safe_str_cmp
 from neo4j.v1 import GraphDatabase, basic_auth
+from simpleCrossDomain import crossdomain
+from basicAuth import check_auth, requires_auth
+
+config = json.load(open('./config.json'));
+
+# Init
 app = Flask(__name__)
+app.debug = True
+app.config['SECRET_KEY'] = config['auth_secret']
+driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
+db_session = driver.session()
 
 
-# Cross Domain
-# -- Based on http://flask.pocoo.org/snippets/56/
-# could be replaced with https://flask-cors.readthedocs.io/en/latest/
-def crossdomain(origin=None, methods=None, headers=None, max_age=21600, attatch_to_all=True, automatic_options=True):
+# JWT Real simple user class
+class User(object):
+  def __init__(self, id, username, password):
+    self.id = id
+    self.username = username
+    self.password = password
+    
+  def __str__(self):
+    return "User(id='%s')" % self.id
 
-  if methods is not None:
-    methods = ', '.join(sorted(x.upper() for x in methods))
-  if headers is not None and not isinstance(headers, basestring):
-    headers = ', '.join(x.upper() for x in headers)
-  if not isinstance(origin, basestring):
-    origin = ', '.join(origin)
-  if isinstance(max_age, datetime.timedelta):
-    max_age = max_age.total_seconds()
-
-  def get_methods():
-    if methods is not None:
-      return methods
-
-    options_resp = current_app.make_default_options_response()
-    return options_resp.headers['allow']
-
-  def decorator(f):
-
-    def wrapped_function(*args, **kwargs):
-
-      if automatic_options and request.method == 'OPTIONS':
-        resp = current_app.make_default_options_response()
-      else:
-        resp = make_response(f(*args, **kwargs))
-
-      h = resp.headers
- 
-      h['Access-Control-Allow-Origin'] = origin
-      h['Access-Control-Allow-Methods'] = get_methods()
-      h['Access-Control-Max-Age'] = str(max_age)
-      if headers is not None:
-        h['Access-Control-Allow-Headers'] = headers
-
-      resp.headers = h
-
-      return resp
-
-    f.provide_automatic_options = False
-    f.required_methods = ['OPTIONS']
-    return update_wrapper(wrapped_function, f)
-  return decorator
-
-# HTTP Basic Auth
-def check_auth(username, password):
-  """This function is called to check if a username / password combination is valid."""
-  
-  retval = False
-  if username:
-    db_hash = ""
-    db_user = session.run("MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.password AS password")
-    if db_user:
-      for user in db_user:
-        db_hash = user['password']
-
-    retval = pwd_context.verify(password, db_hash)
-
-  return retval
-
-def authenticate():
-  """Sends a 401 response that enables basic auth"""
-
-  return Response('Could not verify your access level for that URL.\n'
-                  'You have to login with proper credentials', 401,
-                  {'WWW-Authenticate': 'Basic realm="Login Requrired"'})
+# start jwt service
+#jwt = JWT(app, authenticate, identity)
+jwt = JWTManager(app)
 
 
-def requires_auth(f):
-  @wraps(f)
-  def decorated(*args, **kwargs):
-    auth = request.authorization
-    if not auth or not check_auth(auth.username, auth.password):
-      return authenticate()
-    return f(*args, **kwargs)
-  return decorated
-
-
-driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j","drumroll"))
-session = driver.session()
-
+# Inquisite Core Routes
 @app.route("/")
 def index():
 
@@ -105,52 +48,50 @@ def index():
 
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
+
 # Login
 @app.route('/login', methods=['POST'])
+@crossdomain(origin='*')
 def login():
 
-  print "in login"
+  username = request.form.get('username')
+  password = request.form.get('password')
 
-  email  = request.args.get('username')
-  passwd = request.args.get('password')
+  logging.warning("username: " + username)
+  logging.warning("password: " + password)
 
-  if email is not None and passwd is not None:
-
-    db_user = session.run("MATCH (n:Person) WHERE n.email='" + email + "' RETURN n.name AS name, n.password AS password")
-    if db_user:
-      for user in db_user:
-
-        if pwd_context.verify(passwd, user['password']):
-
-          session['username'] = email
-          resp = (("status", "ok"),
-                  ("msg", email + " logged in successfully"))
-          
-    else:
-      resp = (("status", "err"),
-              ("msg", "That username was not found"))
-
+  if username is not None and password is not None:
+    db_user = db_session.run("MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id")
+    for person in db_user:
+      if pwd_context.verify(password, person['password']):
+      
+        logging.warning('password verified. login success!')
+        ret = {'access_token': create_access_token(identity=username), 'email': person['email'], 'user_id': person['user_id']}
+        return Response(response=json.dumps(ret), status=200, mimetype="application/json")
   else:
-    resp = (("status", "err"),
-            ("msg", "Username and password are required"))
 
-  resp = collections.OrderedDict(resp)
-  return Response(response=json.dumps(resp), status=200, mimetype="applications/json")  
+    resp = (("status", "err"),
+            ("msg", "username and password are required"))
+    resp = collections.OrderedDict(resp)
+    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+
 
 # Logout
 @app.route('/logout')
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def logout():
-  session.pop('username', None)
+  db_session.pop('username', None)
 
 
 # People
 @app.route('/people', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def peopleList():
 
   persons = []
-  people = session.run("MATCH (n:Person) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
+  people = db_session.run("MATCH (n:Person) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
   for p in people:
     persons.append({
       "name": p['name'],
@@ -166,8 +107,39 @@ def peopleList():
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
+# Get Person by ID
+@app.route('/people/<person_id>', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def getPerson(person_id):
+
+  logging.warning('in getPerson')
+
+  current_user = get_jwt_identity()
+  logging.warning("current_user: " + current_user)
+  logging.warning("person_id: " + person_id)
+
+
+  result = db_session.run("MATCH (n:Person) WHERE ID(n) = " + person_id + 
+    " RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline")
+  if result:
+    for p in result:
+      resp = (("status", "ok"),
+              ("name", p['name']),
+              ("email", p['email']),
+              ("url", p['url']),
+              ("location", p['location']),
+              ("tagline", p['tagline']))
+  else:
+    resp = (("status", "err")
+            ("msg", "Could not find person for that ID"))
+    
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+
+# Add Person
 @app.route('/people/add', methods=['POST'])
-@crossdomain(origin='*')
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def addPerson():
 
   logging.warning("in addPerson")
@@ -194,7 +166,7 @@ def addPerson():
     ts            = time.time()
     created_on    = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-    result = session.run("CREATE (n:Person {url: '" + url + "', name: '" + name + "', email: '" + email 
+    result = db_session.run("CREATE (n:Person {url: '" + url + "', name: '" + name + "', email: '" + email 
       + "', location: '" + location + "', tagline: '" + tagline + "', password: '" + password_hash + "', created_on: '" + created_on + "'})") 
 
     if result:
@@ -212,7 +184,8 @@ def addPerson():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/edit', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def editPerson(person_id):
  
   name     = request.args.get('name')
@@ -241,7 +214,7 @@ def editPerson(person_id):
   update_str = "%s" % ", ".join(map(str, update))
 
   updated_person = {}
-  yyresult = session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str + 
+  yyresult = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str + 
     " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
 
   for p in result:
@@ -263,10 +236,11 @@ def editPerson(person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/delete', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def deletePerson(person_id):
   
-  result = session.run("MATCH (n:Person) WHERE ID(n)=" + person_id + " OPTIONAL MATCH (n)-[r]-() DELETE r,n")
+  result = db_session.run("MATCH (n:Person) WHERE ID(n)=" + person_id + " OPTIONAL MATCH (n)-[r]-() DELETE r,n")
 
   if result:
     resp = (("status", "ok"),
@@ -279,10 +253,11 @@ def deletePerson(person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/repos', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def getPersonRepos(person_id):
 
-  result = session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)=" + person_id + " RETURN n")
+  result = db_session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)=" + person_id + " RETURN n")
 
   print "Looking for repos ..."
   print result
@@ -303,7 +278,8 @@ def getPersonRepos(person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/people/<person_id>/set_password', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def setPassword(person_id):
 
   password  = request.args.get('password')
@@ -312,11 +288,12 @@ def setPassword(person_id):
 
 # Organizations
 @app.route('/organizations', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def orgList():
   
   orgslist = []
-  orgs = session.run("MATCH (n:Organization) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
+  orgs = db_session.run("MATCH (n:Organization) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
   for o in orgs:
     orgslist.append({
       "name": o['name'],
@@ -333,7 +310,8 @@ def orgList():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/add', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addOrg():
 
   name     = request.args.get('name')
@@ -342,7 +320,7 @@ def addOrg():
   url      = request.args.get('url')
   tagline  = request.args.get('tagline')
   
-  result = session.run("CREATE (o:Organization {name: '" + name + "', location: '" + location + "', email: '" + email + "', url: '" + url + 
+  result = db_session.run("CREATE (o:Organization {name: '" + name + "', location: '" + location + "', email: '" + email + "', url: '" + url + 
     "', tagline: '" + tagline + "'})")
 
   if result:
@@ -356,7 +334,8 @@ def addOrg():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/edit', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def editOrg(org_id):
 
   name     = request.args.get('name')
@@ -384,7 +363,7 @@ def editOrg(org_id):
   update_str = "%s" % ", ".join(map(str, update))
 
   updated_org = {}
-  result = session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " SET " + update_str + 
+  result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " SET " + update_str + 
     " RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline")
 
   for o in result:
@@ -406,10 +385,11 @@ def editOrg(org_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/delete', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def deleteOrg(org_id):
 
-  result = session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " OPTIONAL MATCH (o)-[r]-() DELETE r,o")
+  result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " OPTIONAL MATCH (o)-[r]-() DELETE r,o")
   if result:
     resp = (("status", "ok"),
             ("msg", "Organization deleted"))
@@ -421,10 +401,11 @@ def deleteOrg(org_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/repos', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def getOrgRepos(org_id):
 
-  result = session.run("MATCH (n)<-[:PART_OF]-(o) WHERE ID(o)=" + org_id + " RETURN n")
+  result = db_session.run("MATCH (n)<-[:PART_OF]-(o) WHERE ID(o)=" + org_id + " RETURN n")
   if result:
     resp = (("status", "ok"),
             ("repos", result))
@@ -436,10 +417,11 @@ def getOrgRepos(org_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/add_person/<person_id>', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addPersonToOrg(org_id, person_id):
 
-  result = session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
+  result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
     " MERGE (p)-[:PART_OF]->(o)")
 
   if result: 
@@ -453,10 +435,11 @@ def addPersonToOrg(org_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/remove_person/<person_id>', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def removePersonFromOrg(org_id, person_id):
 
-  result = session.run("START p=node(*) MATCH (p)-[rel:PART_OF]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + org_id + " DELETE rel")
+  result = db_session.run("START p=node(*) MATCH (p)-[rel:PART_OF]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + org_id + " DELETE rel")
   if result:
     resp = (("status", "ok"),
             ("msg", "removed person from org"))
@@ -468,11 +451,12 @@ def removePersonFromOrg(org_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/organizations/<org_id>/people', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def getOrgPeople(org_id):
 
   org_people = []
-  result = session.run("MATCH (n)-[:OWNED_BY|FOLLOWED_BY|MANAGED_BY|PART_OF]-(p) WHERE ID(n)=" + org_id + 
+  result = db_session.run("MATCH (n)-[:OWNED_BY|FOLLOWED_BY|MANAGED_BY|PART_OF]-(p) WHERE ID(n)=" + org_id + 
     " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
   for p in result:
     org_people.append({
@@ -491,11 +475,13 @@ def getOrgPeople(org_id):
 
 # Repositories
 @app.route('/repositories', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def repoList():
 
   repos = []
-  result = session.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
+
+  result = db_session.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
   for r in result:
     repos.append({
       "name": r['name'],
@@ -510,7 +496,8 @@ def repoList():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/add', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addRepo():
 
   url    = request.args.get('url')
@@ -520,7 +507,7 @@ def addRepo():
   ts = time.time()
   created_on    = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-  result = session.run("CREATE (n:Repository {url: '" + url + "', name: '" + name + "', readme: '" + readme + 
+  result = db_session.run("CREATE (n:Repository {url: '" + url + "', name: '" + name + "', readme: '" + readme + 
     "', created_on: '" + created_on + "'})")
   if result:
     resp = (("status", "ok"),
@@ -533,7 +520,8 @@ def addRepo():
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/edit', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def editRepo(repo_id):
 
   url    = request.args.get('url')
@@ -553,7 +541,7 @@ def editRepo(repo_id):
   update_str = "%s" % ", ".join(map(str, update))
 
   updated_repo = {}
-  result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " SET " + update_str + 
+  result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " SET " + update_str + 
     " RETURN n.name AS name, n.url AS url, n.readme AS readme")
 
   for r in result:
@@ -573,10 +561,11 @@ def editRepo(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/delete', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def deleteRepo(repo_id):
 
-  result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " OPTIONAL MATCH (o)-[r]-() DELETE r,o")
+  result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " OPTIONAL MATCH (o)-[r]-() DELETE r,o")
   if result:
     resp = (("status", "ok"),
             ("msg", "Repo deleted"))
@@ -588,11 +577,12 @@ def deleteRepo(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/owner', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def getRepoOwner(repo_id):
 
   owner = {}
-  result = session.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)=" + repo_id + 
+  result = db_session.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)=" + repo_id + 
     " RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline")
   for r in result:
     owner['name']     = r['name']
@@ -612,11 +602,12 @@ def getRepoOwner(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def getRepoInfo(repo_id):
 
   repo = {}
-  result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " RETURN n.name AS name, n.url AS url, n.readme AS readme")
+  result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " RETURN n.name AS name, n.url AS url, n.readme AS readme")
   for r in result:
     repo['name']   = r['name']
     repo['url']    = r['url']
@@ -633,10 +624,11 @@ def getRepoInfo(repo_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/add_collaborator/<person_id>', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addRepoCollab(repo_id, person_id):
 
-  result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
+  result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
     " MERGE (p)-[:COLLABORATES_WITH]->(n)")
 
   if result:
@@ -650,10 +642,11 @@ def addRepoCollab(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/remove_collaborator/<person_id>', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def removeRepoCollab(repo_id, person_id):
 
-  result = session.run("START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
+  result = db_session.run("START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
   if result:
     resp = (("status", "ok"),
             ("msg", "Collaborator removed"))
@@ -665,10 +658,11 @@ def removeRepoCollab(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
  
 @app.route('/repositories/<repo_id>/add_follower/<person_id>', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addRepoFollower(repo_id, person_id):
 
-  result = session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
+  result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
     " MERGE (p)-[:FOLLOWS]->(n)")
   if result:
     resp = (("status", "ok"),
@@ -681,10 +675,11 @@ def addRepoFollower(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/remove_follower/<person_id>', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def removeRepoFollower(repo_id, person_id):
 
-  result = session.run("START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
+  result = db_session.run("START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
   if result:
     resp = (("status", "ok"),
             ("msg", "Follower Removed"))
@@ -696,29 +691,33 @@ def removeRepoFollower(repo_id, person_id):
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 @app.route('/repositories/<repo_id>/add_data_node', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addRepoData(repo_id):
 
-  result = session.run()
+  result = db_session.run()
 
 
 @app.route('/repositories/<repo_id>/query', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def queryRepo(repo_id):
 
-  result = session.run()
+  result = db_session.run()
 
 @app.route('/repositories/<repo_id>/get_all_data', methods=['GET'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def getRepoData(repo_id):
 
-  result = session.run()
+  result = db_session.run()
 
 @app.route('/repositories/<repo_id>/set_entry_point', methods=['POST'])
-@requires_auth
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def setEntryPoint(repo_id):
 
-  result = session.run()
+  result = db_session.run()
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -726,7 +725,7 @@ def page_not_found(e):
   resp = (("status", "err"),
           ("msg", "The request could not be completed"))
 
-  resp = collectons.OrderedDict(resp)
+  resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=404, mimetype="application/json")
 
 if __name__ == '__main__':
