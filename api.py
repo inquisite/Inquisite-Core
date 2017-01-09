@@ -4,7 +4,9 @@ import collections
 import datetime
 import time
 import logging
+import urllib
 from passlib.apps import custom_app_context as pwd_context
+from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
 from flask import Flask, request, current_app, make_response, session, escape, Response
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
@@ -22,21 +24,8 @@ app.config['SECRET_KEY'] = config['auth_secret']
 driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
 db_session = driver.session()
 
-
-# JWT Real simple user class
-class User(object):
-  def __init__(self, id, username, password):
-    self.id = id
-    self.username = username
-    self.password = password
-    
-  def __str__(self):
-    return "User(id='%s')" % self.id
-
 # start jwt service
-#jwt = JWT(app, authenticate, identity)
 jwt = JWTManager(app)
-
 
 # Inquisite Core Routes
 @app.route("/")
@@ -62,12 +51,19 @@ def login():
 
   if username is not None and password is not None:
     db_user = db_session.run("MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id")
+
     for person in db_user:
-      if pwd_context.verify(password, person['password']):
+      #if pwd_context.verify(password, person['password']):
+      if sha256_crypt.verify(password, person['password']):
       
         logging.warning('password verified. login success!')
         ret = {'access_token': create_access_token(identity=username), 'email': person['email'], 'user_id': person['user_id']}
         return Response(response=json.dumps(ret), status=200, mimetype="application/json")
+
+    # We didn't find anyone
+    ret = {"status": "err", "msg": "No user was found with that username, or your password was typed incorrectly"}
+    return Response(response=json.dumps(ret), status=422, mimetype="application/json")
+
   else:
 
     resp = (("status", "err"),
@@ -122,16 +118,18 @@ def getPerson(person_id):
 
   result = db_session.run("MATCH (n:Person) WHERE ID(n) = " + person_id + 
     " RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline")
-  if result:
-    for p in result:
-      resp = (("status", "ok"),
-              ("name", p['name']),
-              ("email", p['email']),
-              ("url", p['url']),
-              ("location", p['location']),
-              ("tagline", p['tagline']))
-  else:
-    resp = (("status", "err")
+
+  resp = None
+  for p in result:
+    resp = (("status", "ok"),
+            ("name", p['name']),
+            ("email", p['email']),
+            ("url", p['url']),
+            ("location", p['location']),
+            ("tagline", p['tagline']))
+
+  if resp is None:
+    resp = (("status", "err"),
             ("msg", "Could not find person for that ID"))
     
   resp = collections.OrderedDict(resp)
@@ -150,28 +148,38 @@ def addPerson():
   url      = request.form.get('url')
   tagline  = request.form.get('tagline')
   password = request.form.get('password')
+  
+  # TODO - Enforce password min length / character requirements?
+  if password != '' and password is not None:
 
-  logging.warning( "name: " + name )
-  logging.warning( "location: " + location )
-  logging.warning( "email: " + email )
-  logging.warning( "url: " + url )
-  logging.warning( "tagline: " + tagline )
-  logging.warning( "password: " + password )
 
-  if password is not None:
-    user = User()
-    User.hash_password(user, password)
+    password_hash = sha256_crypt.hash(password)
+    print "sha256: "
+    print password_hash
 
-    password_hash = user.password_hash
+
     ts            = time.time()
     created_on    = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
     result = db_session.run("CREATE (n:Person {url: '" + url + "', name: '" + name + "', email: '" + email 
-      + "', location: '" + location + "', tagline: '" + tagline + "', password: '" + password_hash + "', created_on: '" + created_on + "'})") 
+       + "', location: '" + location + "', tagline: '" + tagline + "', password: '" + password_hash + "', created_on: '" + created_on 
+       + "'}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id") 
+
 
     if result:
+      person = {}
+      for p in result:
+            
+        person['name']     = p['name']
+        person['location'] = p['location']
+        person['email']    = p['email']
+        person['url']      = p['url']
+        person['tagline']  = p['tagline']
+        person['user_id']  = p['user_id']
+
       resp = (("status", "ok"),
-            ("msg", name + " added"))
+              ("msg", person['name'] + " added"),
+              ("person", person))
     else:
       resp = (("status", "err"),
             ("msg", "Something went wrong saving Person"))
@@ -188,11 +196,11 @@ def addPerson():
 @jwt_required
 def editPerson(person_id):
  
-  name     = request.args.get('name')
-  location = request.args.get('location')
-  email    = request.args.get('email')
-  url      = request.args.get('url')
-  tagline  = request.args.get('tagline')
+  name     = request.form.get('name')
+  location = request.form.get('location')
+  email    = request.form.get('email')
+  url      = request.form.get('url')
+  tagline  = request.form.get('tagline')
 
   update = []
   if name is not None:
@@ -211,26 +219,44 @@ def editPerson(person_id):
     update.append("p.tagline = '" + tagline + "'")
 
 
+  print "update list:"
+  print update
+
   update_str = "%s" % ", ".join(map(str, update))
 
-  updated_person = {}
-  yyresult = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str + 
-    " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
+  print "update string: "
+  print update_str
 
-  for p in result:
-    updated_person['name'] = p['name']
-    updated_person['location'] = p['location']
-    updated_person['email'] = p['email']
-    updated_person['url'] = p['url']
-    updated_person['tagline'] = p['tagline']
+  if update_str != '' and update_str is not None:
+    updated_person = {}
+    result = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str + 
+      " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
 
-  if result:
-    resp = (("status", "ok"),
-            ("msg", "Person updated"),
-            ("person", updated_person))
+    if result:
+      for p in result:
+        updated_person['name'] = p['name']
+        updated_person['location'] = p['location']
+        updated_person['email'] = p['email']
+        updated_person['url'] = p['url']
+        updated_person['tagline'] = p['tagline']
+
+      if updated_person != {}:
+
+        resp = (("status", "ok"),
+                ("msg", "Person updated"),
+                ("person", updated_person))
+
+      else:
+        resp = (("status", "err"),
+                ("msg", "No person found for that user id"))
+
+    else:
+      resp = (("status", "err"),
+              ("msg", "problem updating Person"))
+
   else:
     resp = (("status", "err"),
-            ("msg", "problem updating Person"))
+            ("msg", "nothing to update"))
 
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
@@ -240,14 +266,20 @@ def editPerson(person_id):
 @jwt_required
 def deletePerson(person_id):
   
+  node_deleted = False
   result = db_session.run("MATCH (n:Person) WHERE ID(n)=" + person_id + " OPTIONAL MATCH (n)-[r]-() DELETE r,n")
+  
+  # Check we deleted something 
+  summary = result.consume()
+  if summary.counters.nodes_deleted >= 1:
+    node_deleted = True
 
-  if result:
+  if node_deleted:
     resp = (("status", "ok"),
             ("msg", "Peson Deleted Successfully"))
   else:
     resp = (("status", "err"),
-            ("msg", "Something went wrong deleting Person"))
+            ("msg", "bad user id, nothing was deleted"))
 
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
@@ -257,15 +289,17 @@ def deletePerson(person_id):
 @jwt_required
 def getPersonRepos(person_id):
 
-  result = db_session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)=" + person_id + " RETURN n")
-
-  print "Looking for repos ..."
-  print result
+  result = db_session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)=" + person_id 
+    + " RETURN n.name AS name, n.readme AS readme, n.url AS url")
 
   repos = []
   for item in result:
-    print "going through items ... "
-    print item 
+    repos.append({
+      "name": item['name'],
+      "readme": item['readme'],
+      "url": item['url']
+    })
+ 
 
   if result:
     resp = (("status", "ok"),
@@ -282,9 +316,52 @@ def getPersonRepos(person_id):
 @jwt_required
 def setPassword(person_id):
 
-  password  = request.args.get('password')
+  password     = request.form.get('password')
+  new_password = request.form.get('new_password')
 
-  # TODO: Look into neo4j user authentication / encryption
+  if password is not None and new_password is not None:
+  
+    # check if password and new pass are the same
+    if password != new_password:
+
+      db_password_hash = ''
+      # check if password matches person_id
+      result = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " RETURN p.password AS password")
+      for p in result:
+        db_password_hash = p['password']
+
+      if db_password_hash != '':
+
+        # hash new password and update DB
+        new_pass_hash = sha256_crypt.hash(new_password)
+
+        result = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET p.password = '" + new_pass_hash + "'")
+
+        
+        # Check we updated something 
+        node_updated = False
+        summary = result.consume()
+        if summary.counters.properties_set >= 1:
+          node_updated = True
+
+        if node_updated:
+          resp = (("status", "ok"),
+                  ("msg", "Password updated successfully"))
+
+      else:
+        resp = (("status", "err"),
+                ("msg", "No user found for that person_id"))
+
+    else:
+      resp = (("status", "err"),
+              ("msg", "New password is the same as current password"))
+
+  else:
+    resp = (("status", "err"),
+            ("msg", "password and new password needed to change password"))
+
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=200, mimetype="application/json") 
 
 # Organizations
 @app.route('/organizations', methods=['GET'])
@@ -314,21 +391,74 @@ def orgList():
 @jwt_required
 def addOrg():
 
-  name     = request.args.get('name')
-  location = request.args.get('location')
-  email    = request.args.get('email')
-  url      = request.args.get('url')
-  tagline  = request.args.get('tagline')
+  name     = request.form.get('name')
+  location = request.form.get('location')
+  email    = request.form.get('email')
+  url      = request.form.get('url')
+  tagline  = request.form.get('tagline')
   
-  result = db_session.run("CREATE (o:Organization {name: '" + name + "', location: '" + location + "', email: '" + email + "', url: '" + url + 
-    "', tagline: '" + tagline + "'})")
+  if name is not None and location is not None and email is not None and url is not None and tagline is not None:
 
-  if result:
-    resp = (("status", "ok"),
-            ("msg", "Organization Added"))
+    result = db_session.run("CREATE (o:Organization {name: '" + name + "', location: '" + location + "', email: '" + email + "', url: '" + url + 
+      "', tagline: '" + tagline + "'}) RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline, ID(o) AS org_id")
+
+
+    new_org = {}
+    for org in result:
+      new_org = {
+        'org_id': org['org_id'],
+        'name': org['name'],
+        'location': org['location'],
+        'email': org['email'],
+        'url': org['url'],
+        'tagline': org['tagline']
+      }
+
+    summary = result.consume()
+
+    node_created = False
+    if summary.counters.nodes_created == 1:
+      node_created = True
+
+    if node_created:
+      resp = (("status", "ok"),
+              ("msg", "Organization Added"),
+              ("organization", new_org))
+    else:
+      resp = (("status", "err"),
+              ("msg", "Problem adding Organization"))
+
   else:
     resp = (("status", "err"),
-            ("msg", "Problem adding Organization"))
+            ("msg", "Missing required fields"))
+
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+
+@app.route('/organizations/<org_id>', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def getOrg(org_id):
+
+  org = {}
+  result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id 
+    + " RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline")
+ 
+  for o in result:
+    org['name'] = o['name']
+    org['location'] = o['location']
+    org['email'] = o['email']
+    org['url'] = o['url']
+    org['tagline'] = o['tagline']
+
+  if org:
+    resp = (("status", "ok"),
+            ("msg", "Success, organization found"),
+            ("organization", org))
+
+  else:
+    resp = (("status", "err"),
+            ("msg", "No organization found for that org_id"))
 
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
@@ -338,11 +468,11 @@ def addOrg():
 @jwt_required
 def editOrg(org_id):
 
-  name     = request.args.get('name')
-  location = request.args.get('location')
-  email    = request.args.get('email')
-  url      = request.args.get('url')
-  tagline  = request.args.get('tagline')
+  name     = request.form.get('name')
+  location = request.form.get('location')
+  email    = request.form.get('email')
+  url      = request.form.get('url')
+  tagline  = request.form.get('tagline')
 
   update = []
   if name is not None:
@@ -360,26 +490,35 @@ def editOrg(org_id):
   if tagline is not None:
     update.append("o.tagline = '" + tagline + "'")
 
+  update_str = ''
   update_str = "%s" % ", ".join(map(str, update))
 
-  updated_org = {}
-  result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " SET " + update_str + 
-    " RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline")
+  if update_str:
+    updated_org = {}
+    result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " SET " + update_str + 
+      " RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline")
 
-  for o in result:
-    updated_org['name'] = o['name']
-    updated_org['location'] = o['location']
-    updated_org['email'] = o['email']
-    updated_org['url'] = o['url']
-    updated_org['tagline'] = o['tagline']
+    for o in result:
+      updated_org['name'] = o['name']
+      updated_org['location'] = o['location']
+      updated_org['email'] = o['email']
+      updated_org['url'] = o['url']
+      updated_org['tagline'] = o['tagline']
 
-  if result:
-    resp = (("status", "ok"),
-            ("msg", "Organization updated"),
-            ("org", updated_org))
+    if updated_org:
+      resp = (("status", "ok"),
+              ("msg", "Organization updated"),
+              ("org", updated_org))
+    else:
+      resp = (("status", "err"),
+              ("msg", "Problem updating Organization"))
+
   else:
     resp = (("status", "err"),
-            ("msg", "Problem updating Organization"))
+            ("msg", "Nothing to update"))
+
+  print "response"
+  print resp
 
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
@@ -405,7 +544,7 @@ def deleteOrg(org_id):
 @jwt_required
 def getOrgRepos(org_id):
 
-  result = db_session.run("MATCH (n)<-[:PART_OF]-(o) WHERE ID(o)=" + org_id + " RETURN n")
+  result = db_session.run("MATCH (n)<-[:PART_OF|:OWNED_BY]-(o) WHERE ID(o)=" + org_id + " RETURN n")
   if result:
     resp = (("status", "ok"),
             ("repos", result))
@@ -415,6 +554,52 @@ def getOrgRepos(org_id):
 
   resp = collections.OrderedDict(resp)
   return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+
+@app.route('/organizations/<org_id>/repos/<repo_id>/add', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def addRepoToOrg(org_id, repo_id):
+  result = db_session.run("MATCH (o:Organization) WHERE ID(o)=" + org_id + " MATCH (r:Repository) WHERE ID(r)=" + repo_id +
+    " MERGE (r)-[:PART_OF]->(o)")
+  summary = result.consume()
+
+  rel_created = False
+  if summary.counters.relationships_created >= 1:
+    rel_created = True
+
+  if rel_created:
+    resp = (("status", "ok"),
+            ("msg", "Organization - Repo relationship added"))
+  else:
+    resp = (("status", "ok"),
+            ("msg", "There was a problem adding Repo to Organization"))
+
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+
+@app.route('/organizatons/<org_id>/repos/<repo_id>/delete', methods['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def removeRepoFromOrg(org_id, repo_id):
+  
+  result = db_session.run("START r=node(*) MATCH (r)-[rel:PART_OF]->(o) WHERE ID(r)=" + repo_id + " AND ID(o)=" + org_id 
+    + " DELETE rel")
+  summary = result.consume()
+
+  rel_deleted = False
+  if summary.counters.relationships_deleted >= 1:
+    rel_deleted = True
+
+  if rel_deleted:
+    resp = (("status", "ok"),
+            ("msg", "Repository removed from Organization"))
+  else:
+    resp = (("status", "err"),
+            ("msg", "There was a problem, Repository was not removed from Organization"))
+
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=200, mimetype="application/json")  
+
 
 @app.route('/organizations/<org_id>/add_person/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])

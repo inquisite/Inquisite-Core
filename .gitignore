@@ -15,6 +15,9 @@
 /log/*.log
 /tmp
 
+# Python ignores
+*.pyc
+
 # Ignore RubyMine/JetBrains config
 .idea/
 
@@ -26,8 +29,8 @@
 *.sublime-*
 *.swp
 
-# Ignore neo4j DB
 
+# Ignore neo4j DB
 /neo4j-db
 
 # Inquisite ignores
