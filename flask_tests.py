@@ -398,39 +398,215 @@ class FlaskTestCase(unittest.TestCase):
     assert retobj['org']['name'] != ''
 
     # create test repo
-
-    # add organization repo    
-    rv = self.app.post('/organizations/' + org_id + '/repos/add', headers={"Authorization": "Bearer " + access_token},
-      data=dict(
-      name = None
+    rv = self.app.post('/repositories/add', headers={"Authorization": "Bearer " + access_token}, data=dict(
+      url    = "http://testrepo.org",
+      name   = "Org Repo Test",
+      readme = "Test Readme"
     ))
     retobj = json.loads(rv.data)
     assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+    assert isinstance(retobj['repo'], dict) == True
+    repo_id = str(retobj['repo']['repo_id'])
 
+    # add organization repo    
+    rv = self.app.post('/organizations/' + org_id + '/repos/' + repo_id + '/add', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
 
     # list organization repos
     rv = self.app.get('/organizations/' + org_id + '/repos', headers={"Authorization": "Bearer " + access_token})
     retobj = json.loads(rv.data)
     assert retobj['status'] == 'ok'
     assert isinstance(retobj['repos'], list) == True
+    assert len(retobj['repos']) >= 1
 
     # delete organization repo relationship
+    rv = self.app.post('/organizations/' + org_id + '/repos/' + repo_id + '/delete', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data) 
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
 
     # destory test repo
-
-    # create test org person 
+    rv = self.app.post('/repositories/' + repo_id + '/delete', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
 
     # add organization person
- 
+    rv = self.app.post('/organizations/' + org_id + '/add_person/' + config['unit_test_userid'], 
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+    person_id = str(retobj['person_id'])
+
     # list organization people
+    rv = self.app.get('/organizations/' + org_id + '/people', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert isinstance(retobj['people'], list) == True
+    assert len(retobj['people']) >= 1
 
     # delete organization person
-
-    # destroy test org person
+    rv = self.app.post('/organizations/' + org_id + '/remove_person/' + person_id, headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
 
     # delete organization 
+    rv = self.app.post('/organizations/' + org_id + '/delete', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
 
+    self.logout(access_token)
 
+  # Repositories
+  def test_repositories(self):
+    rv = self.login(config['unit_test_user'], config['unit_test_pass'])
+    retobj = json.loads(rv.data)
+    access_token = retobj['access_token']
+
+    # Add Repository - Empty case
+    rv = self.app.post('/repositories/add', headers={"Authorization": "Bearer " + access_token},
+      data=dict(
+      url = None,
+      name = None,
+      readme = None
+    ))
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'err'
+    assert retobj['msg'] != ''
+
+    # Add Repository
+    rv = self.app.post('/repositories/add', headers={"Authorization": "Bearer " + access_token},
+      data=dict(
+        url = "http://repo-test.com",
+        name = "Unit Test Repo",
+        readme = "## Test README## readme description goes here"
+    ))
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+    assert isinstance(retobj['repo'], dict) == True
+    repo_id = str(retobj['repo']['repo_id'])
+
+    # List Repositories
+    rv = self.app.get('/repositories', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert isinstance(retobj['repos'], list) == True
+    assert len(retobj['repos']) >= 1
+   
+    # Get Repository - Bad repo_id
+    rv = self.app.get('/repositories/000012', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'err'
+    assert retobj['msg'] != ''
+
+    # Get Repository
+    rv = self.app.get('/repositories/' + repo_id, headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert isinstance(retobj['repo'], dict) == True
+
+    # Edit Repo - Empty case
+    rv = self.app.post('/repositories/' + repo_id + '/edit', headers={"Authorization": "Bearer " + access_token},
+      data=dict(
+        url = None,
+        name = None,
+        readme = None
+    ))
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'err'
+    assert retobj['msg'] != ''
+
+    # Edit Repo
+    rv = self.app.post('/repositories/' + repo_id + '/edit', headers={"Authorization": "Bearer " + access_token},
+      data=dict(
+        url = "http://repo-test.com",
+        name = "Edited Test Repo",
+        readme = "## Edited Repo README ##"
+    ))
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Add Repo Owner - bad person ID
+    rv = self.app.post('/repositories/' + repo_id + '/set_owner/00012', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'err'
+    assert retobj['msg'] != ''
+ 
+    # Add Repo Owner
+    rv = self.app.post('/repositories/' + repo_id + '/set_owner/' + config['unit_test_userid'], 
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Get Repo Owner
+    rv = self.app.get('/repositories/' + repo_id + '/owner', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert isinstance(retobj['owner'], dict) == True
+
+    # Remove Repo Owner
+    rv = self.app.post('/repositories/' + repo_id + '/remove_owner/' + config['unit_test_userid'],
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Add Repo Collaborator
+    rv = self.app.post('/repositories/' + repo_id + '/add_collaborator/' + config['unit_test_userid'],
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Get Repo Collaborators
+    rv = self.app.get('/repositories/' + repo_id + '/collaborators', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert isinstance(retobj['collaborators'], list) == True
+    assert len(retobj['collaborators']) >= 1
+
+    # Delete Repo Collaborators
+    rv = self.app.post('/repositories/' + repo_id + '/remove_collaborator/' + config['unit_test_userid'],
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Add Repo Follower
+    rv = self.app.post('/repositories/' + repo_id + '/add_follower/' + config['unit_test_userid'],
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Get Repo Followers
+    rv = self.app.get('/repositories/' + repo_id + '/followers', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert isinstance(retobj['followers'], list) == True
+    assert len(retobj['followers']) >= 1
+
+    # Delete Repo Follower
+    rv = self.app.post('/repositories/' + repo_id + '/remove_follower/' + config['unit_test_userid'],
+      headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
+
+    # Delete Repo
+    rv = self.app.post('/repositories/' + repo_id + '/delete', headers={"Authorization": "Bearer " + access_token})
+    retobj = json.loads(rv.data)
+    assert retobj['status'] == 'ok'
+    assert retobj['msg'] != ''
 
     self.logout(access_token)
 
