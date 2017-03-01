@@ -26,7 +26,6 @@ db_session = driver.session()
 @auth_blueprint.route('/login', methods=['POST'])
 @crossdomain(origin='*')
 def login():
-
     username = request.form.get('username')
     password = request.form.get('password')
 
@@ -34,8 +33,7 @@ def login():
     # logging.warning("password: " + password)
 
     if username is not None and password is not None:
-        db_user = db_session.run(
-            "MATCH (n:Person) WHERE n.email='" + username + "' RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id")
+        db_user = db_session.run("MATCH (n:Person) WHERE n.email={username} RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id", {"username": username})
 
         for person in db_user:
             # if pwd_context.verify(password, person['password']):
@@ -79,7 +77,7 @@ def setPassword(person_id):
 
             db_password_hash = ''
             # check if password matches person_id
-            result = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " RETURN p.password AS password")
+            result = db_session.run("MATCH (p:Person) WHERE ID(p)={person_id} RETURN p.password AS password", {"person_id": person_id})
             for p in result:
                 db_password_hash = p['password']
 
@@ -88,8 +86,7 @@ def setPassword(person_id):
                 # hash new password and update DB
                 new_pass_hash = sha256_crypt.hash(new_password)
 
-                result = db_session.run(
-                    "MATCH (p:Person) WHERE ID(p)=" + person_id + " SET p.password = '" + new_pass_hash + "'")
+                result = db_session.run("MATCH (p:Person) WHERE ID(p)={person_id} SET p.password = {new_pass_hash}", {"person_id": person_id, "new_pass_hash": new_pass_hash})
 
                 # Check we updated something
                 node_updated = False
