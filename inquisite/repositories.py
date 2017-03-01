@@ -11,7 +11,7 @@ from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
-from neo4j.v1 import GraphDatabase, basic_auth
+from neo4j.v1 import GraphDatabase, basic_auth,ResultError
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 
@@ -77,31 +77,35 @@ def addRepo():
     readme = request.form.get('readme')
 
     if url is not None and name is not None and readme is not None:
+        try:
+           db_session.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
+           resp = (("status", "err"),
+                   ("msg", "Repository with name already exists"))
+        except ResultError as e:
+            ts = time.time()
+            created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        ts = time.time()
-        created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+            new_repo = {}
+            result = db_session.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
 
-        new_repo = {}
-        result = db_session.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
+            for r in result:
+                new_repo['repo_id'] = r['repo_id']
+                new_repo['url'] = r['url']
+                new_repo['name'] = r['name']
+                new_repo['readme'] = r['readme']
 
-        for r in result:
-            new_repo['repo_id'] = r['repo_id']
-            new_repo['url'] = r['url']
-            new_repo['name'] = r['name']
-            new_repo['readme'] = r['readme']
+            node_created = False
+            summary = result.consume()
+            if summary.counters.nodes_created >= 1:
+                node_created = True
 
-        node_created = False
-        summary = result.consume()
-        if summary.counters.nodes_created >= 1:
-            node_created = True
-
-        if node_created:
-            resp = (("status", "ok"),
-                    ("repo", new_repo),
-                    ("msg", "Created Repo"))
-        else:
-            resp = (("status", "err"),
-                    ("msg", "problem creating repo"))
+            if node_created:
+                resp = (("status", "ok"),
+                        ("repo", new_repo),
+                        ("msg", "Created Repo"))
+            else:
+                resp = (("status", "err"),
+                        ("msg", "problem creating repo"))
     else:
         resp = (("status", "err"),
                 ("msg", "Required fields are missing"))

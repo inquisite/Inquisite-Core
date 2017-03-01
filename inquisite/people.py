@@ -11,7 +11,7 @@ from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
-from neo4j.v1 import GraphDatabase, basic_auth
+from neo4j.v1 import GraphDatabase, basic_auth, ResultError
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 
@@ -100,11 +100,11 @@ def addPerson():
         ts = time.time()
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        result = db_session.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email})
-        if result:
+        try:
+            result = db_session.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email}).peek()
             resp = (("status", "err"),
                     ("msg", "User already exists"))
-        else :
+        except ResultError as e:
             result = db_session.run("CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, password: {password_hash}, created_on: {created_on}}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
                                 {"url": url, "name": name, "email": email, "location": location, "tagline": tagline, "password_hash": password_hash, "created_on": created_on})
 
