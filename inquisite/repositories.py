@@ -51,7 +51,7 @@ def repoList():
 def getRepo(repo_id):
     repo = {}
     result = db_session.run(
-        "MATCH (n:Repository) WHERE ID(n)=" + repo_id + " RETURN n.url AS url, n.name AS name, n.readme AS readme")
+        "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme", {"repo_id": repo_id})
     for r in result:
         repo['url'] = r['url']
         repo['name'] = r['name']
@@ -82,8 +82,7 @@ def addRepo():
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
         new_repo = {}
-        result = db_session.run("CREATE (n:Repository {url: '" + url + "', name: '" + name + "', readme: '" + readme +
-                                "', created_on: '" + created_on + "'}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id")
+        result = db_session.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
 
         for r in result:
             new_repo['repo_id'] = r['repo_id']
@@ -121,19 +120,19 @@ def editRepo(repo_id):
 
     update = []
     if name is not None:
-        update.append("n.name = '" + name + "'")
+        update.append("n.name = {name}")
 
     if url is not None:
-        update.append("n.url = '" + url + "'")
+        update.append("n.url = {url}")
 
     if readme is not None:
-        update.append("n.readme = '" + readme + "'")
+        update.append("n.readme = {readme}")
 
     update_str = "%s" % ", ".join(map(str, update))
 
     if update_str:
-        result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " SET " + update_str +
-                                " RETURN n.name AS name, n.url AS url, n.readme AS readme")
+        result = db_session.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
+                                " RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id, "name": name, "url": url, "readme": readme})
 
         updated_repo = {}
         for r in result:
@@ -166,7 +165,7 @@ def editRepo(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteRepo(repo_id):
-    result = db_session.run("MATCH (n:Repository) WHERE ID(n)=" + repo_id + " OPTIONAL MATCH (n)-[r]-() DELETE r,n")
+    result = db_session.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
     summary = result.consume()
 
     node_deleted = False
@@ -189,8 +188,7 @@ def deleteRepo(repo_id):
 @jwt_required
 def setRepoOwner(repo_id, person_id):
     result = db_session.run(
-        "MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
-        " MERGE (p)<-[:OWNED_BY]->(n)")
+        "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)<-[:OWNED_BY]->(n)", {"repo_id": repo_id, "person_id": person_id})
     summary = result.consume()
 
     rel_created = False
@@ -213,8 +211,7 @@ def setRepoOwner(repo_id, person_id):
 @jwt_required
 def getRepoOwner(repo_id):
     owner = {}
-    result = db_session.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)=" + repo_id +
-                            " RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline")
+    result = db_session.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
     for r in result:
         owner['name'] = r['name']
         owner['location'] = r['location']
@@ -238,7 +235,7 @@ def getRepoOwner(repo_id):
 @jwt_required
 def deleteRepoOwner(repo_id, person_id):
     result = db_session.run(
-        "START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
+        "START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     summary = result.consume()
 
     rel_deleted = False
@@ -262,7 +259,7 @@ def deleteRepoOwner(repo_id, person_id):
 def getRepoInfo(repo_id):
     repo = {}
     result = db_session.run(
-        "MATCH (n:Repository) WHERE ID(n)=" + repo_id + " RETURN n.name AS name, n.url AS url, n.readme AS readme")
+        "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id})
     for r in result:
         repo['name'] = r['name']
         repo['url'] = r['url']
@@ -284,8 +281,7 @@ def getRepoInfo(repo_id):
 @jwt_required
 def addRepoCollab(repo_id, person_id):
     result = db_session.run(
-        "MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
-        " MERGE (p)-[:COLLABORATES_WITH]->(n)")
+        "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)", {"repo_id": repo_id, "person_id": person_id})
 
     if result:
         resp = (("status", "ok"),
@@ -303,8 +299,7 @@ def addRepoCollab(repo_id, person_id):
 @jwt_required
 def listRepoCollabs(repo_id):
     people = []
-    result = db_session.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)=" + repo_id +
-                            " RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline")
+    result = db_session.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
     for p in result:
         people.append({
@@ -331,7 +326,7 @@ def listRepoCollabs(repo_id):
 @jwt_required
 def removeRepoCollab(repo_id, person_id):
     result = db_session.run(
-        "START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
+        "START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     if result:
         resp = (("status", "ok"),
                 ("msg", "Collaborator removed"))
@@ -348,8 +343,7 @@ def removeRepoCollab(repo_id, person_id):
 @jwt_required
 def addRepoFollower(repo_id, person_id):
     result = db_session.run(
-        "MATCH (n:Repository) WHERE ID(n)=" + repo_id + " MATCH (p:Person) WHERE ID(p)=" + person_id +
-        " MERGE (p)-[:FOLLOWS]->(n)")
+        "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:FOLLOWS]->(n)", {"repo_id": repo_id, "person_id": person_id})
     if result:
         resp = (("status", "ok"),
                 ("msg", "Folower Added"))
@@ -366,8 +360,7 @@ def addRepoFollower(repo_id, person_id):
 @jwt_required
 def listRepoFollowers(repo_id):
     people = []
-    result = db_session.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)=" + repo_id +
-                            " RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline")
+    result = db_session.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
     for p in result:
         people.append({
@@ -394,7 +387,7 @@ def listRepoFollowers(repo_id):
 @jwt_required
 def removeRepoFollower(repo_id, person_id):
     result = db_session.run(
-        "START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)=" + person_id + " AND ID(n)=" + repo_id + " DELETE rel")
+        "START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     if result:
         resp = (("status", "ok"),
                 ("msg", "Follower Removed"))

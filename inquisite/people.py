@@ -30,8 +30,7 @@ db_session = driver.session()
 @jwt_required
 def peopleList():
     persons = []
-    people = db_session.run(
-        "MATCH (n:Person) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
+    people = db_session.run("MATCH (n:Person) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
     for p in people:
         persons.append({
             "name": p['name'],
@@ -56,11 +55,10 @@ def getPerson(person_id):
     logging.warning('in getPerson')
 
     current_user = get_jwt_identity()
-    logging.warning("current_user: " + current_user)
-    logging.warning("person_id: " + person_id)
+    #logging.warning("current_user: " + current_user)
+    #logging.warning("person_id: " + person_id)
 
-    result = db_session.run("MATCH (n:Person) WHERE ID(n) = " + person_id +
-                            " RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline")
+    result = db_session.run("MATCH (n:Person) WHERE ID(n) = {person_id} RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline", {"person_id": person_id})
 
     resp = None
     for p in result:
@@ -102,9 +100,8 @@ def addPerson():
         ts = time.time()
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        result = db_session.run("CREATE (n:Person {url: '" + url + "', name: '" + name + "', email: '" + email
-                                + "', location: '" + location + "', tagline: '" + tagline + "', password: '" + password_hash + "', created_on: '" + created_on
-                                + "'}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id")
+        result = db_session.run("CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, password: {password_hash}, created_on: {created_on}}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
+                                {"url": url, "name": name, "email": email, "location": location, "tagline": tagline, "password_hash": password_hash, "created_on": created_on})
 
         if result:
             person = {}
@@ -143,32 +140,32 @@ def editPerson(person_id):
 
     update = []
     if name is not None:
-        update.append("p.name = '" + name + "'")
+        update.append("p.name = {name}")
 
     if location is not None:
-        update.append("p.location = '" + location + "'")
+        update.append("p.location = {location}")
 
     if email is not None:
-        update.append("p.email = '" + email + "'")
+        update.append("p.email = {email}")
 
     if url is not None:
-        update.append("p.url = '" + url + "'")
+        update.append("p.url = {url}")
 
     if tagline is not None:
-        update.append("p.tagline = '" + tagline + "'")
+        update.append("p.tagline = {tagline}")
 
     print "update list:"
     print update
 
     update_str = "%s" % ", ".join(map(str, update))
 
-    print "update string: "
-    print update_str
+    #print "update string: "
+    #print update_str
 
     if update_str != '' and update_str is not None:
         updated_person = {}
-        result = db_session.run("MATCH (p:Person) WHERE ID(p)=" + person_id + " SET " + update_str +
-                                " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
+        result = db_session.run("MATCH (p:Person) WHERE ID(p)={person_id} SET " + update_str +
+                                " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline", {"person_id": person_id, "name": name, "location": location, "email": email, "url": url, "tagline": tagline})
 
         if result:
             for p in result:
@@ -205,7 +202,7 @@ def editPerson(person_id):
 @jwt_required
 def deletePerson(person_id):
     node_deleted = False
-    result = db_session.run("MATCH (n:Person) WHERE ID(n)=" + person_id + " OPTIONAL MATCH (n)-[r]-() DELETE r,n")
+    result = db_session.run("MATCH (n:Person) WHERE ID(n)={person_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"person_id": person_id})
 
     # Check we deleted something
     summary = result.consume()
@@ -227,8 +224,7 @@ def deletePerson(person_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getPersonRepos(person_id):
-    result = db_session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)=" + person_id
-                            + " RETURN n.name AS name, n.readme AS readme, n.url AS url")
+    result = db_session.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)={person_id} RETURN n.name AS name, n.readme AS readme, n.url AS url", {"person_id": person_id})
 
     repos = []
     for item in result:
