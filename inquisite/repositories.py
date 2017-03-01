@@ -11,17 +11,13 @@ from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
-from neo4j.v1 import GraphDatabase, basic_auth,ResultError
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
+from inquisite.db import db
+from neo4j.v1 import ResultError
 
 
 repositories_blueprint = Blueprint('repositories', __name__)
-
-
-config = json.load(open('./config.json'));
-driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
-db_session = driver.session()
 
 
 # Repositories
@@ -30,7 +26,7 @@ db_session = driver.session()
 @jwt_required
 def repoList():
     repos = []
-    result = db_session.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
+    result = db.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
     for r in result:
         repos.append({
             "name": r['name'],
@@ -50,7 +46,7 @@ def repoList():
 @jwt_required
 def getRepo(repo_id):
     repo = {}
-    result = db_session.run(
+    result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme", {"repo_id": repo_id})
     for r in result:
         repo['url'] = r['url']
@@ -78,7 +74,7 @@ def addRepo():
 
     if url is not None and name is not None and readme is not None:
         try:
-           db_session.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
+           db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
            resp = (("status", "err"),
                    ("msg", "Repository with name already exists"))
         except ResultError as e:
@@ -86,7 +82,7 @@ def addRepo():
             created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
             new_repo = {}
-            result = db_session.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
+            result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
 
             for r in result:
                 new_repo['repo_id'] = r['repo_id']
@@ -135,7 +131,7 @@ def editRepo(repo_id):
     update_str = "%s" % ", ".join(map(str, update))
 
     if update_str:
-        result = db_session.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
+        result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
                                 " RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id, "name": name, "url": url, "readme": readme})
 
         updated_repo = {}
@@ -169,7 +165,7 @@ def editRepo(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteRepo(repo_id):
-    result = db_session.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
     summary = result.consume()
 
     node_deleted = False
@@ -191,7 +187,7 @@ def deleteRepo(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def setRepoOwner(repo_id, person_id):
-    result = db_session.run(
+    result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)<-[:OWNED_BY]->(n)", {"repo_id": repo_id, "person_id": person_id})
     summary = result.consume()
 
@@ -215,7 +211,7 @@ def setRepoOwner(repo_id, person_id):
 @jwt_required
 def getRepoOwner(repo_id):
     owner = {}
-    result = db_session.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
+    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
     for r in result:
         owner['name'] = r['name']
         owner['location'] = r['location']
@@ -238,7 +234,7 @@ def getRepoOwner(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteRepoOwner(repo_id, person_id):
-    result = db_session.run(
+    result = db.run(
         "START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     summary = result.consume()
 
@@ -262,7 +258,7 @@ def deleteRepoOwner(repo_id, person_id):
 @jwt_required
 def getRepoInfo(repo_id):
     repo = {}
-    result = db_session.run(
+    result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id})
     for r in result:
         repo['name'] = r['name']
@@ -284,7 +280,7 @@ def getRepoInfo(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addRepoCollab(repo_id, person_id):
-    result = db_session.run(
+    result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)", {"repo_id": repo_id, "person_id": person_id})
 
     if result:
@@ -303,7 +299,7 @@ def addRepoCollab(repo_id, person_id):
 @jwt_required
 def listRepoCollabs(repo_id):
     people = []
-    result = db_session.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
+    result = db.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
     for p in result:
         people.append({
@@ -329,7 +325,7 @@ def listRepoCollabs(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removeRepoCollab(repo_id, person_id):
-    result = db_session.run(
+    result = db.run(
         "START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     if result:
         resp = (("status", "ok"),
@@ -346,7 +342,7 @@ def removeRepoCollab(repo_id, person_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addRepoFollower(repo_id, person_id):
-    result = db_session.run(
+    result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:FOLLOWS]->(n)", {"repo_id": repo_id, "person_id": person_id})
     if result:
         resp = (("status", "ok"),
@@ -364,7 +360,7 @@ def addRepoFollower(repo_id, person_id):
 @jwt_required
 def listRepoFollowers(repo_id):
     people = []
-    result = db_session.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
+    result = db.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
     for p in result:
         people.append({
@@ -390,7 +386,7 @@ def listRepoFollowers(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removeRepoFollower(repo_id, person_id):
-    result = db_session.run(
+    result = db.run(
         "START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     if result:
         resp = (("status", "ok"),
@@ -408,25 +404,25 @@ def removeRepoFollower(repo_id, person_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addRepoData(repo_id):
-    result = db_session.run()
+    result = db.run()
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/query', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def queryRepo(repo_id):
-    result = db_session.run()
+    result = db.run()
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/get_all_data', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getRepoData(repo_id):
-    result = db_session.run()
+    result = db.run()
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/set_entry_point', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def setEntryPoint(repo_id):
-    result = db_session.run()
+    result = db.run()

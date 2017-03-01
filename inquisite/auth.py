@@ -11,17 +11,14 @@ from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
-from neo4j.v1 import GraphDatabase, basic_auth
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
+from inquisite.db import db
+from neo4j.v1 import ResultError
 
 
 auth_blueprint = Blueprint('auth', __name__)
 
-
-config = json.load(open('./config.json'));
-driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
-db_session = driver.session()
 
 @auth_blueprint.route('/login', methods=['POST'])
 @crossdomain(origin='*')
@@ -33,7 +30,7 @@ def login():
     # logging.warning("password: " + password)
 
     if username is not None and password is not None:
-        db_user = db_session.run("MATCH (n:Person) WHERE n.email={username} RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id", {"username": username})
+        db_user = db.run("MATCH (n:Person) WHERE n.email={username} RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id", {"username": username})
 
         for person in db_user:
             # if pwd_context.verify(password, person['password']):
@@ -60,7 +57,7 @@ def login():
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def logout():
-    db_session.pop('username', None)
+    db.pop('username', None)
 
 
 @auth_blueprint.route('/people/<person_id>/set_password', methods=['POST'])
@@ -77,7 +74,7 @@ def setPassword(person_id):
 
             db_password_hash = ''
             # check if password matches person_id
-            result = db_session.run("MATCH (p:Person) WHERE ID(p)={person_id} RETURN p.password AS password", {"person_id": person_id})
+            result = db.run("MATCH (p:Person) WHERE ID(p)={person_id} RETURN p.password AS password", {"person_id": person_id})
             for p in result:
                 db_password_hash = p['password']
 
@@ -86,7 +83,7 @@ def setPassword(person_id):
                 # hash new password and update DB
                 new_pass_hash = sha256_crypt.hash(new_password)
 
-                result = db_session.run("MATCH (p:Person) WHERE ID(p)={person_id} SET p.password = {new_pass_hash}", {"person_id": person_id, "new_pass_hash": new_pass_hash})
+                result = db.run("MATCH (p:Person) WHERE ID(p)={person_id} SET p.password = {new_pass_hash}", {"person_id": person_id, "new_pass_hash": new_pass_hash})
 
                 # Check we updated something
                 node_updated = False
