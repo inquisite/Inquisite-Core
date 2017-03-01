@@ -90,8 +90,8 @@ def addPerson():
     tagline = request.form.get('tagline')
     password = request.form.get('password')
 
-    # TODO - Enforce password min length / character requirements?
-    if password != '' and password is not None:
+    # TODO - Enforce password more complex password requirements?
+    if password != '' and password is not None and (len(password) >= 6):
 
         password_hash = sha256_crypt.hash(password)
         print "sha256: "
@@ -100,29 +100,34 @@ def addPerson():
         ts = time.time()
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        result = db_session.run("CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, password: {password_hash}, created_on: {created_on}}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
+        result = db_session.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email})
+        if result:
+            resp = (("status", "err"),
+                    ("msg", "User already exists"))
+        else :
+            result = db_session.run("CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, password: {password_hash}, created_on: {created_on}}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
                                 {"url": url, "name": name, "email": email, "location": location, "tagline": tagline, "password_hash": password_hash, "created_on": created_on})
 
-        if result:
-            person = {}
-            for p in result:
-                person['name'] = p['name']
-                person['location'] = p['location']
-                person['email'] = p['email']
-                person['url'] = p['url']
-                person['tagline'] = p['tagline']
-                person['user_id'] = p['user_id']
+            if result:
+                person = {}
+                for p in result:
+                    person['name'] = p['name']
+                    person['location'] = p['location']
+                    person['email'] = p['email']
+                    person['url'] = p['url']
+                    person['tagline'] = p['tagline']
+                    person['user_id'] = p['user_id']
 
-            resp = (("status", "ok"),
-                    ("msg", person['name'] + " added"),
-                    ("person", person))
-        else:
-            resp = (("status", "err"),
-                    ("msg", "Something went wrong saving Person"))
+                resp = (("status", "ok"),
+                        ("msg", person['name'] + " added"),
+                        ("person", person))
+            else:
+                resp = (("status", "err"),
+                        ("msg", "Something went wrong saving Person"))
 
     else:
         resp = (("status", "err"),
-                ("msg", "User Password is required"))
+                ("msg", "Password must be at least 6 characters"))
 
     resp = collections.OrderedDict(resp)
     return Response(response=json.dumps(resp), status=200, mimetype="application/json")
