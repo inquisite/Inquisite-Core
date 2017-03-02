@@ -9,7 +9,7 @@ from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_raw_jwt, revoke_token
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
@@ -43,7 +43,7 @@ def login():
         # We didn't find anyone
         ret = {"status": "err",
                "msg": "No user was found with that username, or your password was typed incorrectly"}
-        return Response(response=json.dumps(ret), status=422, mimetype="application/json")
+        return Response(response=json.dumps(ret), status=400, mimetype="application/json")
 
     else:
 
@@ -53,11 +53,19 @@ def login():
         return Response(response=json.dumps(resp), status=200, mimetype="application/json")
 
 # Logout
-@auth_blueprint.route('/logout')
+@auth_blueprint.route('/logout', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def logout():
-    db.pop('username', None)
+    try:
+        current_token = get_raw_jwt()
+        jti = current_token['jti']
+        revoke_token(jti)
+    except KeyError:
+        return Response(response=json.dumps({
+            'status': 'err', 'msg': 'Access token not found in the blacklist store'
+        }), status=200, mimetype="application/json")
+    return Response(response=json.dumps({"status": "ok", "msg": "Successfully logged out"}), status=200, mimetype="application/json")
 
 
 @auth_blueprint.route('/people/<person_id>/set_password', methods=['POST'])

@@ -20,6 +20,7 @@ from inquisite.banner import banner_blueprint
 from inquisite.people import people_blueprint
 from inquisite.organizations import organizations_blueprint
 from inquisite.repositories import repositories_blueprint
+import simplekv.memory
 
 config = json.load(open('./config.json'));
 
@@ -27,6 +28,11 @@ config = json.load(open('./config.json'));
 app = Flask(__name__)
 app.debug = True
 app.config['SECRET_KEY'] = config['auth_secret']
+app.config['JWT_BLACKLIST_ENABLED'] = True
+app.config['JWT_BLACKLIST_STORE'] = simplekv.memory.DictStore()
+app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = 'all'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=5)
+
 driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
 db_session = driver.session()
 
