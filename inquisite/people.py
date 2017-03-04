@@ -1,6 +1,4 @@
-import json
 import requests
-import collections
 import datetime
 import time
 import logging
@@ -8,7 +6,7 @@ import urllib
 from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
-from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
+from flask import Flask, Blueprint, request, current_app, make_response, session, escape
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
@@ -16,6 +14,7 @@ from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
 
+from response_handler import response_handler
 
 people_blueprint = Blueprint('people', __name__)
 
@@ -25,6 +24,14 @@ people_blueprint = Blueprint('people', __name__)
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def peopleList():
+
+    ret = {
+      'status_code': 200,
+      'payload': {
+        'people': []
+      }
+    }
+
     persons = []
     people = db.run("MATCH (n:Person) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
     for p in people:
@@ -36,11 +43,9 @@ def peopleList():
             "tagline": p['tagline']
         })
 
-    resp = (("status", "ok"),
-            ("people", persons))
-
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    ret['payload']['people'] = persons
+    
+    return response_handler(ret)
 
 
 # Get Person by ID
@@ -50,27 +55,30 @@ def peopleList():
 def getPerson(person_id):
     logging.warning('in getPerson')
 
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Could not find person for that ID',
+        'person': {
+          'name': '',
+          'email': '',
+          'url': '',
+          'location': '',
+          'tagline': ''
+        }
+      }
+    }
+
     current_user = get_jwt_identity()
-    #logging.warning("current_user: " + current_user)
-    #logging.warning("person_id: " + person_id)
 
     result = db.run("MATCH (n:Person) WHERE ID(n) = {person_id} RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline", {"person_id": person_id})
 
-    resp = None
     for p in result:
-        resp = (("status", "ok"),
-                ("name", p['name']),
-                ("email", p['email']),
-                ("url", p['url']),
-                ("location", p['location']),
-                ("tagline", p['tagline']))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['person'] = p
 
-    if resp is None:
-        resp = (("status", "err"),
-                ("msg", "Could not find person for that ID"))
-
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 # Add Person
@@ -86,20 +94,25 @@ def addPerson():
     tagline = request.form.get('tagline')
     password = request.form.get('password')
 
+    ret = {
+      'status_code': 422,
+      'payload': {
+        'msg': 'Password must be at least 6 characters',
+        'person': {}
+      }
+    }
+
     # TODO - Enforce password more complex password requirements?
     if password != '' and password is not None and (len(password) >= 6):
 
         password_hash = sha256_crypt.hash(password)
-        print "sha256: "
-        print password_hash
 
         ts = time.time()
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
         try:
             result = db.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email}).peek()
-            resp = (("status", "err"),
-                    ("msg", "User already exists"))
+            ret['payload']['msg'] = "User already exists"
         except ResultError as e:
             result = db.run("CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, password: {password_hash}, created_on: {created_on}}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
                                 {"url": url, "name": name, "email": email, "location": location, "tagline": tagline, "password_hash": password_hash, "created_on": created_on})
@@ -114,20 +127,15 @@ def addPerson():
                     person['tagline'] = p['tagline']
                     person['user_id'] = p['user_id']
 
-                resp = (("status", "ok"),
-                        ("msg", person['name'] + " added"),
-                        ("person", person))
+                ret['status_code'] = 200
+                ret['payload']['msg'] = person['name'] + " added"
+                ret['payload']['person'] = person
             else:
-                resp = (("status", "err"),
-                        ("msg", "Something went wrong saving Person"))
+                ret['status_code'] = 400
+                ret['payload']['msg'] = 'Something went wrong saving new person'
 
-    else:
-        resp = (("status", "err"),
-                ("msg", "Password must be at least 6 characters"))
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @people_blueprint.route('/people/<person_id>/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -138,6 +146,14 @@ def editPerson(person_id):
     email = request.form.get('email')
     url = request.form.get('url')
     tagline = request.form.get('tagline')
+
+    ret = {
+      'status_code': 422,
+      'payload': {
+        'msg': 'Nothing to update',
+        'person': {}
+      } 
+    } 
 
     update = []
     if name is not None:
@@ -155,13 +171,7 @@ def editPerson(person_id):
     if tagline is not None:
         update.append("p.tagline = {tagline}")
 
-    print "update list:"
-    print update
-
     update_str = "%s" % ", ".join(map(str, update))
-
-    #print "update string: "
-    #print update_str
 
     if update_str != '' and update_str is not None:
         updated_person = {}
@@ -177,31 +187,32 @@ def editPerson(person_id):
                 updated_person['tagline'] = p['tagline']
 
             if updated_person != {}:
-
-                resp = (("status", "ok"),
-                        ("msg", "Person updated"),
-                        ("person", updated_person))
-
+                ret['status_code'] = 200
+                ret['payload']['msg'] = 'Person updated'
+                ret['payload']['person'] = updated_person
             else:
-                resp = (("status", "err"),
-                        ("msg", "No person found for that user id"))
+                ret['status_code'] = 400
+                ret['payload']['msg'] = 'No person found'
 
         else:
-            resp = (("status", "err"),
-                    ("msg", "problem updating Person"))
+            ret['status_code'] = 400
+            ret['payload']['msg'] = 'Problem updating Person'
 
-    else:
-        resp = (("status", "err"),
-                ("msg", "nothing to update"))
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @people_blueprint.route('/people/<person_id>/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deletePerson(person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem deleting person'
+      }
+    }
+
     node_deleted = False
     result = db.run("MATCH (n:Person) WHERE ID(n)={person_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"person_id": person_id})
 
@@ -211,20 +222,24 @@ def deletePerson(person_id):
         node_deleted = True
 
     if node_deleted:
-        resp = (("status", "ok"),
-                ("msg", "Peson Deleted Successfully"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "bad user id, nothing was deleted"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Person deleted successfully'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @people_blueprint.route('/people/<person_id>/repos', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getPersonRepos(person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Error getting repos for Person',
+        'repos': {}
+      } 
+    }
+
     result = db.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)={person_id} RETURN n.name AS name, n.readme AS readme, n.url AS url", {"person_id": person_id})
 
     repos = []
@@ -236,11 +251,8 @@ def getPersonRepos(person_id):
         })
 
     if result:
-        resp = (("status", "ok"),
-                ("repos", repos))
-    else:
-        resp = (("status", "err"),
-                ("msg", "error getting repos for Person"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = "Success"
+        ret['payload']['repos'] = repos
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)

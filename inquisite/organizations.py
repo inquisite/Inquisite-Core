@@ -1,6 +1,4 @@
-import json
 import requests
-import collections
 import datetime
 import time
 import logging
@@ -8,13 +6,15 @@ import urllib
 from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
-from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
+from flask import Flask, Blueprint, request, current_app, make_response, session, escape
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
+
+from response_handler import response_handler
 
 
 organizations_blueprint = Blueprint('organizations', __name__)
@@ -37,11 +37,14 @@ def orgList():
             "tagline": o['tagline']
         })
 
-    resp = (("status", "ok"),
-            ("orgs", orgslist))
+    ret = {
+      'status_code': 200,
+      'payload': {
+        'orgs': orgslist
+      }
+    }
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @organizations_blueprint.route('/organizations/add', methods=['POST'])
@@ -53,6 +56,15 @@ def addOrg():
     email = request.form.get('email')
     url = request.form.get('url')
     tagline = request.form.get('tagline')
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': '',
+        'organization': ''
+      }
+    }
+
 
     if name is not None and location is not None and email is not None and url is not None and tagline is not None:
 
@@ -77,25 +89,34 @@ def addOrg():
             node_created = True
 
         if node_created:
-            resp = (("status", "ok"),
-                    ("msg", "Organization Added"),
-                    ("organization", new_org))
+            ret['status_code'] = 200
+            ret['payload']['msg'] = 'Organization Added'
+            ret['payload']['organization'] = new_org
+
         else:
-            resp = (("status", "err"),
-                    ("msg", "Problem adding Organization"))
+            ret['status_code'] = 400
+            ret['payload']['msg'] = 'Problem adding Organization'
 
     else:
-        resp = (("status", "err"),
-                ("msg", "Missing required fields"))
+        ret['status_code'] = 422
+        ret['payload']['msg'] = 'Missing required fields'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @organizations_blueprint.route('/organizations/<org_id>', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getOrg(org_id):
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': '',
+        'organization': ''
+      }
+    }
+
     org = {}
     result = db.run("MATCH (o:Organization) WHERE ID(o)={org_id} RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline", {"org_id": org_id})
 
@@ -107,17 +128,15 @@ def getOrg(org_id):
         org['tagline'] = o['tagline']
 
     if org:
-        resp = (("status", "ok"),
-                ("msg", "Success, organization found"),
-                ("organization", org))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success, organization found'
+        ret['payload']['organization'] = org
 
     else:
-        resp = (("status", "err"),
-                ("msg", "No organization found for that org_id"))
+        ret['status_code'] = 400
+        ret['payload']['msg'] = 'No organization found'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -128,6 +147,14 @@ def editOrg(org_id):
     email = request.form.get('email')
     url = request.form.get('url')
     tagline = request.form.get('tagline')
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': '',
+        'org': ''
+      }
+    }
 
     update = []
     if name is not None:
@@ -161,28 +188,32 @@ def editOrg(org_id):
             updated_org['tagline'] = o['tagline']
 
         if updated_org:
-            resp = (("status", "ok"),
-                    ("msg", "Organization updated"),
-                    ("org", updated_org))
+            ret['status_code'] = 200
+            ret['payload']['msg'] = 'Organization updated'
+            ret['payload']['org'] = updated_org
         else:
-            resp = (("status", "err"),
-                    ("msg", "Problem updating Organization"))
-
+            ret['status_code'] = 400
+            ret['payload']['msg'] = 'Problem updating Organization'
+            
     else:
-        resp = (("status", "err"),
-                ("msg", "Nothing to update"))
+        ret['status_code'] = 422 
+        ret['payload']['msg'] = 'Nothing to update'
 
-    print "response"
-    print resp
-
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @organizations_blueprint.route('/organizations/<org_id>/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteOrg(org_id):
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': ''
+      }
+    }
+
     result = db.run("MATCH (o:Organization) WHERE ID(o)={org_id} OPTIONAL MATCH (o)-[r]-() DELETE r,o", {"org_id": org_id})
     summary = result.consume()
 
@@ -191,20 +222,27 @@ def deleteOrg(org_id):
         node_deleted = True
 
     if node_deleted:
-        resp = (("status", "ok"),
-                ("msg", "Organization deleted"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Organization deleted'
     else:
-        resp = (("status", "err"),
-                ("msg", "Problem deleting Organization"))
+        ret['status_code'] = 400
+        ret['payload']['msg'] = 'Problem deleting Organization'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/repos', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getOrgRepos(org_id):
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': '',
+        'repos': ''
+      }
+    }
+
     repos = []
     result = db.run(
         "MATCH (n:Repository)-[:PART_OF]->(o:Organization) WHERE ID(o)={org_id} RETURN n.name AS name, n.url AS url, n.readme AS readme", {"org_id": org_id})
@@ -217,20 +255,26 @@ def getOrgRepos(org_id):
         })
 
     if repos:
-        resp = (("status", "ok"),
-                ("repos", repos))
+        ret['status_code'] = 200
+        ret['payload']['repos'] = repos
     else:
-        resp = (("status", "err"),
-                ("msg", "problem getting repos for Organization"))
+        ret['status_code'] = 400
+        ret['payload']['msg'] = 'Problem getting repos for Organization'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/repos/<repo_id>/add', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addRepoToOrg(org_id, repo_id):
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': ''
+      }
+    }
+
     result = db.run(
         "MATCH (o:Organization) WHERE ID(o)={org_id} MATCH (r:Repository) WHERE ID(r)={repo_id} MERGE (r)-[:PART_OF]->(o)", {"org_id": org_id, "repo_id": repo_id})
     summary = result.consume()
@@ -240,20 +284,27 @@ def addRepoToOrg(org_id, repo_id):
         rel_created = True
 
     if rel_created:
-        resp = (("status", "ok"),
-                ("msg", "Organization - Repo relationship added"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Added Repo to Org'
+
     else:
-        resp = (("status", "ok"),
-                ("msg", "There was a problem adding Repo to Organization"))
+        ret['status_code'] = 400
+        ret['payload']['msg'] = 'There was a problem adding Rep to Org'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/repos/<repo_id>/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removeRepoFromOrg(org_id, repo_id):
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': ''
+      }
+    }
+ 
     result = db.run(
         "START r=node(*) MATCH (r)-[rel:PART_OF]->(o) WHERE ID(r)={repo_id} AND ID(o)={org_id} DELETE rel", {"repo_id": repo_id, "org_id": org_id})
     summary = result.consume()
@@ -263,20 +314,26 @@ def removeRepoFromOrg(org_id, repo_id):
         rel_deleted = True
 
     if rel_deleted:
-        resp = (("status", "ok"),
-                ("msg", "Repository removed from Organization"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Repo removed from Org'
     else:
-        resp = (("status", "err"),
-                ("msg", "There was a problem, Repository was not removed from Organization"))
+        ret['status_code'] = 400
+        ret['payload']['msg'] = 'There was a problem, Repo was not removed from Org'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/add_person/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addPersonToOrg(org_id, person_id):
+
+    ret = {
+      'status_code': '',
+      'payload': {
+        'msg': ''
+      }
+    }
+
     result = db.run(
         "MATCH (o:Organization) WHERE ID(o)={org_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:PART_OF]->(o) RETURN ID(p) AS person_id", {"org_id": org_id, "person_id": person_id})
 
@@ -291,32 +348,33 @@ def addPersonToOrg(org_id, person_id):
         relationship_created = True
 
     if relationship_created:
-        resp = (("status", "ok"),
-                ("person_id", person_id),
-                ("msg", "Person is part of Org"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Person was added to Org'
     else:
-        resp = (("status", "err"),
-                ("msg", "Problem adding person to org"))
+        ret['status_code'] = 400
+        ret['payload']['msg'] = 'There was a problem adding person to Org'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/remove_person/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removePersonFromOrg(org_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem removing Person from Organization'
+      }
+    }
+
     result = db.run(
         "START p=node(*) MATCH (p)-[rel:PART_OF]->(n) WHERE ID(p)={person_id} AND ID(n)={org_id} DELETE rel", {"person_id": person_id, "org_id": org_id})
     if result:
-        resp = (("status", "ok"),
-                ("msg", "removed person from org"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "problem removing person from org"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Person was successfully removed from Org'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @organizations_blueprint.route('/organizations/<org_id>/people', methods=['GET'])
@@ -334,8 +392,7 @@ def getOrgPeople(org_id):
             "tagline": p['tagline']
         })
 
-    resp = (("status", "ok"),
-            ("people", org_people))
+    ret['status_code'] = 200
+    ret['payload']['people'] = org_people
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)

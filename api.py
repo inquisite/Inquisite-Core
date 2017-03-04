@@ -15,6 +15,8 @@ from neo4j.v1 import GraphDatabase, basic_auth
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 
+from response_handler import response_handler
+
 from inquisite.auth import auth_blueprint
 from inquisite.banner import banner_blueprint
 from inquisite.people import people_blueprint
@@ -45,7 +47,6 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(people_blueprint)
 app.register_blueprint(organizations_blueprint)
 app.register_blueprint(repositories_blueprint)
-
 
 
 @app.errorhandler(404)

@@ -1,6 +1,4 @@
-import json
 import requests
-import collections
 import datetime
 import time
 import logging
@@ -8,7 +6,7 @@ import urllib
 from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
-from flask import Flask, Blueprint, request, current_app, make_response, session, escape, Response
+from flask import Flask, Blueprint, request, current_app, make_response, session, escape
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
@@ -16,6 +14,7 @@ from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
 
+from response_handler import response_handler
 
 repositories_blueprint = Blueprint('repositories', __name__)
 
@@ -25,6 +24,7 @@ repositories_blueprint = Blueprint('repositories', __name__)
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def repoList():
+
     repos = []
     result = db.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
     for r in result:
@@ -34,17 +34,29 @@ def repoList():
             "readme": r['readme']
         })
 
-    resp = (("status", "ok"),
-            ("repos", repos))
+    ret = {
+      'status_code': 200,
+      'payload': {
+        'msg': 'Success',
+        'repos': repos
+      }
+    }
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @repositories_blueprint.route('/repositories/<repo_id>', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getRepo(repo_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'No repository found',
+        'repo': {}
+      }
+    }
+
     repo = {}
     result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme", {"repo_id": repo_id})
@@ -54,15 +66,11 @@ def getRepo(repo_id):
         repo['readme'] = r['readme']
 
     if repo:
-        resp = (("status", "ok"),
-                ("repo", repo))
-    else:
-        resp = (("status", "err"),
-                ("msg", "No repo for that repo_id found"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['repo'] = repo
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @repositories_blueprint.route('/repositories/add', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -72,11 +80,21 @@ def addRepo():
     name = request.form.get('name')
     readme = request.form.get('readme')
 
+    ret = {
+      'status_code': 422,
+      'payload': {
+        'msg': 'Required fields are missing',
+        'repo': {}
+      } 
+    }
+
     if url is not None and name is not None and readme is not None:
         try:
            db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
-           resp = (("status", "err"),
-                   ("msg", "Repository with name already exists"))
+
+           ret['status_code'] = 400
+           ret['payload']['msg'] = 'Repository with name already exists'
+
         except ResultError as e:
             ts = time.time()
             created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
@@ -96,19 +114,15 @@ def addRepo():
                 node_created = True
 
             if node_created:
-                resp = (("status", "ok"),
-                        ("repo", new_repo),
-                        ("msg", "Created Repo"))
+                ret['status_code'] = 200
+                ret['payload']['msg'] = 'Created Repo'
+                ret['payload']['repo'] = new_repo
+
             else:
-                resp = (("status", "err"),
-                        ("msg", "problem creating repo"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "Required fields are missing"))
+                ret['status_code'] = 400
+                ret['payload']['msg'] = 'Problem creating repo'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
-
+    return response_handler(ret)
 
 @repositories_blueprint.route('/repositories/<repo_id>/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -117,6 +131,13 @@ def editRepo(repo_id):
     url = request.form.get('url')
     name = request.form.get('name')
     readme = request.form.get('readme')
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Nothing to update'
+      }
+    }
 
     update = []
     if name is not None:
@@ -146,25 +167,28 @@ def editRepo(repo_id):
             node_updated = True
 
         if node_updated:
-            resp = (("status", "ok"),
-                    ("msg", "Repository updated"),
-                    ("repo", updated_repo))
+            ret['status_code'] = 200
+            ret['payload']['msg'] = 'Repository updated'
+            ret['payload']['repo'] = updated_repo
         else:
-            resp = (("status", "err"),
-                    ("msg", "Problem updating Repo"))
+            ret['status_code'] = 400
+            ret['payload']['msg'] = 'Problem updating Repo'
 
-    else:
-        resp = (("status", "err"),
-                ("msg", "Nothing to update"))
-
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteRepo(repo_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Problem deleting repo'
+      }
+    }
+
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
     summary = result.consume()
 
@@ -173,20 +197,24 @@ def deleteRepo(repo_id):
         node_deleted = True
 
     if node_deleted:
-        resp = (("status", "ok"),
-                ("msg", "Repo deleted"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "Problem deleting repo"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Repo deleted successfully'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/set_owner/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def setRepoOwner(repo_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem, no owner set'
+      }
+    }
+
     result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)<-[:OWNED_BY]->(n)", {"repo_id": repo_id, "person_id": person_id})
     summary = result.consume()
@@ -196,20 +224,25 @@ def setRepoOwner(repo_id, person_id):
         rel_created = True
 
     if rel_created:
-        resp = (("status", "ok"),
-                ("msg", "Repository owner set successfully"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "There was a problem, no owner set"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Repository owner set successfully'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/owner', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getRepoOwner(repo_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Could not retrieve owner',
+        'owner': {}
+      }
+    }
+
     owner = {}
     result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
     for r in result:
@@ -220,20 +253,25 @@ def getRepoOwner(repo_id):
         owner['tagline'] = r['tagline']
 
     if result:
-        resp = (("status", "ok"),
-                ("owner", owner))
-    else:
-        resp = (("status", "err"),
-                ("msg", "could not retreive owner"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['owner'] = owner
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/remove_owner/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteRepoOwner(repo_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem, Repo owner was not removed'
+      }
+    }
+
     result = db.run(
         "START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     summary = result.consume()
@@ -243,20 +281,25 @@ def deleteRepoOwner(repo_id, person_id):
         rel_deleted = True
 
     if rel_deleted:
-        resp = (("status", "ok"),
-                ("msg", "Repo Owner removed successfully"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "There was a problem, Repo owner was not removed"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Repo owner removed successfully'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getRepoInfo(repo_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Could not return repo info',
+        'repo': {}
+      }
+    }
+
     repo = {}
     result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id})
@@ -266,38 +309,48 @@ def getRepoInfo(repo_id):
         repo['readme'] = r['readme']
 
     if result:
-        resp = (("status", "ok"),
-                ("repo", repo))
-    else:
-        resp = (("status", "err"),
-                ("msg", "could not return repo info"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['repo'] = repo
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/add_collaborator/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addRepoCollab(repo_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Problem adding Collaborator'
+      }
+    }
+
     result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)", {"repo_id": repo_id, "person_id": person_id})
 
     if result:
-        resp = (("status", "ok"),
-                ("msg", "Collaborator Added"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "Problem adding Collaborator"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Collaborator Added'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/collaborators', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def listRepoCollabs(repo_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem returning collaborators',
+        'collaborators': {}
+      }
+    }
+
     people = []
     result = db.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
@@ -311,54 +364,68 @@ def listRepoCollabs(repo_id):
         })
 
     if people:
-        resp = (("status", "ok"),
-                ("collaborators", people))
-    else:
-        resp = (("status", "err"),
-                ("msg", "There was a problem returning collaborators"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['collaborators'] = people
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/remove_collaborator/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removeRepoCollab(repo_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Problem removing collaborator'
+      }
+    }
+
     result = db.run(
         "START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     if result:
-        resp = (("status", "ok"),
-                ("msg", "Collaborator removed"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "Problem removing collaborator"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Collaborator removed'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/add_follower/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def addRepoFollower(repo_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem adding follower'
+      }
+    }
+
     result = db.run(
         "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:FOLLOWS]->(n)", {"repo_id": repo_id, "person_id": person_id})
     if result:
-        resp = (("status", "ok"),
-                ("msg", "Folower Added"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "Problem adding follower"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Follower added successfully'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/followers', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def listRepoFollowers(repo_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem returning followers',
+        'followers': {}
+      }
+    }
+
     people = []
     result = db.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
@@ -372,34 +439,43 @@ def listRepoFollowers(repo_id):
         })
 
     if people:
-        resp = (("status", "ok"),
-                ("followers", people))
-    else:
-        resp = (("status", "err"),
-                ("msg", "There was a problem returning followers"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['followers'] = people
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/remove_follower/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removeRepoFollower(repo_id, person_id):
+
+    ret = {
+      'status_code': 400,
+      'payload': {
+        'msg': 'Problem removing follower'
+      }
+    }
+
     result = db.run(
         "START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
     if result:
-        resp = (("status", "ok"),
-                ("msg", "Follower Removed"))
-    else:
-        resp = (("status", "err"),
-                ("msg", "Problem removing follower"))
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Follower Removed'
 
-    resp = collections.OrderedDict(resp)
-    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+    return response_handler(ret)
 
 
 # TODO: Define Repo / Data Sheet(node) relationships
+
+@repositories_blueprint.route('/repositories/<repo_id>/upload_data', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def uploadData(repo_id):
+    filename = "test"
+
+
 @repositories_blueprint.route('/repositories/<repo_id>/add_data_node', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
