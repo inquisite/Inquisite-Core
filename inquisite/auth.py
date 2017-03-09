@@ -7,7 +7,7 @@ from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_raw_jwt, revoke_token
+from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_required, create_access_token, create_refresh_token, get_jwt_identity, get_raw_jwt, revoke_token
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
@@ -20,11 +20,12 @@ auth_blueprint = Blueprint('auth', __name__)
 
 
 @auth_blueprint.route('/login', methods=['POST'])
-@crossdomain(origin='*')
+@crossdomain(origin='*', headers=['Content-Type'])
 def login():
+
     username = request.form.get('username')
     password = request.form.get('password')
-
+    
     ret = {
       'status_code': '',
       'payload': {
@@ -39,7 +40,9 @@ def login():
         for person in db_user:
             if sha256_crypt.verify(password, person['password']):
                 ret['payload']['access_token'] = create_access_token(identity=username)
+                ret['payload']['refresh_token'] = create_refresh_token(identity=username)
                 ret['payload']['msg'] = "successful login"
+                ret['payload']['user_id'] = person['user_id']
                 ret['status_code'] = 200
 
             else:
@@ -52,6 +55,21 @@ def login():
 
     return response_handler(ret)
 
+# Refresh
+@auth_blueprint.route('/refresh', methods=['POST'])
+@crossdomain(origin='*')
+@jwt_refresh_token_required
+def refresh():
+  current_user = get_jwt_identity()
+
+  ret = {
+    'status_code': 200,
+    'payload': {
+      'access_token': create_access_token(identity=current_user)
+    }
+  }
+
+  return response_handler(ret)
 
 # Logout
 @auth_blueprint.route('/logout', methods=['GET'])

@@ -1,3 +1,4 @@
+import os
 import requests
 import datetime
 import time
@@ -9,6 +10,7 @@ from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
+from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
@@ -16,7 +18,16 @@ from neo4j.v1 import ResultError
 
 from response_handler import response_handler
 
+
 repositories_blueprint = Blueprint('repositories', __name__)
+
+UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__))
+UPLOAD_FOLDER = UPLOAD_FOLDER.replace('inquisite', 'uploads')
+ALLOWED_EXTENSIONS = set(['xls', 'xlsx'])
+
+# File Upload
+def allowed_file(filename):
+  return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # Repositories
@@ -466,14 +477,54 @@ def removeRepoFollower(repo_id, person_id):
 
     return response_handler(ret)
 
-
-# TODO: Define Repo / Data Sheet(node) relationships
-
-@repositories_blueprint.route('/repositories/<repo_id>/upload_data', methods=['POST'])
+@repositories_blueprint.route('/repositories/upload', methods=['PUT', 'POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def uploadData(repo_id):
-    filename = "test"
+def uploadData():
+
+    print "You're in uploadData"
+
+    repo_id = request.form.get('repo_id')
+
+    print "Uploaded Data will be added to REPO: " + str(repo_id)
+
+    ret = {
+      'status_code': 200,
+      'payload': {
+        'msg': 'Success'
+      }
+    }
+
+    if request.files:
+      print "there are files in request"
+      for f in request.files:
+        print f
+    else:
+      print "no files in request"
+
+
+    if 'repo_file' not in request.files:
+      print "We couldn't find it"
+      ret['status_code'] = 400
+      ret['payload']['msg'] = 'File not found'
+
+
+    if 'repo_file' not in request.files:
+      ret['status_code'] = 400
+      ret['payload']['msg'] = 'Upload File not Found'
+
+    input_file = request.files['repo_file']
+    
+    # sanity check
+    if input_file and allowed_file(input_file.filename):
+      filename = secure_filename(input_file.filename)
+
+      upload_file = os.path.join(UPLOAD_FOLDER, filename)
+      input_file.save( upload_file )
+
+      basename = os.path.basename( upload_file )
+
+    return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/add_data_node', methods=['POST'])

@@ -7,7 +7,7 @@ from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_raw_jwt, revoke_token
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
@@ -49,34 +49,42 @@ def peopleList():
 
 
 # Get Person by ID
-@people_blueprint.route('/people/<person_id>', methods=['POST'])
+@people_blueprint.route('/people/info', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def getPerson(person_id):
+def getPerson():
     logging.warning('in getPerson')
+
+    # Get person by auth token 
+    current_token = get_raw_jwt()
+    jti = current_token['jti']
+
+    # email address
+    identity = current_token['identity']
+
 
     ret = {
       'status_code': 400,
       'payload': {
         'msg': 'Could not find person for that ID',
-        'person': {
-          'name': '',
-          'email': '',
-          'url': '',
-          'location': '',
-          'tagline': ''
-        }
+        'person': {}
       }
     }
 
     current_user = get_jwt_identity()
+    
+    print "current_user: " + str(current_user)
+    print "identity: " + str(identity)
 
-    result = db.run("MATCH (n:Person) WHERE ID(n) = {person_id} RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline", {"person_id": person_id})
+
+
+    result = db.run("MATCH (n:Person) WHERE n.email={identity} RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline",
+      {"identity": identity})
 
     for p in result:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
-        ret['payload']['person'] = p
+        ret['payload']['person'] = {'name': p['name'], 'email': p['email'], 'url': p['url'], 'location': p['location'], 'tagline': p['tagline']}
 
     return response_handler(ret)
 
@@ -227,10 +235,17 @@ def deletePerson(person_id):
 
     return response_handler(ret)
 
-@people_blueprint.route('/people/<person_id>/repos', methods=['GET'])
+@people_blueprint.route('/people/repos', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def getPersonRepos(person_id):
+def getPersonRepos():
+
+    # Get person by auth token 
+    current_token = get_raw_jwt()
+    jti = current_token['jti']
+
+    # email address
+    identity = current_token['identity']
 
     ret = {
       'status_code': 400,
@@ -240,11 +255,13 @@ def getPersonRepos(person_id):
       } 
     }
 
-    result = db.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE ID(p)={person_id} RETURN n.name AS name, n.readme AS readme, n.url AS url", {"person_id": person_id})
+    result = db.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE p.email={identity} RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url", 
+      {"identity": identity})
 
     repos = []
     for item in result:
         repos.append({
+            "id": item['id'],
             "name": item['name'],
             "readme": item['readme'],
             "url": item['url']

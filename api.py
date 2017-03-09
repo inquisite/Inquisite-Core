@@ -1,3 +1,4 @@
+import os
 import json
 import requests
 import collections
@@ -27,6 +28,9 @@ import simplekv.memory
 config = json.load(open('./config.json'));
 
 # Init
+UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
+
+
 app = Flask(__name__)
 app.debug = True
 app.config['SECRET_KEY'] = config['auth_secret']
@@ -34,6 +38,7 @@ app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_STORE'] = simplekv.memory.DictStore()
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = 'all'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=5)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
 db_session = driver.session()
