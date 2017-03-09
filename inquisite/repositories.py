@@ -17,7 +17,7 @@ from inquisite.db import db
 from neo4j.v1 import ResultError
 
 from response_handler import response_handler
-
+from xlsdata import XlsHandler
 
 repositories_blueprint = Blueprint('repositories', __name__)
 
@@ -491,7 +491,8 @@ def uploadData():
     ret = {
       'status_code': 200,
       'payload': {
-        'msg': 'Success'
+        'msg': 'Success',
+        'data': ''
       }
     }
 
@@ -523,6 +524,15 @@ def uploadData():
       input_file.save( upload_file )
 
       basename = os.path.basename( upload_file )
+
+    # Get some contents from the File
+    xhandler = XlsHandler(upload_file)
+    file_data = xhandler.read_file() 
+ 
+    ret['payload']['data'] = file_data
+
+    # TODO Add data node
+    # TODO Add relationshop between data node and Repo
 
     return response_handler(ret)
 
