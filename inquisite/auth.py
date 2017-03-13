@@ -27,31 +27,34 @@ def login():
     password = request.form.get('password')
     
     ret = {
-      'status_code': '',
+      'status_code': 400,
       'payload': {
         'access_token': '',
-        'msg': ''
+        'msg': 'There was a problem authenticating'
       }
     }
 
     if username is not None and password is not None:
         db_user = db.run("MATCH (n:Person) WHERE n.email={username} RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id", {"username": username})
 
+        ret['payload']['msg'] = "No user was found with that username, or your password was typed incorrectly"
+        ret['status_code'] = 400
+
         for person in db_user:
+
             if sha256_crypt.verify(password, person['password']):
                 ret['payload']['access_token'] = create_access_token(identity=username)
                 ret['payload']['refresh_token'] = create_refresh_token(identity=username)
                 ret['payload']['msg'] = "successful login"
                 ret['payload']['user_id'] = person['user_id']
                 ret['status_code'] = 200
-
-            else:
-                ret['payload']['msg'] = "No user was found with that username, or your password was typed incorrectly"
-                ret['status_code'] = 400
-
+                
     else:
         ret['payload']['msg'] = "Username and Password are required"
         ret['status_code'] = 422
+
+    print "ERROR CHECKING ..."
+    print ret
 
     return response_handler(ret)
 
