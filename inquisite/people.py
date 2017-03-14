@@ -257,7 +257,7 @@ def getPersonRepos():
       } 
     }
 
-    result = db.run("MATCH (n)<-[:OWNS|OWNED_BY|FOLLOWS|COLLABORATES_WITH]-(p) WHERE p.email={identity} RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url", 
+    result = db.run("MATCH (n)<-[:OWNED_BY|FOLLOWS|COLLABORATES_WITH]-(p) WHERE p.email={identity} RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url", 
       {"identity": identity})
 
     repos = []
