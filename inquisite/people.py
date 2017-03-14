@@ -111,7 +111,9 @@ def addPerson():
     }
 
     # TODO - Enforce password more complex password requirements?
-    if password != '' and password is not None and (len(password) >= 6):
+    if password is not None and (len(password) >= 6):
+
+        print "Password requirements met"
 
         password_hash = sha256_crypt.hash(password)
 
@@ -255,7 +257,7 @@ def getPersonRepos():
       } 
     }
 
-    result = db.run("MATCH (n)<-[:OWNS|FOLLOWS|COLLABORATES_WITH]-(p) WHERE p.email={identity} RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url", 
+    result = db.run("MATCH (n)<-[:OWNS|OWNED_BY|FOLLOWS|COLLABORATES_WITH]-(p) WHERE p.email={identity} RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url", 
       {"identity": identity})
 
     repos = []

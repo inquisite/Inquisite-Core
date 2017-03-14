@@ -8,7 +8,7 @@ from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_raw_jwt
 from werkzeug.security import safe_str_cmp
 from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
@@ -91,6 +91,14 @@ def addRepo():
     name = request.form.get('name')
     readme = request.form.get('readme')
 
+    # Get person by auth token 
+    current_token = get_raw_jwt()
+    jti = current_token['jti']
+
+    # email address
+    identity = current_token['identity']
+
+
     ret = {
       'status_code': 422,
       'payload': {
@@ -98,6 +106,15 @@ def addRepo():
         'repo': {}
       } 
     }
+
+    print "Repo Name"
+    print name
+
+    print "Repo URL"
+    print url
+
+    print "Repo README"
+    print readme
 
     if url is not None and name is not None and readme is not None:
         try:
@@ -125,9 +142,24 @@ def addRepo():
                 node_created = True
 
             if node_created:
-                ret['status_code'] = 200
-                ret['payload']['msg'] = 'Created Repo'
-                ret['payload']['repo'] = new_repo
+
+                # CHEAP HACK - Dump SET OWNER GUTS HERE
+                # TODO: -- Make me pretty
+                result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE p.email={identity} MERGE (p)<-[:OWNED_BY]->(n)", 
+                  {"repo_id": new_repo['repo_id'], "identity": identity})
+                summary = result.consume()
+
+                rel_created = False
+                if summary.counters.relationships_created >= 1:
+                  rel_created = True
+
+                  if rel_created:
+
+                    print "Node Created AND OWNED BY Relationship Created"
+
+                    ret['status_code'] = 200
+                    ret['payload']['msg'] = 'Created Repo'
+                    ret['payload']['repo'] = new_repo
 
             else:
                 ret['status_code'] = 400
@@ -214,10 +246,17 @@ def deleteRepo(repo_id):
     return response_handler(ret)
 
 
-@repositories_blueprint.route('/repositories/<repo_id>/set_owner/<person_id>', methods=['POST'])
+@repositories_blueprint.route('/repositories/set_owner', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def setRepoOwner(repo_id, person_id):
+def setRepoOwner(repo_id):
+
+    # Get person by auth token 
+    current_token = get_raw_jwt()
+    jti = current_token['jti']
+
+    # email address
+    identity = current_token['identity']
 
     ret = {
       'status_code': 400,
