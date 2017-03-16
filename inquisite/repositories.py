@@ -220,10 +220,10 @@ def editRepo(repo_id):
     return response_handler(ret)
 
 
-@repositories_blueprint.route('/repositories/<repo_id>/delete', methods=['POST'])
+@repositories_blueprint.route('/repositories/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def deleteRepo(repo_id):
+def deleteRepo():
 
     ret = {
       'status_code': 400,
@@ -232,7 +232,9 @@ def deleteRepo(repo_id):
       }
     }
 
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
+    repo_id = request.form.get('repo_id')
+
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": int(repo_id)})
     summary = result.consume()
 
     node_deleted = False
@@ -420,6 +422,36 @@ def listRepoCollabs(repo_id):
 
     return response_handler(ret)
 
+@repositories_blueprint.route('/repositories/users', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def listRepoUsers():
+
+    repo_id = request.form.get('repo_id')
+
+    ret = { 
+      'status_code': 400,
+      'payload': {
+        'msg': 'There was a problem returning users',
+        'users': {}
+      }
+    }
+
+    users = []
+    result = db.run("MATCH (n)<-[:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, ID(p) AS id", {"repo_id": int(repo_id)})
+
+    for p in result:
+      users.append({
+        "id": p['id'],
+        "name": p['name']
+      })
+
+    if users:
+      ret['status_code'] = 200
+      ret['payload']['msg'] = 'Success'
+      ret['payload']['users'] = users
+
+    return response_handler(ret)
 
 @repositories_blueprint.route('/repositories/<repo_id>/remove_collaborator/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
