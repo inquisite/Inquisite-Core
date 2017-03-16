@@ -147,10 +147,10 @@ def addPerson():
 
     return response_handler(ret)
 
-@people_blueprint.route('/people/<person_id>/edit', methods=['POST'])
+@people_blueprint.route('/people/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def editPerson(person_id):
+def editPerson():
     name = request.form.get('name')
     location = request.form.get('location')
     email = request.form.get('email')
@@ -164,6 +164,14 @@ def editPerson(person_id):
         'person': {}
       } 
     } 
+
+    # Get person by auth token 
+    current_token = get_raw_jwt()
+    jti = current_token['jti']
+
+    # email address
+    identity = current_token['identity']
+
 
     update = []
     if name is not None:
@@ -183,10 +191,12 @@ def editPerson(person_id):
 
     update_str = "%s" % ", ".join(map(str, update))
 
+    # TODO: Add User Preferences serialized object 
     if update_str != '' and update_str is not None:
         updated_person = {}
-        result = db.run("MATCH (p:Person) WHERE ID(p)={person_id} SET " + update_str +
-                                " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline", {"person_id": person_id, "name": name, "location": location, "email": email, "url": url, "tagline": tagline})
+        result = db.run("MATCH (p:Person) WHERE p.email={identity} SET " + update_str +
+          " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline", 
+          {"identity": identity, "name": name, "location": location, "email": email, "url": url, "tagline": tagline})
 
         if result:
             for p in result:
