@@ -1,4 +1,5 @@
 import requests
+import json
 import datetime
 import time
 import logging
@@ -80,7 +81,14 @@ def getPerson():
     for p in result:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
-        ret['payload']['person'] = {'name': p['name'], 'email': p['email'], 'url': p['url'], 'location': p['location'], 'tagline': p['tagline']}
+        ret['payload']['person'] = {
+          'name': p['name'], 
+          'email': p['email'], 
+          'url': p['url'], 
+          'location': p['location'], 
+          'tagline': p['tagline'],
+          'prefs': json.loads(p['prefs'])
+        }
 
     return response_handler(ret)
 
@@ -153,7 +161,7 @@ def editPerson():
     email = request.form.get('email')
     url = request.form.get('url')
     tagline = request.form.get('tagline')
-    prefs = request.form.get('prfs')
+    prefs = request.form.get('prefs')
 
     ret = {
       'status_code': 422,
@@ -188,9 +196,14 @@ def editPerson():
         update.append("p.tagline = {tagline}")
 
     if prefs is not None:
-      uppdate.append('p.prefs = {prefs}')
+        prefs = json.dumps(prefs)
+        update.append("p.prefs = {prefs}")
 
     update_str = "%s" % ", ".join(map(str, update))
+
+    
+    print "UPDATE STR:"
+    print update_str
 
     # TODO: Add User Preferences serialized object 
     if update_str != '' and update_str is not None:
