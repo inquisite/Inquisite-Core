@@ -458,12 +458,21 @@ def listRepoUsers():
 
     users = []
     if repo_id is not None:
-      result = db.run("MATCH (n)<-[:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, ID(p) AS id", {"repo_id": int(repo_id)})
+      result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, ID(p) AS id", 
+        {"repo_id": int(repo_id)})
 
       for p in result:
+
+        user_role = ""
+        if p['role'] == "COLLABORATES_WITH":
+          user_role = "collaborator"
+        if p['role'] == "OWNED_BY":
+          user_role = "owner"
+
         users.append({
           "id": p['id'],
-          "name": p['name']
+          "name": p['name'],
+          "role": user_role
         })
 
       if users:
