@@ -33,9 +33,10 @@ def peopleList():
     }
 
     persons = []
-    people = db.run("MATCH (n:Person) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
+    people = db.run("MATCH (n:Person) RETURN ID(n) AS id, n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
     for p in people:
         persons.append({
+            "id": p['id'],
             "name": p['name'],
             "location": p['location'],
             "email": p['email'],
@@ -156,6 +157,7 @@ def editPerson():
     email = request.form.get('email')
     url = request.form.get('url')
     tagline = request.form.get('tagline')
+    prefs = request.form.get('prfs')
 
     ret = {
       'status_code': 422,
@@ -189,6 +191,9 @@ def editPerson():
     if tagline is not None:
         update.append("p.tagline = {tagline}")
 
+    if prefs is not None:
+      uppdate.append('p.prefs = {prefs}')
+
     update_str = "%s" % ", ".join(map(str, update))
 
     # TODO: Add User Preferences serialized object 
@@ -196,7 +201,7 @@ def editPerson():
         updated_person = {}
         result = db.run("MATCH (p:Person) WHERE p.email={identity} SET " + update_str +
           " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline", 
-          {"identity": identity, "name": name, "location": location, "email": email, "url": url, "tagline": tagline})
+          {"identity": identity, "name": name, "location": location, "email": email, "url": url, "tagline": tagline, "prefs": prefs})
 
         if result:
             for p in result:

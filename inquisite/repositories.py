@@ -368,10 +368,13 @@ def getRepoInfo(repo_id):
     return response_handler(ret)
 
 
-@repositories_blueprint.route('/repositories/<repo_id>/add_collaborator/<person_id>', methods=['POST'])
+@repositories_blueprint.route('/repositories/add_collaborator', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def addRepoCollab(repo_id, person_id):
+def addRepoCollab():
+
+    repo_id = request.form.get('repo_id')
+    person_id = request.form.get('person_id')
 
     ret = {
       'status_code': 400,
@@ -380,12 +383,28 @@ def addRepoCollab(repo_id, person_id):
       }
     }
 
-    result = db.run(
-        "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)", {"repo_id": repo_id, "person_id": person_id})
+    print "repo_id: " + str(repo_id) 
+    print "person id:" + str(person_id)
+    
 
-    if result:
-        ret['status_code'] = 200
-        ret['payload']['msg'] = 'Collaborator Added'
+    if repo_id is not None and person_id is not None:
+
+      print " we have valid repo id and person"
+      print "repo_id: " + str(repo_id) 
+      print "person id:" + str(person_id)
+
+      result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)", 
+        {"repo_id": int(repo_id), "person_id": int(person_id)})
+
+      summary = result.consume()
+
+      rel_created = False
+      if summary.counters.relationships_created >= 1:
+        rel_created = True
+
+      if rel_created:
+          ret['status_code'] = 200
+          ret['payload']['msg'] = 'Collaborator Added'
 
     return response_handler(ret)
 
@@ -438,18 +457,19 @@ def listRepoUsers():
     }
 
     users = []
-    result = db.run("MATCH (n)<-[:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, ID(p) AS id", {"repo_id": int(repo_id)})
+    if repo_id is not None:
+      result = db.run("MATCH (n)<-[:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, ID(p) AS id", {"repo_id": int(repo_id)})
 
-    for p in result:
-      users.append({
-        "id": p['id'],
-        "name": p['name']
-      })
+      for p in result:
+        users.append({
+          "id": p['id'],
+          "name": p['name']
+        })
 
-    if users:
-      ret['status_code'] = 200
-      ret['payload']['msg'] = 'Success'
-      ret['payload']['users'] = users
+      if users:
+        ret['status_code'] = 200
+        ret['payload']['msg'] = 'Success'
+        ret['payload']['users'] = users
 
     return response_handler(ret)
 
