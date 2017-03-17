@@ -71,15 +71,10 @@ def getPerson():
         'person': {}
       }
     }
-
-    current_user = get_jwt_identity()
     
-    print "current_user: " + str(current_user)
-    print "identity: " + str(identity)
-
-
-
-    result = db.run("MATCH (n:Person) WHERE n.email={identity} RETURN n.name AS name, n.email AS email, n.url AS url, n.location AS location, n.tagline AS tagline",
+    result = db.run(
+      "MATCH (n:Person) WHERE n.email={identity} RETURN n.name AS name, n.email AS email, " +
+      "n.url AS url, n.location AS location, n.tagline AS tagline, n.prefs AS prefs",
       {"identity": identity})
 
     for p in result:
@@ -114,8 +109,6 @@ def addPerson():
     # TODO - Enforce password more complex password requirements?
     if password is not None and (len(password) >= 6):
 
-        print "Password requirements met"
-
         password_hash = sha256_crypt.hash(password)
 
         ts = time.time()
@@ -125,8 +118,11 @@ def addPerson():
             result = db.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email}).peek()
             ret['payload']['msg'] = "User already exists"
         except ResultError as e:
-            result = db.run("CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, password: {password_hash}, created_on: {created_on}}) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
-                                {"url": url, "name": name, "email": email, "location": location, "tagline": tagline, "password_hash": password_hash, "created_on": created_on})
+            result = db.run(
+              "CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, " +
+              "password: {password_hash}, created_on: {created_on}, prefs: ''})" +
+              " RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
+              {"url": url, "name": name, "email": email, "location": location, "tagline": tagline, "password_hash": password_hash, "created_on": created_on})
 
             if result:
                 person = {}
@@ -252,17 +248,23 @@ def deletePerson(person_id):
 
     return response_handler(ret)
 
-@people_blueprint.route('/people/repos', methods=['GET'])
+@people_blueprint.route('/people/repos', methods=['GET', 'POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getPersonRepos():
 
-    # Get person by auth token 
-    current_token = get_raw_jwt()
-    jti = current_token['jti']
+    if request.method == 'GET':
+      # Get person by auth token 
+      current_token = get_raw_jwt()
+      jti = current_token['jti']
 
-    # email address
-    identity = current_token['identity']
+      # email address
+      identity = current_token['identity']
+      ident_str = "p.email={identity}"
+
+    if request.method == 'POST':
+      identity = int(request.form.get('person_id'))
+      ident_str = "ID(p)={identity}"
 
     ret = {
       'status_code': 400,
@@ -272,8 +274,13 @@ def getPersonRepos():
       } 
     }
 
+
+    print " in Get Repos for Person ..."
+    print "identity: " + str(identity)
+    print "ident_str: " + ident_str
+
     result = db.run(
-      "MATCH (n)<-[:OWNED_BY|FOLLOWS|COLLABORATES_WITH]-(p) WHERE p.email={identity} RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url, n.created_on AS created_on", 
+      "MATCH (n)<-[:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url, n.created_on AS created_on", 
       {"identity": identity})
 
     repos = []
