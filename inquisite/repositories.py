@@ -446,10 +446,10 @@ def listRepoCollabs(repo_id):
 @jwt_required
 def listRepoUsers():
 
-    repo_id = request.form.get('repo_id')
+    repo_id = request.form.get('repository_id')
 
     ret = { 
-      'status_code': 400,
+      'status_code': 200,
       'payload': {
         'msg': 'There was a problem returning users',
         'users': {}
