@@ -53,14 +53,14 @@ def login():
         ret['payload']['msg'] = "Username and Password are required"
         ret['status_code'] = 422
 
-    print "ERROR CHECKING ..."
-    print ret
+    #print "ERROR CHECKING ..."
+    #print ret
 
     return response_handler(ret)
 
 # Refresh
 @auth_blueprint.route('/refresh', methods=['POST'])
-@crossdomain(origin='*')
+@crossdomain(origin='*', headers=['Authorization'])
 @jwt_refresh_token_required
 def refresh():
   current_user = get_jwt_identity()

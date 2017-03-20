@@ -79,6 +79,9 @@ def getPerson():
       {"identity": identity})
 
     for p in result:
+        prefs = {}
+        if (p['prefs'] != None):
+            prefs = json.loads(p['prefs'])
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
         ret['payload']['person'] = {
@@ -87,7 +90,7 @@ def getPerson():
           'url': p['url'], 
           'location': p['location'], 
           'tagline': p['tagline'],
-          'prefs': json.loads(p['prefs'])
+          'prefs': prefs
         }
 
     return response_handler(ret)
