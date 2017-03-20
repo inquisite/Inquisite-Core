@@ -51,18 +51,23 @@ def peopleList():
 
 
 # Get Person by ID
-@people_blueprint.route('/people/info', methods=['GET'])
+@people_blueprint.route('/people/info', methods=['GET', 'POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getPerson():
-    logging.warning('in getPerson')
 
-    # Get person by auth token 
-    current_token = get_raw_jwt()
-    jti = current_token['jti']
+    if request.method == 'GET':
+      # Get person by auth token 
+      current_token = get_raw_jwt()
+      jti = current_token['jti']
 
-    # email address
-    identity = current_token['identity']
+      # email address
+      identity = current_token['identity']
+      ident_str = "n.email={identity}"
+
+    if request.method == 'POST':
+      identity = int(request.form.get('person_id'))
+      ident_str = "ID(n)={identity}"
 
 
     ret = {
@@ -73,8 +78,13 @@ def getPerson():
       }
     }
     
+    print "Before Query: "
+    print "identity: " + str(identity)
+    print "ident_str: " + ident_str
+
+
     result = db.run(
-      "MATCH (n:Person) WHERE n.email={identity} RETURN n.name AS name, n.email AS email, " +
+      "MATCH (n:Person) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.email AS email, " +
       "n.url AS url, n.location AS location, n.tagline AS tagline, n.prefs AS prefs",
       {"identity": identity})
 
@@ -82,6 +92,7 @@ def getPerson():
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
         ret['payload']['person'] = {
+          'id': p['id'],
           'name': p['name'], 
           'email': p['email'], 
           'url': p['url'], 
