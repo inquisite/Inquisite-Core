@@ -35,7 +35,7 @@ UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
 app = Flask(__name__)
 app.debug = True
 app.config['SECRET_KEY'] = config['auth_secret']
-app.config['JWT_BLACKLIST_ENABLED'] = True
+app.config['JWT_BLACKLIST_ENABLED'] = False
 app.config['JWT_BLACKLIST_STORE'] = simplekv.memory.DictStore()
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = 'all'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=15)
@@ -54,7 +54,6 @@ app.register_blueprint(people_blueprint)
 app.register_blueprint(organizations_blueprint)
 app.register_blueprint(repositories_blueprint)
 app.register_blueprint(schema_blueprint)
-
 
 
 @jwt.expired_token_loader
