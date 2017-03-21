@@ -4,6 +4,7 @@ import datetime
 import time
 import logging
 import urllib
+import json
 from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import sha256_crypt
 from functools import wraps, update_wrapper
@@ -15,6 +16,7 @@ from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
+from lib.schema import addType, addField, addDataToRepo
 
 from response_handler import response_handler
 from xlsdata import XlsHandler
@@ -29,43 +31,12 @@ def addType(repository_id):
     code = request.form.get('code')
     description = request.form.get('description')
 
-    # TODO validate params
-
-    ret = {
-        'status_code': 200,
-        'payload': {
-            'msg': 'Success',
-            'type': ''
-        }
-    }
-
-    # TODO: check that repository is owned by current user
-
-    try:
-        result = db.run("MATCH (t:SchemaType{code: {code}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t", {"code": code, "repository_id": int(repository_id)}).peek()
-        ret['payload']['msg'] = "Type already exists"
-    except ResultError as e:
-        result = db.run("MATCH (r:Repository) WHERE ID(r) = {repository_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph' })-[:PART_OF]->(r) RETURN r",
-                            {"repository_id": int(repository_id),"name": name, "code": code, "description": description})
-
-        # TODO: clean up payload
-        if result:
-            ret['status_code'] = 200
-            ret['payload']['msg'] = "Added type " + name + "//" + repository_id
-            ret['payload']['type'] = "xxx"
-        else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Something went wrong saving new type'
-
-
-    return response_handler(ret)
+    return response_handler(addType(repository_id, name, code, description))
 
 @schema_blueprint.route('/schema/editType/<repository_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def editType():
-
-
     ret = {
         'status_code': 200,
         'payload': {
@@ -101,35 +72,12 @@ def addField(repository_id, typecode):
     fieldtype = request.form.get('type')
     description = request.form.get('description')
 
-    # TODO validate params
+    return response_handler(addField(repository_id, typecode, name, code, fieldtype, description))
 
-    ret = {
-        'status_code': 200,
-        'payload': {
-            'msg': 'Success',
-            'type': ''
-        }
-    }
+@schema_blueprint.route('/schema/addData/<repository_id>/<typecode>', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def addData(repository_id, typecode):
+    data = request.form.get('data')
 
-    # TODO: check that repository is owned by current user
-
-    try:
-        result = db.run("MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t", {"typecode": typecode, "code": code, "repository_id": int(repository_id)}).peek()
-        ret['payload']['msg'] = "Field already exists"
-    except ResultError as e:
-        result = db.run("MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { name: {name}, code: {code}, description: {description}, type: {fieldtype} })-[:PART_OF]->(t) RETURN r",
-                            {"repository_id": int(repository_id),"name": name, "code": code, "description": description, "typecode": typecode, "fieldtype": fieldtype})
-        print result.peek()
-        # TODO: check query result
-
-        # TODO: clean up payload
-        if result:
-            ret['status_code'] = 200
-            ret['payload']['msg'] = "Added field " + name + "//" + repository_id
-            ret['payload']['type'] = "xxx"
-        else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Something went wrong saving new field'
-
-
-    return response_handler(ret)
+    return response_handler(addDataToRepo(repository_id, typecode, json.loads(data)))
