@@ -109,8 +109,11 @@ def addDataToRepo(repository_id, typecode, data):
     flds = []
     for i in data:
         flds.append(i + ":{" + i + "}")
-
+ 
     data['repository_id'] = int(repository_id)
+
+    print "after"
+    print str(data['repository_id'])
 
     result = db.run("CREATE (n:Data" + typecode + " {" + ",".join(flds) + "}) RETURN ID(n) as i", data)
     id = None
@@ -118,14 +121,25 @@ def addDataToRepo(repository_id, typecode, data):
     for record in result:
         id = record["i"]
 
-    result = db.run("MATCH (r:Repository), (d:Data" + typecode + ") WHERE ID(d) = " + str(id) + " AND ID(r)= {repository_id} CREATE (r)<-[:PART_OF]-(d)", data)
+    node_created = False
+    summary = result.consume()
+    if summary.counters.nodes_created >= 1:
 
-    if result:
-        ret['status_code'] = 200
-        ret['payload']['msg'] = "Added data " + typecode + "//" + str(repository_id)
-        ret['payload']['type'] = "xxx"
-    else:
-        ret['status_code'] = 400
-        ret['payload']['msg'] = 'Something went wrong saving new data'
+      if id is not None:
+
+        result = db.run("MATCH (r:Repository), (d:Data" + typecode + ") WHERE ID(d) = " + str(id) + " AND ID(r)= {repository_id} CREATE (r)<-[:PART_OF]-(d)", data)
+
+        rel_created = False
+        summary = result.consume()
+        if summary.counters.relationships_created >= 1:
+          rel_created = True
+
+        if rel_created:
+          ret['status_code'] = 200
+          ret['payload']['msg'] = "Added data " + typecode + "//" + str(repository_id)
+          ret['payload']['type'] = "xxx"
+        else:
+          ret['status_code'] = 400
+          ret['payload']['msg'] = 'Something went wrong saving new data'
 
     return ret

@@ -14,17 +14,16 @@ class XlsHandler():
     nrows = sh.nrows
     ncols = sh.ncols
 
-    print "XlsHandler opened " + str(self.input_file) + " with Rows: " + str(nrows) + " and Cols: " + str(ncols)
-    print "Assuming First column data are field names ..."
-
-    field_names = []
+    file_data = []
 
     for rx in range(nrows):
-      field_names.append( sh.cell_value(rowx=rx, colx=0) )
+
+      row = []
+      for cx in range(ncols):
+        row.append( sh.cell_value(rowx=rx, colx=cx) )
+
+      file_data.append(row)
 
 
-    print "Fields Names found: "
-    print field_names 
-
-    return field_names
+    return file_data
 

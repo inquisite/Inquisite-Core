@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import datetime
 import time
@@ -15,20 +16,43 @@ from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
+from lib.schema import addType, addField, addDataToRepo 
+
+from pandas.io.json import json_normalize
 
 from response_handler import response_handler
 from xlsdata import XlsHandler
+from csvdata import CsvHandler
+from jsondata import JSONHandler
 
 repositories_blueprint = Blueprint('repositories', __name__)
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__))
 UPLOAD_FOLDER = UPLOAD_FOLDER.replace('inquisite', 'uploads')
-ALLOWED_EXTENSIONS = set(['xls', 'xlsx'])
+ALLOWED_EXTENSIONS = set(['xls', 'xlsx', 'csv', 'json'])
 
 # File Upload
 def allowed_file(filename):
   return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Flatten JSON
+def flatten_json(y):
+  out = {}
+ 
+  def flatten(x, name=''):
+    if type(x) is dict:
+      for a in x:
+        flatten(x[a], name + a + '_')
+    elif type(x) is list:
+      i = 0
+      for a in x:
+        flatten(a, name + str(i) + '_')
+        i += 1
+    else:
+      out[name[:-1]] = x
+
+  flatten(y)
+  return out
 
 # Repositories
 @repositories_blueprint.route('/repositories', methods=['GET'])
@@ -616,8 +640,13 @@ def uploadData():
 
     input_file = request.files['repo_file']
     
+    file_data = []
+
     # sanity check
     if input_file and allowed_file(input_file.filename):
+
+      print "File is an allowed type"
+
       filename = secure_filename(input_file.filename)
 
       upload_file = os.path.join(UPLOAD_FOLDER, filename)
@@ -625,15 +654,86 @@ def uploadData():
 
       basename = os.path.basename( upload_file )
 
-    # Get some contents from the File
-    xhandler = XlsHandler(upload_file)
-    file_data = xhandler.read_file() 
- 
-    ret['payload']['data'] = file_data
+      # Detect File Type
+      filename, file_extension = os.path.splitext(upload_file)
 
-    # TODO Add data node
-    # TODO Add relationshop between data node and Repo
+      print "file extension: "
+      print file_extension
 
+      # ... dynamically set this per data node 
+      fieldnames = []
+      nestednames = []
+      rowcount = 0
+      typecode = "text"
+
+      if ".csv" == file_extension:
+
+        # Get some contents from the File
+        csvhandler = CsvHandler(upload_file)
+        file_data  = csvhandler.read_file()
+        rowcount = len(file_data)
+        fieldnames = json.loads(file_data[0]).keys()
+
+        # Create nodes
+        for row in file_data:
+          print "Row:"
+          print row
+          
+          addDataToRepo(repo_id, typecode, json.loads(row))
+
+      if ".json" == file_extension:
+     
+        jsonhandler = JSONHandler(upload_file)
+        file_data = jsonhandler.read_file()
+
+        if type( file_data ) == dict:
+          fieldnames = file_data.keys()
+          rowcount = len(file_data)
+     
+          if len( fieldnames ) <= 1:
+            nestednames = file_data[fieldnames[0]][0].keys()
+            rowcount = len( file_data[fieldnames[0]] )
+
+            for item in file_data[fieldnames[0]]:
+
+              # Flatten our nested JSON for insertion into Neo4j
+              # TODO: do you use pandas json_normalize to turn into dataframe?
+              flat = flatten_json(item)
+              addDataToRepo(repo_id, typecode, flat)
+
+          else:
+            for item in file_data:
+              flat = flatten_json(item)
+              # TODO: consider pandas json_normailize to turn into dataframe?
+              addDataToRepo(repo_id, typecode, flat)
+
+      if ".xlsx" == file_extension or ".xls" == file_extension:
+
+        # Get some contents from the File
+        xhandler = XlsHandler(upload_file)
+        file_data = xhandler.read_file()
+        rowcount = len(file_data) 
+        fieldnames = file_data[0]
+
+        for item in file_data: 
+          # Assumes that row 1 is column headers
+          # TODO: improve this assumption? -- Parse data, get max row count, look for first row with that row count?
+          if item != fieldnames:
+          
+            # Create Dict of key:values by combining fieldnames with row into a dict
+            row = dict(zip( fieldnames, item ))
+            addDataToRepo(repo_id, typecode, row)
+
+
+      
+    # Send first ten rows as teaser
+    if file_data:
+      ret['payload']['data'] = [] #file_data[:11]
+      ret['payload']['fieldnames'] = fieldnames 
+      ret['payload']['nestednames'] = nestednames
+      ret['payload']['row_count'] = rowcount
+    else: 
+      ret['payload']['data'] = []
     return response_handler(ret)
 
 
@@ -651,11 +751,36 @@ def queryRepo(repo_id):
     result = db.run()
 
 
-@repositories_blueprint.route('/repositories/<repo_id>/get_all_data', methods=['GET'])
+@repositories_blueprint.route('/repositories/data', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def getRepoData(repo_id):
-    result = db.run()
+def getRepoData():
+
+  repo_id = request.form.get('repo_id')
+
+  ret = {
+    'status_code': 200,
+    'payload': {
+      'msg': 'Success',
+      'data': ''
+    }
+  }
+
+  print "REPO ID: " + str(repo_id)
+
+  if repo_id is not None:
+    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n) WHERE ID(r)={repo_id} RETURN n LIMIT 2", {"repo_id": int(repo_id)})
+
+    nodes = []
+    for data in result:
+      print "Gut CHECK DATA"
+
+      print data.items()[0][1].properties
+      nodes.append(data.items()[0][1].properties)
+
+    ret['payload']['data'] = nodes
+
+  return response_handler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/set_entry_point', methods=['POST'])

@@ -13,4 +13,4 @@ def response_handler(return_object):
   status_code = return_object['status_code']
   resp = return_object['payload']  
 
-  return Response(response=json.dumps(resp), status=status_code, mimetype=mime_type)
+  return Response(response=json.dumps(resp).encode('utf8'), status=status_code, mimetype=mime_type)
