@@ -14,6 +14,7 @@ from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
+from lib.peopleClass import People
 
 from response_handler import response_handler
 
@@ -26,26 +27,14 @@ people_blueprint = Blueprint('people', __name__)
 @jwt_required
 def peopleList():
 
+    persons = People.getAll()
+
     ret = {
       'status_code': 200,
       'payload': {
-        'people': []
+        'people': persons
       }
     }
-
-    persons = []
-    people = db.run("MATCH (n:Person) RETURN ID(n) AS id, n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
-    for p in people:
-        persons.append({
-            "id": p['id'],
-            "name": p['name'],
-            "location": p['location'],
-            "email": p['email'],
-            "url": p['url'],
-            "tagline": p['tagline']
-        })
-
-    ret['payload']['people'] = persons
     
     return response_handler(ret)
 
@@ -63,46 +52,35 @@ def getPerson():
 
       # email address
       identity = current_token['identity']
-      ident_str = "n.email={identity}"
+      ident_str = "p.email={identity}"
 
     if request.method == 'POST':
       identity = int(request.form.get('person_id'))
-      ident_str = "ID(n)={identity}"
+      ident_str = "ID(p)={identity}"
 
 
     ret = {
       'status_code': 400,
       'payload': {
         'msg': 'Could not find person for that ID',
-        'person': {}
+        'person': {},
+        'repos': []
       }
     }
     
-    print "Before Query: "
-    print "identity: " + str(identity)
-    print "ident_str: " + ident_str
+    person = People.getInfo(identity, ident_str)
 
+    if person is not None:
+      ret['status_code'] = 200
+      ret['payload']['msg'] = 'Success'
+      ret['payload']['person'] = person    
 
-    result = db.run(
-      "MATCH (n:Person) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.email AS email, " +
-      "n.url AS url, n.location AS location, n.tagline AS tagline, n.prefs AS prefs",
-      {"identity": identity})
+    # If request method is GET, then it's our logged in user, get Repos and repo data too!
+    if request.method == 'GET':
+      print "Getting Repos for person"
+      ret['payload']['repos'] = People.getRepos(identity, ident_str)  
 
-    for p in result:
-        prefs = {}
-        if (p['prefs'] != None):
-            prefs = json.loads(p['prefs'])
-        ret['status_code'] = 200
-        ret['payload']['msg'] = 'Success'
-        ret['payload']['person'] = {
-          'id': p['id'],
-          'name': p['name'], 
-          'email': p['email'], 
-          'url': p['url'], 
-          'location': p['location'], 
-          'tagline': p['tagline'],
-          'prefs': prefs
-        }
+   
 
     return response_handler(ret)
 
@@ -306,21 +284,9 @@ def getPersonRepos():
     print "identity: " + str(identity)
     print "ident_str: " + ident_str
 
-    result = db.run(
-      "MATCH (n)<-[:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.url AS url, n.created_on AS created_on", 
-      {"identity": identity})
-
-    repos = []
-    for item in result:
-        repos.append({
-            "id": item['id'],
-            "name": item['name'],
-            "readme": item['readme'],
-            "created_on": item['created_on'],
-            "url": item['url']
-        })
-
-    if result:
+    repos = People.getRepos(identity, ident_str)
+    
+    if repos:
         ret['status_code'] = 200
         ret['payload']['msg'] = "Success"
         ret['payload']['repos'] = repos

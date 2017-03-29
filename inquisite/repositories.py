@@ -17,6 +17,7 @@ from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
 from lib.schema import addType, addField, addDataToRepo 
+from lib.repositoriesClass import Repositories
 
 from pandas.io.json import json_normalize
 
@@ -480,24 +481,8 @@ def listRepoUsers():
       }
     }
 
-    users = []
     if repo_id is not None:
-      result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, ID(p) AS id", 
-        {"repo_id": int(repo_id)})
-
-      for p in result:
-
-        user_role = ""
-        if p['role'] == "COLLABORATES_WITH":
-          user_role = "collaborator"
-        if p['role'] == "OWNED_BY":
-          user_role = "owner"
-
-        users.append({
-          "id": p['id'],
-          "name": p['name'],
-          "role": user_role
-        })
+      users = Repositories.getUsers( int(repo_id) )
 
       if users:
         ret['status_code'] = 200
@@ -756,6 +741,7 @@ def queryRepo(repo_id):
 @jwt_required
 def getRepoData():
 
+  print "in Repositories Data"
   repo_id = request.form.get('repo_id')
 
   ret = {
@@ -766,18 +752,9 @@ def getRepoData():
     }
   }
 
-  print "REPO ID: " + str(repo_id)
-
   if repo_id is not None:
-    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n) WHERE ID(r)={repo_id} RETURN n LIMIT 2", {"repo_id": int(repo_id)})
 
-    nodes = []
-    for data in result:
-      print "Gut CHECK DATA"
-
-      print data.items()[0][1].properties
-      nodes.append(data.items()[0][1].properties)
-
+    nodes = Repositories.getData( int(repo_id) )
     ret['payload']['data'] = nodes
 
   return response_handler(ret)
