@@ -1,4 +1,6 @@
 import json
+import time
+import datetime
 from inquisite.db import db
 from neo4j.v1 import ResultError
 
@@ -7,18 +9,6 @@ class Repositories:
   # For Now All class methods are going to be static
   def __init__():
     pass 
-
-  
-  @staticmethod
-  def getData(repository_id):
-
-    nodes = []
-    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n) WHERE ID(r)={repository_id} RETURN n LIMIT 2", {"repository_id": repository_id})
-    
-    for data in result:
-      nodes.append(data.items()[0][1].properties)
-
-    return nodes 
 
   @staticmethod
   def getAll():
@@ -34,6 +24,54 @@ class Repositories:
       })
 
     return repos
+
+  @staticmethod
+  def nameCheck(name):
+    try:
+      db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
+      return False
+    except ResultError as e:
+      return True    
+
+  @staticmethod
+  def create(url, name, readme, identity, ident_str):
+       
+      ts = time.time()
+      created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+      new_repo = {}
+      result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) " +
+        "RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
+
+      for r in result:
+        new_repo['id'] = r['repo_id']
+        new_repo['url'] = r['url']
+        new_repo['name'] = r['name']
+        new_repo['readme'] = r['readme']
+
+      repo_created = False
+      summary = result.consume()
+      if summary.counters.nodes_created >= 1:
+        repo_created = True
+
+      if repo_created:
+
+        # Set Owner
+        owner_set = Repositories.setOwner(new_repo['id'], identity, ident_str)
+
+      return new_repo   
+
+
+  @staticmethod
+  def getData(repository_id):
+
+    nodes = []
+    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n) WHERE ID(r)={repository_id} RETURN n LIMIT 2", {"repository_id": repository_id})
+    
+    for data in result:
+      nodes.append(data.items()[0][1].properties)
+
+    return nodes 
 
   @staticmethod
   def getInfo(repository_id):
@@ -65,7 +103,7 @@ class Repositories:
   def setOwner(repository_id, identity, ident_str):
 
     owner_success = False
-    result = db.run("MATCH (n:Repository) WHERE (ID:n)={repository_id} MATCH (p:Person) WHERE " + ident_str + 
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} MATCH (p:Person) WHERE " + ident_str + 
       " MERGE (p)<-[:OWNED_BY]->(n)", {"repository_id": repository_id, "identity": identity})
 
     summary = result.consume()

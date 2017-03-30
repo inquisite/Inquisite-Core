@@ -108,6 +108,7 @@ def addRepo():
 
     # email address
     identity = current_token['identity']
+    ident_str = "p.email = {identity}"
 
     ret = {
       'status_code': 422,
@@ -118,54 +119,23 @@ def addRepo():
     }
     
     if url is not None and name is not None and readme is not None:
-        try:
-           db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
 
-           ret['status_code'] = 400
-           ret['payload']['msg'] = 'Repository with name already exists'
+        is_valid = Repositories.nameCheck(name)
+        if is_valid:
+          new_repo = Repositories.create(url, name, readme, identity, ident_str)
 
-        except ResultError as e:
-            ts = time.time()
-            created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+          if new_repo:
+            ret['status_code'] = 200
+            ret['payload']['msg'] = 'Created Repo'
+            ret['payload']['repo'] = new_repo
+          else:
+            ret['status_code'] = 400
+            ret['payload']['msg'] = 'Problem creating repo'
 
-            new_repo = {}
-            result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
-
-            for r in result:
-                new_repo['repo_id'] = r['repo_id']
-                new_repo['url'] = r['url']
-                new_repo['name'] = r['name']
-                new_repo['readme'] = r['readme']
-
-            node_created = False
-            summary = result.consume()
-            if summary.counters.nodes_created >= 1:
-                node_created = True
-
-            if node_created:
-
-                # CHEAP HACK - Dump SET OWNER GUTS HERE
-                # TODO: -- Make me pretty
-                result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE p.email={identity} MERGE (p)<-[:OWNED_BY]->(n)", 
-                  {"repo_id": new_repo['repo_id'], "identity": identity})
-                summary = result.consume()
-
-                rel_created = False
-                if summary.counters.relationships_created >= 1:
-                  rel_created = True
-
-                  if rel_created:
-
-                    print "Node Created AND OWNED BY Relationship Created"
-
-                    ret['status_code'] = 200
-                    ret['payload']['msg'] = 'Created Repo'
-                    ret['payload']['repo'] = new_repo
-
-            else:
-                ret['status_code'] = 400
-                ret['payload']['msg'] = 'Problem creating repo'
-
+        else:
+          ret['status_code'] = 400
+          ret['payload']['msg'] = 'Repository with name already exists'
+            
     return response_handler(ret)
 
 @repositories_blueprint.route('/repositories/<repo_id>/edit', methods=['POST'])
