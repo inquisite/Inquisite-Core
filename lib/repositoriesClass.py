@@ -21,6 +21,137 @@ class Repositories:
     return nodes 
 
   @staticmethod
+  def getAll():
+
+    repos = []
+    result = db.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
+   
+    for r in result:
+      repos.append({
+        "name": r['name'],
+        "url": r['url'],
+        "readme": r['readme']
+      })
+
+    return repos
+
+  @staticmethod
+  def getInfo(repository_id):
+
+    repo = {}
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} RETURN n.url AS url, n.name AS name, n.readme AS readme",
+      {"repository_id": repository_id})
+
+    for r in result:
+      repo['url'] = r['url']
+      repo['name'] = r['name']
+      repo['readme'] = r['readme']
+
+    return repo
+
+  @staticmethod
+  def delete(repository_id):
+  
+    del_success = False
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repository_id": repository_id})
+    summary = result.consume()
+
+    if summary.counters.node_deleted >= 1:
+      del_success = True
+
+    return del_success
+
+  @staticmethod
+  def setOwner(repository_id, identity, ident_str):
+
+    owner_success = False
+    result = db.run("MATCH (n:Repository) WHERE (ID:n)={repository_id} MATCH (p:Person) WHERE " + ident_str + 
+      " MERGE (p)<-[:OWNED_BY]->(n)", {"repository_id": repository_id, "identity": identity})
+
+    summary = result.consume()
+    if summary.counters.relationships_created >= 1:
+      owner_success = True
+
+    return owner_success
+
+  @staticmethod
+  def getOwner(repository_id):
+
+    owner = {}
+    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repository_id} RETURN p.name AS name, p.email as email, p.url AS url, " +
+      "p.location AS location, p.tagline AS tagline", {"repository_id": repository_id})
+
+    for r in result:
+      owner['name'] = r['name']
+      owner['location'] = r['location']
+      owner['email'] = r['email']
+      owner['url'] = r['url']
+      owner['tagline'] = r['tagline']
+ 
+    return owner
+
+  @staticmethod
+  def deleteOwner(repository_id, owner_id):
+
+    del_success = False
+    result = db.run("START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)={owner_id} AND ID(n)={repository_id} DELETE rel",
+      {"owner_id": owner_id, "repository_id": repository_id})
+
+    summary = result.consume()
+    if summary.counters.relationships_deleted >= 1:
+      del_success = True
+
+    return del_success
+
+  @staticmethod
+  def getInfo(repository_id):
+  
+    repo = {}
+    result = dub.run("MATCH (n:Repository) WHERE ID(n)={repository_id} RETURN n.name AS name, n.url AS url, n.readme AS readme",
+      {"repository_id": repository_id})
+
+    for r in result:
+      repo['name'] = r['name']
+      repo['url'] = r['url']
+      repo['readme'] = r['readme']
+
+    return repo
+
+  @staticmethod
+  def addCollaborator(repository_id, person_id):
+
+    collab_success = False
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)",
+      {"repository_id": repository_id, "person_id": person_id})
+
+    summary = result.consume()
+    if summary.counters.relationships_created >= 1:
+      collab_success = True
+
+    print "Did we add a collaborator? "
+    print collab_success
+
+    return collab_success
+
+  @staticmethod
+  def getCollaborators(repository_id):
+
+    people = []
+    result = db.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repository_id} RETURN p.name AS name, p.email AS email, p.url AS url, " +
+      "p.location AS location, p.tagline AS tagline", {"repository_id": repository_id})
+
+    for p in result:
+      people.append({
+        "name": p['name'],
+        "email": p['email'],
+        "url": p['url'],
+        "location": p['location'],
+        "tagline": p['tagline']
+      })
+
+    return people
+
+  @staticmethod
   def getUsers(repository_id):
   
     users = []
@@ -41,3 +172,60 @@ class Repositories:
       })
 
       return users
+
+  @staticmethod
+  def removeCollaborator(repository_id, person_id):
+
+    del_success = False
+    result = db.run("START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)={person_id} AND ID(n)={repository_id} DELETE rel",
+      {"person_id": person_id, "repository_id": repository_id})
+
+    summary = result.consume()
+    if summary.counters.relationships_deleted >= 1:
+      del_success = True
+
+    return del_success
+
+  @staticmethod
+  def addFollower(repository_id, person_id):
+  
+    add_success = False
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:FOLLOWS]->(n)",
+      {"repository_id": repository_id, "person_id": person_id})
+
+    summary = result.consume()
+    if summary.counters.relationships_created >= 1:
+      add_success = True
+
+    return add_success
+
+  @staticmethod
+  def getFollowers(repository_id):
+
+    people = []
+    result = db.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repository_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.location AS location, " +
+      "p.tagline AS tagline", {"repository_id": repository_id})
+
+    for p in result:
+      people.append({
+        "name": p['name'],
+        "email": p['email'],
+        "url": p['url'],
+        "location": p['location'],
+        "tagline": p['tagline']
+      })
+
+    return people
+
+  @staticmethod
+  def removeFollower(repository_id, person_id):
+  
+    del_success = False
+    result = db.run("START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)={person_id} AND ID(n)={repository_id} DELETE rel",
+      {"person_id": person_id, "repository_id": repository_id})
+
+    summary = result.consume()
+    if summary.counters.relationship_deleted >= 1:
+      del_success = True
+
+    return del_success

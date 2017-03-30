@@ -18,7 +18,7 @@ class People:
   def getAll():
 
     persons = []
-    result = db.run("Match (p:Person) RETURN ID(n) AS id, p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
+    result = db.run("Match (p:Person) RETURN ID(p) AS id, p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
 
     for p in result:
       persons.append({
@@ -56,16 +56,13 @@ class People:
   @staticmethod
   def getRepos(identity, ident_str):
 
-    print "in getRepos .. checking ident and string"
-    print "identity" + str(identity)
-    print "ident_str" + ident_str
-
     repos = []
     result = db.run("MATCH (n)<-[:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme As readme, " +
       "n.url AS url, n.created_on AS created_on", {"identity": identity})
 
     for item in result:
 
+      owner = Repositories.getOwner( int(item['id']) )
       data  = Repositories.getData( int(item['id']) )
       users = Repositories.getUsers( int(item['id']) )
 
@@ -76,9 +73,8 @@ class People:
         "created_on": item['created_on'],
         "url": item['url'],
         "data": data,
-        "users": users
+        "users": users,
+        "owner": owner
       })
 
-    print "Returning repos for person"
-    print repos
     return repos

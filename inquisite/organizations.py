@@ -13,6 +13,7 @@ from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
 from neo4j.v1 import ResultError
+from lib.organizationsClass import Organizations
 
 from response_handler import response_handler
 
@@ -25,18 +26,8 @@ organizations_blueprint = Blueprint('organizations', __name__)
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def orgList():
-    orgslist = []
-    orgs = db.run(
-        "MATCH (n:Organization) RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline")
-    for o in orgs:
-        orgslist.append({
-            "name": o['name'],
-            "location": o['location'],
-            "email": o['email'],
-            "url": o['url'],
-            "tagline": o['tagline']
-        })
 
+    orgslist = Organizations.getAll()
     ret = {
       'status_code': 200,
       'payload': {
@@ -117,16 +108,7 @@ def getOrg(org_id):
       }
     }
 
-    org = {}
-    result = db.run("MATCH (o:Organization) WHERE ID(o)={org_id} RETURN o.name AS name, o.location AS location, o.email AS email, o.url AS url, o.tagline AS tagline", {"org_id": org_id})
-
-    for o in result:
-        org['name'] = o['name']
-        org['location'] = o['location']
-        org['email'] = o['email']
-        org['url'] = o['url']
-        org['tagline'] = o['tagline']
-
+    org = Organizations.getInfo( int(org_id) )
     if org:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success, organization found'
@@ -214,13 +196,7 @@ def deleteOrg(org_id):
       }
     }
 
-    result = db.run("MATCH (o:Organization) WHERE ID(o)={org_id} OPTIONAL MATCH (o)-[r]-() DELETE r,o", {"org_id": org_id})
-    summary = result.consume()
-
-    node_deleted = False
-    if summary.counters.nodes_deleted >= 1:
-        node_deleted = True
-
+    node_delete = Organizations.delete( int(org_id) )
     if node_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Organization deleted'
@@ -243,17 +219,7 @@ def getOrgRepos(org_id):
       }
     }
 
-    repos = []
-    result = db.run(
-        "MATCH (n:Repository)-[:PART_OF]->(o:Organization) WHERE ID(o)={org_id} RETURN n.name AS name, n.url AS url, n.readme AS readme", {"org_id": org_id})
-
-    for r in result:
-        repos.append({
-            "name": r['name'],
-            "url": r['url'],
-            "readme": r['readme']
-        })
-
+    repos = Organizations.getRepos( int(org_id) )
     if repos:
         ret['status_code'] = 200
         ret['payload']['repos'] = repos
@@ -275,18 +241,10 @@ def addRepoToOrg(org_id, repo_id):
       }
     }
 
-    result = db.run(
-        "MATCH (o:Organization) WHERE ID(o)={org_id} MATCH (r:Repository) WHERE ID(r)={repo_id} MERGE (r)-[:PART_OF]->(o)", {"org_id": org_id, "repo_id": repo_id})
-    summary = result.consume()
-
-    rel_created = False
-    if summary.counters.relationships_created >= 1:
-        rel_created = True
-
+    rel_created = Organizations.addRepository( int(org_id), int(repo_id) )
     if rel_created:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Added Repo to Org'
-
     else:
         ret['status_code'] = 400
         ret['payload']['msg'] = 'There was a problem adding Rep to Org'
@@ -305,14 +263,7 @@ def removeRepoFromOrg(org_id, repo_id):
       }
     }
  
-    result = db.run(
-        "START r=node(*) MATCH (r)-[rel:PART_OF]->(o) WHERE ID(r)={repo_id} AND ID(o)={org_id} DELETE rel", {"repo_id": repo_id, "org_id": org_id})
-    summary = result.consume()
-
-    rel_deleted = False
-    if summary.counters.relationships_deleted >= 1:
-        rel_deleted = True
-
+    rel_deleted = Organizations.removeRepository( int(org_id), int(repo_id) )
     if rel_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo removed from Org'
@@ -328,32 +279,17 @@ def removeRepoFromOrg(org_id, repo_id):
 def addPersonToOrg(org_id, person_id):
 
     ret = {
-      'status_code': '',
+      'status_code': 400,
       'payload': {
-        'msg': ''
+        'msg': 'There was a problem adding person to organization'
       }
     }
 
-    result = db.run(
-        "MATCH (o:Organization) WHERE ID(o)={org_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:PART_OF]->(o) RETURN ID(p) AS person_id", {"org_id": org_id, "person_id": person_id})
-
-    person_id = None
-    for p in result:
-        person_id = p['person_id']
-
-    summary = result.consume()
-
-    relationship_created = False
-    if summary.counters.relationships_created >= 1:
-        relationship_created = True
-
-    if relationship_created:
+    rel_created = Organizations.addPerson( int(org_id), int(person_id) )
+    if rel_created:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person was added to Org'
-    else:
-        ret['status_code'] = 400
-        ret['payload']['msg'] = 'There was a problem adding person to Org'
-
+    
     return response_handler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/remove_person/<person_id>', methods=['POST'])
@@ -368,9 +304,8 @@ def removePersonFromOrg(org_id, person_id):
       }
     }
 
-    result = db.run(
-        "START p=node(*) MATCH (p)-[rel:PART_OF]->(n) WHERE ID(p)={person_id} AND ID(n)={org_id} DELETE rel", {"person_id": person_id, "org_id": org_id})
-    if result:
+    removed = Organizations.removePerson( int(org_id), int(person_id) )
+    if removed:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person was successfully removed from Org'
 
@@ -381,16 +316,8 @@ def removePersonFromOrg(org_id, person_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getOrgPeople(org_id):
-    org_people = []
-    result = db.run("MATCH (n)-[:OWNED_BY|FOLLOWED_BY|MANAGED_BY|PART_OF]-(p) WHERE ID(n)={org_id} RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline", {"org_id": org_id})
-    for p in result:
-        org_people.append({
-            "name": p['name'],
-            "location": p['location'],
-            "email": p['email'],
-            "url": p['url'],
-            "tagline": p['tagline']
-        })
+
+    org_people = Organizations.getPeople( int(org_id) )
 
     ret['status_code'] = 200
     ret['payload']['people'] = org_people

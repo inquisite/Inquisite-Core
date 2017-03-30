@@ -61,15 +61,7 @@ def flatten_json(y):
 @jwt_required
 def repoList():
 
-    repos = []
-    result = db.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
-    for r in result:
-        repos.append({
-            "name": r['name'],
-            "url": r['url'],
-            "readme": r['readme']
-        })
-
+    repos = Repositories.getAll() 
     ret = {
       'status_code': 200,
       'payload': {
@@ -93,14 +85,8 @@ def getRepo(repo_id):
       }
     }
 
-    repo = {}
-    result = db.run(
-        "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme", {"repo_id": repo_id})
-    for r in result:
-        repo['url'] = r['url']
-        repo['name'] = r['name']
-        repo['readme'] = r['readme']
-
+    repo = Repositories.getInfo( int(repo_id) )
+   
     if repo:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
@@ -123,7 +109,6 @@ def addRepo():
     # email address
     identity = current_token['identity']
 
-
     ret = {
       'status_code': 422,
       'payload': {
@@ -131,16 +116,7 @@ def addRepo():
         'repo': {}
       } 
     }
-
-    print "Repo Name"
-    print name
-
-    print "Repo URL"
-    print url
-
-    print "Repo README"
-    print readme
-
+    
     if url is not None and name is not None and readme is not None:
         try:
            db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
@@ -258,14 +234,8 @@ def deleteRepo():
     }
 
     repo_id = request.form.get('repo_id')
-
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": int(repo_id)})
-    summary = result.consume()
-
-    node_deleted = False
-    if summary.counters.nodes_deleted >= 1:
-        node_deleted = True
-
+    node_deleted = Repositories.delete( int(repo_id) )
+    
     if node_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo deleted successfully'
@@ -284,6 +254,7 @@ def setRepoOwner(repo_id):
 
     # email address
     identity = current_token['identity']
+    ident_str = "p.email = {identity}"
 
     ret = {
       'status_code': 400,
@@ -292,14 +263,7 @@ def setRepoOwner(repo_id):
       }
     }
 
-    result = db.run(
-        "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)<-[:OWNED_BY]->(n)", {"repo_id": repo_id, "person_id": person_id})
-    summary = result.consume()
-
-    rel_created = False
-    if summary.counters.relationships_created >= 1:
-        rel_created = True
-
+    rel_created = Repositories.setOwner( int(repo_id), identity, ident_str )
     if rel_created:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repository owner set successfully'
@@ -320,16 +284,8 @@ def getRepoOwner(repo_id):
       }
     }
 
-    owner = {}
-    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
-    for r in result:
-        owner['name'] = r['name']
-        owner['location'] = r['location']
-        owner['email'] = r['email']
-        owner['url'] = r['url']
-        owner['tagline'] = r['tagline']
-
-    if result:
+    owner = Repositories.getOwner( int(repo_id) )
+    if owner:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
         ret['payload']['owner'] = owner
@@ -349,14 +305,7 @@ def deleteRepoOwner(repo_id, person_id):
       }
     }
 
-    result = db.run(
-        "START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
-    summary = result.consume()
-
-    rel_deleted = False
-    if summary.counters.relationships_deleted >= 1:
-        rel_deleted = True
-
+    rel_deleted = Repositories.deleteOwner( int(repository_id), int(person_id) )
     if rel_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo owner removed successfully'
@@ -377,15 +326,8 @@ def getRepoInfo(repo_id):
       }
     }
 
-    repo = {}
-    result = db.run(
-        "MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id})
-    for r in result:
-        repo['name'] = r['name']
-        repo['url'] = r['url']
-        repo['readme'] = r['readme']
-
-    if result:
+    repo = Repositories.getInfo( int(repo_id) )
+    if repo:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
         ret['payload']['repo'] = repo
@@ -418,15 +360,7 @@ def addRepoCollab():
       print "repo_id: " + str(repo_id) 
       print "person id:" + str(person_id)
 
-      result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)", 
-        {"repo_id": int(repo_id), "person_id": int(person_id)})
-
-      summary = result.consume()
-
-      rel_created = False
-      if summary.counters.relationships_created >= 1:
-        rel_created = True
-
+      rel_created = Repositories.addCollaborator(int(repo_id), int(person_id))
       if rel_created:
           ret['status_code'] = 200
           ret['payload']['msg'] = 'Collaborator Added'
@@ -447,18 +381,7 @@ def listRepoCollabs(repo_id):
       }
     }
 
-    people = []
-    result = db.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
-
-    for p in result:
-        people.append({
-            "name": p['name'],
-            "email": p['email'],
-            "url": p['url'],
-            "location": p['location'],
-            "tagline": p['tagline']
-        })
-
+    people = Repositories.getCollaborators( int(repo_id) )
     if people:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
@@ -503,9 +426,8 @@ def removeRepoCollab(repo_id, person_id):
       }
     }
 
-    result = db.run(
-        "START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
-    if result:
+    removed = Repositories.removeCollaborator( int(repository_id), int(person_id) ) 
+    if removed:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Collaborator removed'
 
@@ -524,9 +446,8 @@ def addRepoFollower(repo_id, person_id):
       }
     }
 
-    result = db.run(
-        "MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:FOLLOWS]->(n)", {"repo_id": repo_id, "person_id": person_id})
-    if result:
+    add_follower = Repositories.addFollower( int(repo_id), int(person_id) )
+    if add_follower:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Follower added successfully'
 
@@ -546,18 +467,7 @@ def listRepoFollowers(repo_id):
       }
     }
 
-    people = []
-    result = db.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.locaton AS location, p.tagline AS tagline", {"repo_id": repo_id})
-
-    for p in result:
-        people.append({
-            "name": p['name'],
-            "email": p['email'],
-            "url": p['url'],
-            "location": p['location'],
-            "tagline": p['tagline']
-        })
-
+    people = Repositories.getFollowers( int(repo_id) )
     if people:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success'
@@ -578,9 +488,8 @@ def removeRepoFollower(repo_id, person_id):
       }
     }
 
-    result = db.run(
-        "START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel", {"person_id": person_id, "repo_id": repo_id})
-    if result:
+    remove_follower = Repositories.removeFollower( int(repo_id), int(person_id) )
+    if remove_follower:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Follower Removed'
 
@@ -720,13 +629,6 @@ def uploadData():
     else: 
       ret['payload']['data'] = []
     return response_handler(ret)
-
-
-@repositories_blueprint.route('/repositories/<repo_id>/add_data_node', methods=['POST'])
-@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
-@jwt_required
-def addRepoData(repo_id):
-    result = db.run()
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/query', methods=['POST'])

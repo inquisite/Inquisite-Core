@@ -279,11 +279,6 @@ def getPersonRepos():
       } 
     }
 
-
-    print " in Get Repos for Person ..."
-    print "identity: " + str(identity)
-    print "ident_str: " + ident_str
-
     repos = People.getRepos(identity, ident_str)
     
     if repos:
