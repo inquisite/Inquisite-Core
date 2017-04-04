@@ -1,5 +1,6 @@
 from inquisite.db import db
 from neo4j.v1 import ResultError
+import re
 
 def getRepositoryByCode(code):
     result = db.run(
@@ -107,9 +108,16 @@ def addDataToRepo(repository_id, typecode, data):
     # TODO: validate each field value
 
     flds = []
-    for i in data:
-        flds.append(i + ":{" + i + "}")
- 
+    for i in data.keys():
+        if (i == '_ID'):
+            continue
+        fname = re.sub(r"[^A-Za-z0-9_]", "_", i)        # remove non-alphanumeric characters from field names
+        fname = re.sub(r"^([\d]+)", "_\1", fname)       # Neo4j field names cannot start with a number; prefix such fields with an underscore
+
+        flds.append(fname + ":{" + fname + "}")
+        data[fname] = data[i]                           # add "data" entry with neo4j-ready field name
+
+
     data['repository_id'] = int(repository_id)
 
     print "after"
