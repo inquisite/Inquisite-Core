@@ -93,8 +93,8 @@ class Repositories:
     del_success = False
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repository_id": repository_id})
     summary = result.consume()
-
-    if summary.counters.node_deleted >= 1:
+ 
+    if summary.counters.nodes_deleted >= 1:
       del_success = True
 
     return del_success

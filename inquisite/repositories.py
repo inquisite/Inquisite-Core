@@ -28,8 +28,8 @@ from jsondata import JSONHandler
 
 repositories_blueprint = Blueprint('repositories', __name__)
 
-UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__))
-UPLOAD_FOLDER = UPLOAD_FOLDER.replace('inquisite', 'uploads')
+UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
+#UPLOAD_FOLDER = UPLOAD_FOLDER.replace('inquisite', 'uploads')
 ALLOWED_EXTENSIONS = set(['xls', 'xlsx', 'csv', 'json'])
 
 # File Upload
@@ -209,6 +209,7 @@ def deleteRepo():
     if node_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo deleted successfully'
+        ret['payload']['repository_id'] = repo_id
 
     return response_handler(ret)
 
