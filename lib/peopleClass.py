@@ -42,7 +42,11 @@ class People:
     for p in result:
       prefs = {}
       if (p['prefs'] != None):
-        prefs = json.loads(p['prefs'])
+        try:
+          prefs = json.loads(p['prefs'])
+        except:
+          prefs = {}
+
       person['id'] = p['id']
       person['name'] = p['name']
       person['email'] = p['email']
@@ -57,7 +61,7 @@ class People:
   def getRepos(identity, ident_str):
 
     repos = []
-    result = db.run("MATCH (n)<-[:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme As readme, " +
+    result = db.run("MATCH (n:Repository)<-[:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme As readme, " +
       "n.url AS url, n.created_on AS created_on", {"identity": identity})
 
     for item in result:
@@ -78,3 +82,33 @@ class People:
       })
 
     return repos
+
+
+  @staticmethod
+  def find(params):
+    people = []
+
+    criteria = []
+
+    if ('name' in params) and (params['name']) and len(params['name']) > 0:
+      params['name'] = params['name'].lower()
+      criteria.append("lower(p.name) CONTAINS {name}")
+    if ('email' in params) and (params['email']) and len(params['email']) > 0:
+      params['email'] = params['email'].lower()
+      criteria.append("lower(p.email) STARTS WITH {email}")
+
+    if len(criteria) == 0:
+      return None
+
+    print(" XXX ".join(criteria))
+    result = db.run("MATCH (p:Person) WHERE " + " OR ".join(criteria) + " RETURN ID(p) AS id, p.name AS name, p.email AS email, " +
+                    "p.url AS url, p.location AS location, p.tagline AS tagline",
+                    params)
+
+    for p in result:
+      r = {}
+      for f in ['id', 'name', 'email', 'url', 'location', 'tagline']:
+        r[f] = p[f]
+      people.append(r)
+
+    return people

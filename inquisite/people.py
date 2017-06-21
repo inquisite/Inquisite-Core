@@ -193,9 +193,6 @@ def editPerson():
 
     update_str = "%s" % ", ".join(map(str, update))
 
-    
-    print "UPDATE STR:"
-    print update_str
 
     # TODO: Add User Preferences serialized object 
     if update_str != '' and update_str is not None:
@@ -285,5 +282,27 @@ def getPersonRepos():
         ret['status_code'] = 200
         ret['payload']['msg'] = "Success"
         ret['payload']['repos'] = repos
+
+    return response_handler(ret)
+
+
+# Get Person by ID
+@people_blueprint.route('/people/find', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def findPerson():
+    q = request.form.get('q')
+    ret = {
+        'status_code': 200,
+        'payload': {'msg': 'No people found', 'q': q, 'results': []}
+    }
+
+    if q is not None and len(q) > 0:
+        people = People.find({'name': q, 'email': q})
+
+        if people is not None:
+            ret['status_code'] = 200
+            ret['payload']['msg'] = 'Success'
+            ret['payload']['results'] = people
 
     return response_handler(ret)

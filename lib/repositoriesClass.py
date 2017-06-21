@@ -93,7 +93,7 @@ class Repositories:
     del_success = False
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repository_id": repository_id})
     summary = result.consume()
- 
+
     if summary.counters.nodes_deleted >= 1:
       del_success = True
 
@@ -116,10 +116,11 @@ class Repositories:
   def getOwner(repository_id):
 
     owner = {}
-    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repository_id} RETURN p.name AS name, p.email as email, p.url AS url, " +
+    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repository_id} RETURN ID(p) AS id, p.name AS name, p.email as email, p.url AS url, " +
       "p.location AS location, p.tagline AS tagline", {"repository_id": repository_id})
 
     for r in result:
+      owner['id'] = r['id']
       owner['name'] = r['name']
       owner['location'] = r['location']
       owner['email'] = r['email']
@@ -208,8 +209,7 @@ class Repositories:
         "name": p['name'],
         "role": user_role
       })
-
-      return users
+    return users
 
   @staticmethod
   def removeCollaborator(repository_id, person_id):

@@ -167,7 +167,7 @@ def editRepo(repo_id):
 
     if update_str:
         result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
-                                " RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": repo_id, "name": name, "url": url, "readme": readme})
+                                " RETURN n.name AS name, n.url AS url, n.readme AS readme", {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme})
 
         updated_repo = {}
         for r in result:
@@ -186,7 +186,7 @@ def editRepo(repo_id):
             ret['payload']['repo'] = updated_repo
         else:
             ret['status_code'] = 400
-            ret['payload']['msg'] = 'Problem updating Repo'
+            ret['payload']['msg'] = 'Problem updating Repo ' + str(repo_id)
 
     return response_handler(ret)
 
@@ -209,7 +209,7 @@ def deleteRepo():
     if node_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo deleted successfully'
-        ret['payload']['repository_id'] = repo_id
+        ret['payload']['repo_id'] = repo_id
 
     return response_handler(ret)
 
@@ -276,7 +276,7 @@ def deleteRepoOwner(repo_id, person_id):
       }
     }
 
-    rel_deleted = Repositories.deleteOwner( int(repository_id), int(person_id) )
+    rel_deleted = Repositories.deleteOwner( int(repo_id), int(person_id) )
     if rel_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo owner removed successfully'
@@ -365,7 +365,7 @@ def listRepoCollabs(repo_id):
 @jwt_required
 def listRepoUsers():
 
-    repo_id = request.form.get('repository_id')
+    repo_id = request.form.get('repo_id')
 
     ret = { 
       'status_code': 200,
@@ -385,10 +385,12 @@ def listRepoUsers():
 
     return response_handler(ret)
 
-@repositories_blueprint.route('/repositories/<repo_id>/remove_collaborator/<person_id>', methods=['POST'])
+@repositories_blueprint.route('/repositories/remove_collaborator', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def removeRepoCollab(repo_id, person_id):
+def removeRepoCollab():
+    repo_id = request.form.get('repo_id')
+    person_id = request.form.get('person_id')
 
     ret = {
       'status_code': 400,
@@ -397,7 +399,7 @@ def removeRepoCollab(repo_id, person_id):
       }
     }
 
-    removed = Repositories.removeCollaborator( int(repository_id), int(person_id) ) 
+    removed = Repositories.removeCollaborator( int(repo_id), int(person_id) )
     if removed:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Collaborator removed'
