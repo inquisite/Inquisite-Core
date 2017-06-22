@@ -1,5 +1,4 @@
 from inquisite.db import db
-from neo4j.v1 import ResultError
 import re
 
 def getRepositoryByCode(code):
@@ -37,10 +36,10 @@ def addType(repository_id, name, code, description):
 
     # TODO: check that repository is owned by current user
 
-    try:
-        result = db.run("MATCH (t:SchemaType{code: {code}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t", {"code": code, "repository_id": int(repository_id)}).peek()
+    result = db.run("MATCH (t:SchemaType{code: {code}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t", {"code": code, "repository_id": int(repository_id)}).peek()
+    if len(list(result)):
         ret['payload']['msg'] = "Type already exists"
-    except ResultError as e:
+    else:
         result = db.run("MATCH (r:Repository) WHERE ID(r) = {repository_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph' })-[:PART_OF]->(r) RETURN r",
                             {"repository_id": int(repository_id),"name": name, "code": code, "description": description})
 
@@ -69,12 +68,12 @@ def addField(repository_id, typecode, name, code, fieldtype, description):
 
     # TODO: check that repository is owned by current user
 
-    try:
-        result = db.run(
+    result = db.run(
             "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t",
             {"typecode": typecode, "code": code, "repository_id": int(repository_id)}).peek()
+    if len(list(result)) > 0:
         ret['payload']['msg'] = "Field already exists"
-    except ResultError as e:
+    else:
         result = db.run(
             "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { name: {name}, code: {code}, description: {description}, type: {fieldtype} })-[:PART_OF]->(t) RETURN r",
             {"repository_id": int(repository_id), "name": name, "code": code, "description": description,

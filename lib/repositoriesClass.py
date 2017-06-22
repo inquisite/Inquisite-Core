@@ -2,7 +2,6 @@ import json
 import time
 import datetime
 from inquisite.db import db
-from neo4j.v1 import ResultError
 
 class Repositories:
 
@@ -27,10 +26,10 @@ class Repositories:
 
   @staticmethod
   def nameCheck(name):
-    try:
-      db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name}).peek()
+    res = db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name})
+    if len(list(res)) > 0:
       return False
-    except ResultError as e:
+    else:
       return True    
 
   @staticmethod

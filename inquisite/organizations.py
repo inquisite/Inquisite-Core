@@ -12,7 +12,6 @@ from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
-from neo4j.v1 import ResultError
 from lib.organizationsClass import Organizations
 
 from response_handler import response_handler

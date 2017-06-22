@@ -15,7 +15,6 @@ from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
-from neo4j.v1 import ResultError
 from lib.schema import addType, addField, addDataToRepo
 
 from response_handler import response_handler

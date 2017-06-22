@@ -15,7 +15,6 @@ from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
-from neo4j.v1 import ResultError
 from lib.schema import addType, addField, addDataToRepo 
 from lib.repositoriesClass import Repositories
 
@@ -119,7 +118,6 @@ def addRepo():
     }
     
     if url is not None and name is not None and readme is not None:
-
         is_valid = Repositories.nameCheck(name)
         if is_valid:
           new_repo = Repositories.create(url, name, readme, identity, ident_str)
@@ -131,7 +129,6 @@ def addRepo():
           else:
             ret['status_code'] = 400
             ret['payload']['msg'] = 'Problem creating repo'
-
         else:
           ret['status_code'] = 400
           ret['payload']['msg'] = 'Repository with name already exists'

@@ -1,6 +1,5 @@
 import json
 from inquisite.db import db
-from neo4j.v1 import ResultError
 
 class Organizations:
 

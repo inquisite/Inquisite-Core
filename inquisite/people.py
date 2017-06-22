@@ -13,7 +13,6 @@ from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
-from neo4j.v1 import ResultError
 from lib.peopleClass import People
 
 from response_handler import response_handler
@@ -114,10 +113,10 @@ def addPerson():
         ts = time.time()
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        try:
-            result = db.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email}).peek()
+        result = db.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email})
+        if len(list(result)) > 0:
             ret['payload']['msg'] = "User already exists"
-        except ResultError as e:
+        else:
             result = db.run(
               "CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, " +
               "password: {password_hash}, created_on: {created_on}, prefs: ''})" +

@@ -12,7 +12,6 @@ from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
-from neo4j.v1 import ResultError
 
 from response_handler import response_handler
 
@@ -37,7 +36,7 @@ def login():
     if username is not None and password is not None:
         db_user = db.run("MATCH (n:Person) WHERE n.email={username} RETURN n.name AS name, n.email AS email, n.password AS password, ID(n) AS user_id", {"username": username})
 
-        ret['payload']['msg'] = "No user was found with that username, or your password was typed incorrectly"
+        ret['payload']['msg'] = "No user was found with that username, or your password was typed incorrectly" + username + "/" + password
         ret['status_code'] = 400
 
         for person in db_user:
