@@ -193,7 +193,7 @@ class Repositories:
   def getUsers(repository_id):
   
     users = []
-    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repository_id} RETURN type(rel) AS role, p.name AS name, ID(p) AS id",
+    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repository_id} RETURN type(rel) AS role, p.name AS name, p.email as email, ID(p) AS id",
       {"repository_id": repository_id})
 
     for p in result:
@@ -206,6 +206,7 @@ class Repositories:
       users.append({
         "id": p['id'],
         "name": p['name'],
+        "email": p['email'],
         "role": user_role
       })
     return users
