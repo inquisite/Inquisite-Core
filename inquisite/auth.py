@@ -52,9 +52,6 @@ def login():
         ret['payload']['msg'] = "Username and Password are required"
         ret['status_code'] = 422
 
-    #print "ERROR CHECKING ..."
-    #print ret
-
     return response_handler(ret)
 
 # Refresh
