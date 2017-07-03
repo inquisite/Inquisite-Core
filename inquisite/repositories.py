@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
 from inquisite.db import db
-from lib.schema import addType, addField, addDataToRepo 
+from lib.schemaClass import Schema
 from lib.repositoriesClass import Repositories
 
 from pandas.io.json import json_normalize
@@ -543,7 +543,7 @@ def uploadData():
           print "Row:"
           print row
           
-          addDataToRepo(repo_id, typecode, json.loads(row))
+          Schema.addDataToRepo(repo_id, typecode, json.loads(row))
 
       if ".json" == file_extension:
      
@@ -563,13 +563,13 @@ def uploadData():
               # Flatten our nested JSON for insertion into Neo4j
               # TODO: do you use pandas json_normalize to turn into dataframe?
               flat = flatten_json(item)
-              addDataToRepo(repo_id, typecode, flat)
+              Schema.addDataToRepo(repo_id, typecode, flat)
 
           else:
             for item in file_data:
               flat = flatten_json(item)
               # TODO: consider pandas json_normailize to turn into dataframe?
-              addDataToRepo(repo_id, typecode, flat)
+              Schema.addDataToRepo(repo_id, typecode, flat)
 
       if ".xlsx" == file_extension or ".xls" == file_extension:
 
@@ -586,7 +586,7 @@ def uploadData():
           
             # Create Dict of key:values by combining fieldnames with row into a dict
             row = dict(zip( fieldnames, item ))
-            addDataToRepo(repo_id, typecode, row)
+            Schedma.addDataToRepo(repo_id, typecode, row)
 
 
       

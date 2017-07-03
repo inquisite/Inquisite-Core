@@ -14,13 +14,21 @@ from werkzeug.security import safe_str_cmp
 from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
-from inquisite.db import db
-from lib.schema import addType, addField, addDataToRepo
 
+from inquisite.db import db
+
+from lib.schemaClass import Schema
 from response_handler import response_handler
 from xlsdata import XlsHandler
 
+
 schema_blueprint = Blueprint('schema', __name__)
+
+@schema_blueprint.route('/schema/getTypes/<repository_id>', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def getTypes(repository_id):
+    return response_handler(Schema.getTypes(repository_id))
 
 @schema_blueprint.route('/schema/addType/<repository_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -30,7 +38,7 @@ def addType(repository_id):
     code = request.form.get('code')
     description = request.form.get('description')
 
-    return response_handler(addType(repository_id, name, code, description))
+    return response_handler(Schema.addType(repository_id, name, code, description))
 
 @schema_blueprint.route('/schema/editType/<repository_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -50,8 +58,6 @@ def editType():
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def removeType():
-
-
     ret = {
         'status_code': 200,
         'payload': {
@@ -71,7 +77,7 @@ def addField(repository_id, typecode):
     fieldtype = request.form.get('type')
     description = request.form.get('description')
 
-    return response_handler(addField(repository_id, typecode, name, code, fieldtype, description))
+    return response_handler(Schema.addField(repository_id, typecode, name, code, fieldtype, description))
 
 @schema_blueprint.route('/schema/addData/<repository_id>/<typecode>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -79,4 +85,4 @@ def addField(repository_id, typecode):
 def addData(repository_id, typecode):
     data = request.form.get('data')
 
-    return response_handler(addDataToRepo(repository_id, typecode, json.loads(data)))
+    return response_handler(Schema.addDataToRepo(repository_id, typecode, json.loads(data)))
