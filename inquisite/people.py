@@ -276,11 +276,13 @@ def getPersonRepos():
     }
 
     repos = People.getRepos(identity, ident_str)
+    user = People.getInfo(identity, ident_str)
     
     if repos:
         ret['status_code'] = 200
         ret['payload']['msg'] = "Success"
         ret['payload']['repos'] = repos
+        ret['payload']['userinfo'] = user
 
     return response_handler(ret)
 
