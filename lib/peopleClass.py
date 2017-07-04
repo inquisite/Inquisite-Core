@@ -77,8 +77,24 @@ class People:
         "url": item['url'],
         "data": data,
         "users": users,
-        "owner": owner
+        "owner": owner,
+        "schema_type_count" : 0,
+        "schema_field_count" : 0,
+        "data_element_count": 0
       })
+
+    for item in repos:
+      result = db.run(
+        "MATCH (n:Repository)--(d:Datatext) WHERE ID(n) = {repository_id} RETURN count(d) as data_element_count", {"repository_id": item['id']})
+      for r in result:
+          item['data_element_count'] = r['data_element_count']
+
+      result = db.run(
+        "MATCH (n:Repository)--(t:SchemaType)--(f:SchemaField) WHERE ID(n) = {repository_id} RETURN count(DISTINCT(t)) as schema_type_count, count(DISTINCT(f)) as schema_field_count",
+        {"repository_id": item['id']})
+      for r in result:
+        item['schema_type_count'] = r['schema_type_count']
+        item['schema_field_count'] = r['schema_field_count']
 
     return repos
 
@@ -99,7 +115,7 @@ class People:
     if len(criteria) == 0:
       return None
 
-    print(" XXX ".join(criteria))
+
     result = db.run("MATCH (p:Person) WHERE " + " OR ".join(criteria) + " RETURN ID(p) AS id, p.name AS name, p.email AS email, " +
                     "p.url AS url, p.location AS location, p.tagline AS tagline",
                     params)
