@@ -40,33 +40,20 @@ def addType(repository_id):
 
     return response_handler(Schema.addType(repository_id, name, code, description))
 
-@schema_blueprint.route('/schema/editType/<repository_id>', methods=['POST'])
+@schema_blueprint.route('/schema/editType/<repository_id>/<type_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def editType():
-    ret = {
-        'status_code': 200,
-        'payload': {
-            'msg': 'Success',
-            'type': 'arg'
-        }
-    }
+def editType(repository_id, type_id):
+    name = request.form.get('name')
+    code = request.form.get('code')
+    description = request.form.get('description')
+    return response_handler(Schema.editType(repository_id, type_id, name, code, description))
 
-    return response_handler(ret)
-
-@schema_blueprint.route('/schema/removeType/<repository_id>', methods=['POST'])
+@schema_blueprint.route('/schema/deleteType/<repository_id>/<type_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
-@jwt_required
-def removeType():
-    ret = {
-        'status_code': 200,
-        'payload': {
-            'msg': 'Success',
-            'type': 'arg'
-        }
-    }
-
-    return response_handler(ret)
+#@jwt_required
+def deleteType(repository_id, type_id):
+    return response_handler(Schema.deleteType(repository_id, type_id))
 
 @schema_blueprint.route('/schema/addField/<repository_id>/<typecode>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
