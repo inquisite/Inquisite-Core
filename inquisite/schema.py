@@ -14,6 +14,7 @@ from werkzeug.security import safe_str_cmp
 from werkzeug.utils import secure_filename
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
+from lib.utils import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest
 
 from inquisite.db import db
 
@@ -38,7 +39,7 @@ def addType(repository_id):
     code = request.form.get('code')
     description = request.form.get('description')
 
-    return response_handler(Schema.addType(repository_id, name, code, description))
+    return response_handler(Schema.addType(repository_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields')))
 
 @schema_blueprint.route('/schema/editType/<repository_id>/<type_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -47,7 +48,8 @@ def editType(repository_id, type_id):
     name = request.form.get('name')
     code = request.form.get('code')
     description = request.form.get('description')
-    return response_handler(Schema.editType(repository_id, type_id, name, code, description))
+
+    return response_handler(Schema.editType(repository_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))
 
 @schema_blueprint.route('/schema/deleteType/<repository_id>/<type_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
