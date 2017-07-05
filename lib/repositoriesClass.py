@@ -65,7 +65,7 @@ class Repositories:
   def getData(repository_id):
 
     nodes = []
-    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n:Data) WHERE ID(r)={repository_id} RETURN n LIMIT 20", {"repository_id": repository_id})
+    result = db.run("MATCH (r:Repository)--(f:SchemaType)--(n:Data) WHERE ID(r)={repository_id} RETURN n LIMIT 20", {"repository_id": int(repository_id)})
     
     for data in result:
       nodes.append(data.items()[0][1].properties)

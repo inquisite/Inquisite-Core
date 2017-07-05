@@ -24,6 +24,8 @@ from inquisite.people import people_blueprint
 from inquisite.organizations import organizations_blueprint
 from inquisite.repositories import repositories_blueprint
 from inquisite.schema import schema_blueprint
+from inquisite.data import data_blueprint
+from inquisite.search import search_blueprint
 import simplekv.memory
 
 config = json.load(open('./config.json'));
@@ -35,10 +37,10 @@ UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
 app = Flask(__name__)
 app.debug = True
 app.config['SECRET_KEY'] = config['auth_secret']
-app.config['JWT_BLACKLIST_ENABLED'] = False
+app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_STORE'] = simplekv.memory.DictStore()
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = 'all'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=15)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=20)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
@@ -54,6 +56,8 @@ app.register_blueprint(people_blueprint)
 app.register_blueprint(organizations_blueprint)
 app.register_blueprint(repositories_blueprint)
 app.register_blueprint(schema_blueprint)
+app.register_blueprint(search_blueprint)
+app.register_blueprint(data_blueprint)
 
 
 @jwt.expired_token_loader
