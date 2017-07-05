@@ -11,7 +11,7 @@ class Search:
     @staticmethod
     def quick(expression):
         result = db.run(
-            "MATCH (n:Data)--(r:Repository) WHERE any(prop in keys(n) where TOSTRING(n[prop]) CONTAINS {expression}) return ID(r) as repository_id, r.name as repository_name, ID(n) as data_id, n limit 50",
+            "MATCH (n:Data)--(t:SchemaType)--(r:Repository) WHERE any(prop in keys(n) where TOSTRING(n[prop]) CONTAINS {expression}) return ID(r) as repository_id, r.name as repository_name, t.name as typename, ID(n) as data_id, n limit 50",
             {"expression": expression})
 
         ret = {'payload': {'expression': expression, 'results': []}}
