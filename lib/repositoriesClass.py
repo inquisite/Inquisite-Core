@@ -65,7 +65,7 @@ class Repositories:
   def getData(repository_id):
 
     nodes = []
-    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n:Datatext) WHERE ID(r)={repository_id} RETURN n LIMIT 20", {"repository_id": repository_id})
+    result = db.run("MATCH (r:Repository)<-[rel:PART_OF]-(n:Data) WHERE ID(r)={repository_id} RETURN n LIMIT 20", {"repository_id": repository_id})
     
     for data in result:
       nodes.append(data.items()[0][1].properties)
@@ -90,6 +90,7 @@ class Repositories:
   def delete(repository_id):
   
     del_success = False
+    # TODO: clean up all repo nodes (currently schema and data nodes are not removed)
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repository_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repository_id": repository_id})
     summary = result.consume()
 

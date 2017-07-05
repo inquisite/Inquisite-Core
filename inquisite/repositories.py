@@ -19,6 +19,7 @@ from lib.schemaClass import Schema
 from lib.repositoriesClass import Repositories
 
 from pandas.io.json import json_normalize
+import re
 
 from response_handler import response_handler
 from xlsdata import XlsHandler
@@ -523,12 +524,17 @@ def uploadData():
 
       print "file extension: "
       print file_extension
+      print "original file name is "
 
       # ... dynamically set this per data node 
       fieldnames = []
       nestednames = []
       rowcount = 0
       typecode = "text"
+
+      original_filename, original_extension = os.path.splitext(os.path.basename(input_file.filename))
+      datatype = re.sub(r'[^A-Za-z0-9_\-]+', '_', original_filename).strip().lower()
+
 
       if ".csv" == file_extension:
 
@@ -538,12 +544,14 @@ def uploadData():
         rowcount = len(file_data)
         fieldnames = json.loads(file_data[0]).keys()
 
+        Schema.createDataTypeFromFields(repo_id, datatype.lower(), fieldnames)
+
         # Create nodes
         for row in file_data:
           print "Row:"
           print row
           
-          Schema.addDataToRepo(repo_id, typecode, json.loads(row))
+          Schema.addDataToRepo(repo_id, datatype, json.loads(row))
 
       if ".json" == file_extension:
      
@@ -553,6 +561,8 @@ def uploadData():
         if type( file_data ) == dict:
           fieldnames = file_data.keys()
           rowcount = len(file_data)
+
+          Schema.createDataTypeFromFields(repo_id, datatype, fieldnames)
      
           if len( fieldnames ) <= 1:
             nestednames = file_data[fieldnames[0]][0].keys()
@@ -563,13 +573,16 @@ def uploadData():
               # Flatten our nested JSON for insertion into Neo4j
               # TODO: do you use pandas json_normalize to turn into dataframe?
               flat = flatten_json(item)
-              Schema.addDataToRepo(repo_id, typecode, flat)
+              Schema.addDataToRepo(repo_id, datatype, flat)
 
           else:
             for item in file_data:
               flat = flatten_json(item)
               # TODO: consider pandas json_normailize to turn into dataframe?
-              Schema.addDataToRepo(repo_id, typecode, flat)
+
+              Schema.createDataTypeFromFields(repo_id, datatype.lower(), fieldnames)
+
+              Schema.addDataToRepo(repo_id, datatype, flat)
 
       if ".xlsx" == file_extension or ".xls" == file_extension:
 
@@ -583,10 +596,12 @@ def uploadData():
           # Assumes that row 1 is column headers
           # TODO: improve this assumption? -- Parse data, get max row count, look for first row with that row count?
           if item != fieldnames:
-          
+            Schema.createDataTypeFromFields(repo_id, datatype, fieldnames)
+
             # Create Dict of key:values by combining fieldnames with row into a dict
             row = dict(zip( fieldnames, item ))
-            Schedma.addDataToRepo(repo_id, typecode, row)
+            print("Add row for " + datatype)
+            Schema.addDataToRepo(repo_id, datatype, row)
 
 
       

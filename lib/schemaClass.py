@@ -110,14 +110,16 @@ class Schema:
             field_status = {}
             for k in fields:
                 # add field
-                fret = Schema.addField(repository_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'],
-                                           fields[k]['description'])
+                print "meow"
+                print(k)
+                fret = Schema.addField(repository_id, code, k['name'], k['code'], k['type'],
+                                           k['description'])
 
                 if 'field_id' in fret['payload']:
-                    field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'],
+                    field_status[k['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'],
                                                            'msg': 'Created new field'}
                 else:
-                    field_status[fields[k]['code']] = {'status_code': 200, 'field_id': None,
+                    field_status[k['code']] = {'status_code': 200, 'field_id': None,
                                                            'msg': 'Could not create new field'}
 
             # TODO: clean up payload
@@ -371,6 +373,26 @@ class Schema:
         return ret
 
     @staticmethod
+    def createDataTypeFromFields(repository_id, typecode, field_names):
+        typecode_proc = re.sub(r"[^A-Za-z0-9_]", "_", typecode)[0:15].strip()
+        typecode_proc_disp = re.sub(r"[_]", " ", typecode_proc).strip()
+        field_spec = []
+        for f in field_names:
+            fproc = re.sub(r'[^A-Za-z0-9_]+', '_', f).lower()
+            fproc_disp = re.sub(r'[_]+', ' ', fproc).title()
+            field_spec.append({
+                'name': fproc_disp,
+                'code': fproc,
+                'description': 'Created by data import',
+                'type': 'TEXT'  # TODO: support other types
+            })
+
+        print("Add type " + typecode_proc + "//" + typecode_proc_disp)
+        #print(field_spec)
+        Schema.addType(repository_id, typecode_proc_disp, typecode_proc, "Created by data import", field_spec)
+
+        return field_names
+    @staticmethod
     def addDataToRepo(repository_id, typecode, data):
         ret = {
             'status_code': 200,
@@ -379,6 +401,8 @@ class Schema:
                 'type': ''
             }
         }
+
+        typecode_proc = re.sub(r"[^A-Za-z0-9_]", "_", typecode)[0:15].strip()
 
         # TODO: check that repository is owned by current user
 
@@ -390,19 +414,23 @@ class Schema:
             if (i == '_ID'):
                 continue
             fname = re.sub(r"[^A-Za-z0-9_]", "_", i)        # remove non-alphanumeric characters from field names
-            fname = re.sub(r"^([\d]+)", "_\1", fname)       # Neo4j field names cannot start with a number; prefix such fields with an underscore
+            fname = re.sub(r"^([\d]+)", "_\1", fname).strip()      # Neo4j field names cannot start with a number; prefix such fields with an underscore
+
 
             flds.append(fname + ":{" + fname + "}")
             data[fname] = data[i]                           # add "data" entry with neo4j-ready field name
 
 
         data['repository_id'] = int(repository_id)
+        data['typecode_proc'] = typecode_proc
 
-        result = db.run("CREATE (n:Data" + typecode + " {" + ",".join(flds) + "}) RETURN ID(n) as i", data)
+        q = "MATCH (t:SchemaType{code: {typecode_proc}}) CREATE (n:Data {" + ",".join(flds) + "})-[:IS]->(t) RETURN ID(n) as id"
+
+        result = db.run(q, data)
         id = None
 
         for record in result:
-            id = record["i"]
+            id = record['id']
 
         node_created = False
         summary = result.consume()
@@ -410,10 +438,10 @@ class Schema:
 
             if id is not None:
 
-                result = db.run("MATCH (r:Repository), (d:Data" + typecode + ") WHERE ID(d) = " + str(id) + " AND ID(r)= {repository_id} CREATE (r)<-[:PART_OF]-(d)", data)
+                #result = db.run("MATCH (r:Repository), (d:Data) WHERE ID(d) = " + str(id) + " AND ID(r)= {repository_id} CREATE (r)<-[:PART_OF]-(d)", data)
 
                 rel_created = False
-                summary = result.consume()
+                #summary = result.consume()
                 if summary.counters.relationships_created >= 1:
                     rel_created = True
 
@@ -424,5 +452,4 @@ class Schema:
                 else:
                     ret['status_code'] = 400
                     ret['payload']['msg'] = 'Something went wrong saving new data'
-
         return ret

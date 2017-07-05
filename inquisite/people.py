@@ -98,7 +98,7 @@ def addPerson():
     password = request.form.get('password')
 
     ret = {
-      'status_code': 422,
+      'status_code': 200,
       'payload': {
         'msg': 'Password must be at least 6 characters',
         'person': {}
@@ -113,8 +113,8 @@ def addPerson():
         ts = time.time()
         created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        result = db.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email})
-        if len(list(result)) > 0:
+        result = db.run("MATCH (n:Person{email: {email}}) RETURN n", {"email": email}).peek()
+        if result:
             ret['payload']['msg'] = "User already exists"
         else:
             result = db.run(
@@ -277,8 +277,8 @@ def getPersonRepos():
 
     repos = People.getRepos(identity, ident_str)
     user = People.getInfo(identity, ident_str)
-    
-    if repos:
+
+    if repos is not None:
         ret['status_code'] = 200
         ret['payload']['msg'] = "Success"
         ret['payload']['repos'] = repos
