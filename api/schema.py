@@ -4,9 +4,9 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from lib.models.schemaClass import Schema
-from lib.utils.helpers import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest
-from response_handler import response_handler
-from simpleCrossDomain import crossdomain
+from lib.utils.requestHelpers import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest
+from lib.responseHandler import response_handler
+from lib.crossDomain import crossdomain
 
 schema_blueprint = Blueprint('schema', __name__)
 

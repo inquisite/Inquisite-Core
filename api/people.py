@@ -9,8 +9,8 @@ from passlib.hash import sha256_crypt
 
 from lib.models.peopleClass import People
 from lib.utils.db import db
-from response_handler import response_handler
-from simpleCrossDomain import crossdomain
+from lib.responseHandler import response_handler
+from lib.crossDomain import crossdomain
 
 people_blueprint = Blueprint('people', __name__)
 

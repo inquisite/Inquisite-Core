@@ -1,8 +1,8 @@
 from flask import Blueprint, request
 
 from lib.models.searchClass import Search
-from response_handler import response_handler
-from simpleCrossDomain import crossdomain
+from lib.responseHandler import response_handler
+from lib.crossDomain import crossdomain
 
 search_blueprint = Blueprint('search', __name__)
 

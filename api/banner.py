@@ -1,5 +1,5 @@
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from response_handler import response_handler
+from lib.responseHandler import response_handler
 
 banner_blueprint = Blueprint('banner', __name__)
 

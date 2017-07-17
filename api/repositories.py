@@ -7,13 +7,13 @@ from flask_jwt_extended import jwt_required, get_raw_jwt
 from lib.models.repositoriesClass import Repositories
 from werkzeug.utils import secure_filename
 
-from lib.data_readers.csvdata import CsvHandler
-from lib.data_readers.jsondata import JSONHandler
-from lib.data_readers.xlsdata import XlsHandler
+from lib.dataReaders.csvdata import CsvHandler
+from lib.dataReaders.jsondata import JSONHandler
+from lib.dataReaders.xlsdata import XlsHandler
 from lib.models.schemaClass import Schema
 from lib.utils.db import db
-from response_handler import response_handler
-from simpleCrossDomain import crossdomain
+from lib.responseHandler import response_handler
+from lib.crossDomain import crossdomain
 
 repositories_blueprint = Blueprint('repositories', __name__)
 

@@ -9,11 +9,11 @@ from functools import wraps, update_wrapper
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
 from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_required, create_access_token, create_refresh_token, get_jwt_identity, get_raw_jwt, revoke_token
 from werkzeug.security import safe_str_cmp
-from simpleCrossDomain import crossdomain
-from basicAuth import check_auth, requires_auth
+from lib.crossDomain import crossdomain
+from lib.basicAuth import check_auth, requires_auth
 from lib.utils.db import db
 
-from response_handler import response_handler
+from lib.responseHandler import response_handler
 
 auth_blueprint = Blueprint('auth', __name__)
 

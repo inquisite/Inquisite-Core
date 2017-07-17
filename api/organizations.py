@@ -3,8 +3,8 @@ from flask_jwt_extended import jwt_required
 
 from lib.models.organizationsClass import Organizations
 from lib.utils.db import db
-from response_handler import response_handler
-from simpleCrossDomain import crossdomain
+from lib.responseHandler import response_handler
+from lib.crossDomain import crossdomain
 
 organizations_blueprint = Blueprint('organizations', __name__)
 

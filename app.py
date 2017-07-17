@@ -13,10 +13,10 @@ from flask import Flask, request, current_app, make_response, session, escape, R
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import safe_str_cmp
 from neo4j.v1 import GraphDatabase, basic_auth
-from simpleCrossDomain import crossdomain
-from basicAuth import check_auth, requires_auth
+from lib.crossDomain import crossdomain
+from lib.basicAuth import check_auth, requires_auth
 
-from response_handler import response_handler
+from lib.responseHandler import response_handler
 
 from api.auth import auth_blueprint
 from api.banner import banner_blueprint

@@ -1,6 +1,6 @@
 import re
 from lib.utils.db import db
-from lib.utils.helpers import makeDataMapForCypher
+from lib.utils.cypherHelpers import makeDataMapForCypher
 
 class Data:
     # For now all class methods are going to be static
@@ -10,7 +10,6 @@ class Data:
     #
     @staticmethod
     def getNode(node_id):
-        # TODO: check that user has access to this data
 
         result = db.run(
             "MATCH (d:Data)--(t:SchemaType) WHERE ID(d) = {node_id} RETURN d, t.name as typename, t.code as typecode",
