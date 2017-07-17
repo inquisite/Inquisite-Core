@@ -3,12 +3,15 @@ from response_handler import response_handler
 
 banner_blueprint = Blueprint('banner', __name__)
 
+#
+# Output API banner
+#
 @banner_blueprint.route("/")
 def index():
   ret = {
     'status_code': 200,
     'payload': {
-      'v1': "https://inquisite.org/api/v1"
+      'v1': "https://api.org/api/v1"
     }
   }
 

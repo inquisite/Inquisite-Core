@@ -1,5 +1,5 @@
 import json
-from inquisite.db import db
+from lib.utils.db import db
 
 class Organizations:
 

@@ -1,6 +1,6 @@
-from inquisite.db import db
 import re
-from lib.utils import makeDataMapForCypher
+from lib.utils.db import db
+from lib.utils.helpers import makeDataMapForCypher
 
 class Data:
     # For now all class methods are going to be static

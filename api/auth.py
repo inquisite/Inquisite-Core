@@ -11,17 +11,19 @@ from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_requi
 from werkzeug.security import safe_str_cmp
 from simpleCrossDomain import crossdomain
 from basicAuth import check_auth, requires_auth
-from inquisite.db import db
+from lib.utils.db import db
 
 from response_handler import response_handler
 
 auth_blueprint = Blueprint('auth', __name__)
 
 
+#
+# Perform login
+#
 @auth_blueprint.route('/login', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type'])
 def login():
-
     username = request.form.get('username')
     password = request.form.get('password')
     
@@ -54,7 +56,9 @@ def login():
 
     return response_handler(ret)
 
-# Refresh
+#
+# Return new access token using refresh token
+#
 @auth_blueprint.route('/refresh', methods=['POST'])
 @crossdomain(origin='*', headers=['Authorization'])
 @jwt_refresh_token_required
@@ -70,7 +74,9 @@ def refresh():
 
   return response_handler(ret)
 
-# Logout
+#
+# Perform logout
+#
 @auth_blueprint.route('/logout', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
@@ -93,6 +99,9 @@ def logout():
 
     return response_handler(ret)
 
+#
+# Reset user password
+#
 @auth_blueprint.route('/people/<person_id>/set_password', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required

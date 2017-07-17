@@ -1,21 +1,16 @@
-import requests
-import json
 import datetime
-import time
+import json
 import logging
-import urllib
-from passlib.apps import custom_app_context as pwd_context
-from passlib.hash import sha256_crypt
-from functools import wraps, update_wrapper
-from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_raw_jwt, revoke_token
-from werkzeug.security import safe_str_cmp
-from simpleCrossDomain import crossdomain
-from basicAuth import check_auth, requires_auth
-from inquisite.db import db
-from lib.peopleClass import People
+import time
 
+from flask import Blueprint, request
+from flask_jwt_extended import jwt_required, get_raw_jwt
+from passlib.hash import sha256_crypt
+
+from lib.models.peopleClass import People
+from lib.utils.db import db
 from response_handler import response_handler
+from simpleCrossDomain import crossdomain
 
 people_blueprint = Blueprint('people', __name__)
 
@@ -76,7 +71,6 @@ def getPerson():
 
     # If request method is GET, then it's our logged in user, get Repos and repo data too!
     if request.method == 'GET':
-      print "Getting Repos for person"
       ret['payload']['repos'] = People.getRepos(identity, ident_str)  
 
    

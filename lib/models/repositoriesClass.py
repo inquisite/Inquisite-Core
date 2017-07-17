@@ -1,7 +1,11 @@
-import json
 import time
 import datetime
-from inquisite.db import db
+from lib.utils.db import db
+import datetime
+import time
+
+from lib.utils.db import db
+
 
 class Repositories:
 
@@ -166,10 +170,6 @@ class Repositories:
     summary = result.consume()
     if summary.counters.relationships_created >= 1:
       collab_success = True
-
-    print "Did we add a collaborator? "
-    print collab_success
-
     return collab_success
 
   @staticmethod

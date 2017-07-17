@@ -1,4 +1,4 @@
-from inquisite.db import db
+from lib.utils.db import db
 import re
 
 class Search:
@@ -25,7 +25,7 @@ class Search:
             for r in result:
                 if display_prop is None:
                     for property, value in (r['n'].properties).iteritems():
-                        if isinstance(value, basestring):
+                        if isinstance(value, str):
                             l = len(value.encode('utf-8').strip())
                         else:
                             l = len(str(value))

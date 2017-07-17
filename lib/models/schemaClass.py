@@ -1,4 +1,4 @@
-from inquisite.db import db
+from lib.utils.db import db
 import re
 
 class Schema:
@@ -110,8 +110,6 @@ class Schema:
             field_status = {}
             for k in fields:
                 # add field
-                print "meow"
-                print(k)
                 fret = Schema.addField(repository_id, code, k['name'], k['code'], k['type'],
                                            k['description'])
 
@@ -188,7 +186,6 @@ class Schema:
         # delete fields
         if fieldsToDelete:
             for field_id in fieldsToDelete:
-                print("DELETE FIELD " + str(field_id))
                 Schema.deleteField(repository_id, code, field_id)
 
 
@@ -335,7 +332,6 @@ class Schema:
             else:
                 ret['status_code'] = 400
                 ret['payload']['msg'] = 'Something went wrong when editing field'
-        print(ret)
         return ret
 
     @staticmethod
@@ -387,8 +383,6 @@ class Schema:
                 'type': 'TEXT'  # TODO: support other types
             })
 
-        print("Add type " + typecode_proc + "//" + typecode_proc_disp)
-        #print(field_spec)
         Schema.addType(repository_id, typecode_proc_disp, typecode_proc, "Created by data import", field_spec)
 
         return field_names
@@ -438,7 +432,7 @@ class Schema:
 
             if id is not None:
 
-                #result = db.run("MATCH (r:Repository), (d:Data) WHERE ID(d) = " + str(id) + " AND ID(r)= {repository_id} CREATE (r)<-[:PART_OF]-(d)", data)
+                #result = utils.run("MATCH (r:Repository), (d:Data) WHERE ID(d) = " + str(id) + " AND ID(r)= {repository_id} CREATE (r)<-[:PART_OF]-(d)", data)
 
                 rel_created = False
                 #summary = result.consume()

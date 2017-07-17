@@ -1,35 +1,24 @@
-import os
 import json
-import requests
-import datetime
-import time
-import logging
-import urllib
-from passlib.apps import custom_app_context as pwd_context
-from passlib.hash import sha256_crypt
-from functools import wraps, update_wrapper
-from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, get_raw_jwt
-from werkzeug.security import safe_str_cmp
-from werkzeug.utils import secure_filename
-from simpleCrossDomain import crossdomain
-from basicAuth import check_auth, requires_auth
-from inquisite.db import db
-from lib.schemaClass import Schema
-from lib.repositoriesClass import Repositories
-
-from pandas.io.json import json_normalize
+import os
 import re
 
+from flask import Blueprint, request
+from flask_jwt_extended import jwt_required, get_raw_jwt
+from lib.models.repositoriesClass import Repositories
+from werkzeug.utils import secure_filename
+
+from lib.data_readers.csvdata import CsvHandler
+from lib.data_readers.jsondata import JSONHandler
+from lib.data_readers.xlsdata import XlsHandler
+from lib.models.schemaClass import Schema
+from lib.utils.db import db
 from response_handler import response_handler
-from xlsdata import XlsHandler
-from csvdata import CsvHandler
-from jsondata import JSONHandler
+from simpleCrossDomain import crossdomain
 
 repositories_blueprint = Blueprint('repositories', __name__)
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
-#UPLOAD_FOLDER = UPLOAD_FOLDER.replace('inquisite', 'uploads')
+#UPLOAD_FOLDER = UPLOAD_FOLDER.replace('api', 'uploads')
 ALLOWED_EXTENSIONS = set(['xls', 'xlsx', 'csv', 'json'])
 
 # File Upload
@@ -319,16 +308,7 @@ def addRepoCollab():
       }
     }
 
-    print "repo_id: " + str(repo_id) 
-    print "person id:" + str(person_id)
-    
-
     if repo_id is not None and person_id is not None:
-
-      print " we have valid repo id and person"
-      print "repo_id: " + str(repo_id) 
-      print "person id:" + str(person_id)
-
       rel_created = Repositories.addCollaborator(int(repo_id), int(person_id))
       if rel_created:
           ret['status_code'] = 200
@@ -470,12 +450,7 @@ def removeRepoFollower(repo_id, person_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def uploadData():
-
-    print "You're in uploadData"
-
     repo_id = request.form.get('repo_id')
-
-    print "Uploaded Data will be added to REPO: " + str(repo_id)
 
     ret = {
       'status_code': 200,
@@ -486,15 +461,13 @@ def uploadData():
     }
 
     if request.files:
-      print "there are files in request"
       for f in request.files:
-        print f
+        print(f)
     else:
-      print "no files in request"
+      pass
 
 
     if 'repo_file' not in request.files:
-      print "We couldn't find it"
       ret['status_code'] = 400
       ret['payload']['msg'] = 'File not found'
 
@@ -510,8 +483,6 @@ def uploadData():
     # sanity check
     if input_file and allowed_file(input_file.filename):
 
-      print "File is an allowed type"
-
       filename = secure_filename(input_file.filename)
 
       upload_file = os.path.join(UPLOAD_FOLDER, filename)
@@ -521,10 +492,6 @@ def uploadData():
 
       # Detect File Type
       filename, file_extension = os.path.splitext(upload_file)
-
-      print "file extension: "
-      print file_extension
-      print "original file name is "
 
       # ... dynamically set this per data node 
       fieldnames = []
@@ -548,9 +515,6 @@ def uploadData():
 
         # Create nodes
         for row in file_data:
-          print "Row:"
-          print row
-          
           Schema.addDataToRepo(repo_id, datatype, json.loads(row))
 
       if ".json" == file_extension:
@@ -600,7 +564,6 @@ def uploadData():
 
             # Create Dict of key:values by combining fieldnames with row into a dict
             row = dict(zip( fieldnames, item ))
-            print("Add row for " + datatype)
             Schema.addDataToRepo(repo_id, datatype, row)
 
 
@@ -627,8 +590,6 @@ def queryRepo(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getRepoData():
-
-  print "in Repositories Data"
   repo_id = request.form.get('repo_id')
 
   ret = {

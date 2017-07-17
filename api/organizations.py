@@ -1,21 +1,10 @@
-import requests
-import datetime
-import time
-import logging
-import urllib
-from passlib.apps import custom_app_context as pwd_context
-from passlib.hash import sha256_crypt
-from functools import wraps, update_wrapper
-from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
-from werkzeug.security import safe_str_cmp
-from simpleCrossDomain import crossdomain
-from basicAuth import check_auth, requires_auth
-from inquisite.db import db
-from lib.organizationsClass import Organizations
+from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 
+from lib.models.organizationsClass import Organizations
+from lib.utils.db import db
 from response_handler import response_handler
-
+from simpleCrossDomain import crossdomain
 
 organizations_blueprint = Blueprint('organizations', __name__)
 

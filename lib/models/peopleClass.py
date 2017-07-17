@@ -1,6 +1,8 @@
 import json
-from inquisite.db import db
-from repositoriesClass import Repositories
+
+from lib.models.repositoriesClass import Repositories
+from lib.utils.db import db
+
 
 class People:
   identity = None
@@ -95,8 +97,6 @@ class People:
       for r in result:
         item['schema_type_count'] = r['schema_type_count']
         item['schema_field_count'] = r['schema_field_count']
-    print("repos")
-    print(repos)
     return repos
 
 

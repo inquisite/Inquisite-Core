@@ -18,14 +18,14 @@ from basicAuth import check_auth, requires_auth
 
 from response_handler import response_handler
 
-from inquisite.auth import auth_blueprint
-from inquisite.banner import banner_blueprint
-from inquisite.people import people_blueprint
-from inquisite.organizations import organizations_blueprint
-from inquisite.repositories import repositories_blueprint
-from inquisite.schema import schema_blueprint
-from inquisite.data import data_blueprint
-from inquisite.search import search_blueprint
+from api.auth import auth_blueprint
+from api.banner import banner_blueprint
+from api.people import people_blueprint
+from api.organizations import organizations_blueprint
+from api.repositories import repositories_blueprint
+from api.schema import schema_blueprint
+from api.data import data_blueprint
+from api.search import search_blueprint
 import simplekv.memory
 
 config = json.load(open('./config.json'));
