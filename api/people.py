@@ -9,8 +9,9 @@ from passlib.hash import sha256_crypt
 
 from lib.models.peopleClass import People
 from lib.utils.db import db
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
+from lib.exceptions.FindError import FindError
 
 people_blueprint = Blueprint('people', __name__)
 
@@ -20,17 +21,7 @@ people_blueprint = Blueprint('people', __name__)
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def peopleList():
-
-    persons = People.getAll()
-
-    ret = {
-      'status_code': 200,
-      'payload': {
-        'people': persons
-      }
-    }
-    
-    return response_handler(ret)
+    return makeResponse(payload={"people": People.getAll()})
 
 
 # Get Person by ID
@@ -52,30 +43,16 @@ def getPerson():
       identity = int(request.form.get('person_id'))
       ident_str = "ID(p)={identity}"
 
-
-    ret = {
-      'status_code': 400,
-      'payload': {
-        'msg': 'Could not find person for that ID',
-        'person': {},
-        'repos': []
-      }
-    }
-    
     person = People.getInfo(identity, ident_str)
 
     if person is not None:
-      ret['status_code'] = 200
-      ret['payload']['msg'] = 'Success'
-      ret['payload']['person'] = person    
+      ret['person'] = person
 
     # If request method is GET, then it's our logged in user, get Repos and repo data too!
     if request.method == 'GET':
-      ret['payload']['repos'] = People.getRepos(identity, ident_str)  
+      ret['repos'] = People.getRepos(identity, ident_str)
 
-   
-
-    return response_handler(ret)
+    return responseHandler(payload=ret)
 
 
 # Add Person
@@ -135,7 +112,7 @@ def addPerson():
                 ret['payload']['msg'] = 'Something went wrong saving new person'
 
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @people_blueprint.route('/people/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -215,7 +192,7 @@ def editPerson():
             ret['payload']['msg'] = 'Problem updating Person'
 
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @people_blueprint.route('/people/<person_id>/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -241,7 +218,7 @@ def deletePerson(person_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person deleted successfully'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @people_blueprint.route('/people/repos', methods=['GET', 'POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -278,7 +255,7 @@ def getPersonRepos():
         ret['payload']['repos'] = repos
         ret['payload']['userinfo'] = user
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 # Get Person by ID
@@ -300,4 +277,4 @@ def findPerson():
             ret['payload']['msg'] = 'Success'
             ret['payload']['results'] = people
 
-    return response_handler(ret)
+    return responseHandler(ret)

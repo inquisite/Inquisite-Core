@@ -1,13 +1,16 @@
 from flask import Blueprint, request
 
 from lib.models.searchClass import Search
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
+from lib.exceptions.SearchError import SearchError
 
 search_blueprint = Blueprint('search', __name__)
 
 @search_blueprint.route('/search', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def quick():
-  return response_handler(Search.quick(request.args.get('q')))
-
+  try:
+    return makeResponse(payload=Search.quick(request.args.get('q')))
+  except SearchError as e:
+    return makeResponse(error=e)

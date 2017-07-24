@@ -2,8 +2,11 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from lib.models.dataClass import Data
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import responseHandler
 from lib.crossDomain import crossdomain
+from lib.exceptions.SaveError import SaveError
+from lib.exceptions.FindError import FindError
+from lib.utils.requestHelpers import makeResponse
 
 data_blueprint = Blueprint('data', __name__)
 
@@ -12,13 +15,17 @@ data_blueprint = Blueprint('data', __name__)
 @jwt_required
 def getNode(node_id):
     # TODO: check that user has access to this data
-
-    return response_handler(Data.getNode(node_id))
+    try:
+        return makeResponse(payload=Data.getNode(node_id))
+    except FindError as e:
+        return makeResponse(error=e)
 
 @data_blueprint.route('/data/saveNode/<node_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def saveNode(node_id):
     # TODO: check that user has access to this data
-
-    return response_handler(Data.saveNode(node_id, request.form))
+    try:
+        return makeResponse(payload=Data.saveNode(node_id, request.form))
+    except SaveError as e:
+        return makeResponse(error=e)

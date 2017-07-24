@@ -12,37 +12,19 @@ from lib.dataReaders.jsondata import JSONHandler
 from lib.dataReaders.xlsdata import XlsHandler
 from lib.models.schemaClass import Schema
 from lib.utils.db import db
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import responseHandler
 from lib.crossDomain import crossdomain
+from lib.utils.utilityHelpers import flatten_json
 
 repositories_blueprint = Blueprint('repositories', __name__)
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
-#UPLOAD_FOLDER = UPLOAD_FOLDER.replace('api', 'uploads')
 ALLOWED_EXTENSIONS = set(['xls', 'xlsx', 'csv', 'json'])
 
 # File Upload
 def allowed_file(filename):
   return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Flatten JSON
-def flatten_json(y):
-  out = {}
- 
-  def flatten(x, name=''):
-    if type(x) is dict:
-      for a in x:
-        flatten(x[a], name + a + '_')
-    elif type(x) is list:
-      i = 0
-      for a in x:
-        flatten(a, name + str(i) + '_')
-        i += 1
-    else:
-      out[name[:-1]] = x
-
-  flatten(y)
-  return out
 
 # Repositories
 @repositories_blueprint.route('/repositories', methods=['GET'])
@@ -59,7 +41,7 @@ def repoList():
       }
     }
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @repositories_blueprint.route('/repositories/<repo_id>', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -81,7 +63,7 @@ def getRepo(repo_id):
         ret['payload']['msg'] = 'Success'
         ret['payload']['repo'] = repo
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @repositories_blueprint.route('/repositories/add', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -123,7 +105,7 @@ def addRepo():
           ret['status_code'] = 400
           ret['payload']['msg'] = 'Repository with name already exists'
             
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @repositories_blueprint.route('/repositories/<repo_id>/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -175,7 +157,7 @@ def editRepo(repo_id):
             ret['status_code'] = 400
             ret['payload']['msg'] = 'Problem updating Repo ' + str(repo_id)
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/delete', methods=['POST'])
@@ -198,7 +180,7 @@ def deleteRepo():
         ret['payload']['msg'] = 'Repo deleted successfully'
         ret['payload']['repo_id'] = repo_id
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/set_owner', methods=['POST'])
@@ -226,7 +208,7 @@ def setRepoOwner(repo_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repository owner set successfully'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/owner', methods=['GET'])
@@ -248,7 +230,7 @@ def getRepoOwner(repo_id):
         ret['payload']['msg'] = 'Success'
         ret['payload']['owner'] = owner
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/remove_owner/<person_id>', methods=['POST'])
@@ -268,7 +250,7 @@ def deleteRepoOwner(repo_id, person_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo owner removed successfully'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>', methods=['GET'])
@@ -290,7 +272,7 @@ def getRepoInfo(repo_id):
         ret['payload']['msg'] = 'Success'
         ret['payload']['repo'] = repo
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/add_collaborator', methods=['POST'])
@@ -314,7 +296,7 @@ def addRepoCollab():
           ret['status_code'] = 200
           ret['payload']['msg'] = 'Collaborator Added'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/collaborators', methods=['GET'])
@@ -336,7 +318,7 @@ def listRepoCollabs(repo_id):
         ret['payload']['msg'] = 'Success'
         ret['payload']['collaborators'] = people
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @repositories_blueprint.route('/repositories/users', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -361,7 +343,7 @@ def listRepoUsers():
         ret['payload']['msg'] = 'Success'
         ret['payload']['users'] = users
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @repositories_blueprint.route('/repositories/remove_collaborator', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -382,7 +364,7 @@ def removeRepoCollab():
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Collaborator removed'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/add_follower/<person_id>', methods=['POST'])
@@ -402,7 +384,7 @@ def addRepoFollower(repo_id, person_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Follower added successfully'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/followers', methods=['GET'])
@@ -424,7 +406,7 @@ def listRepoFollowers(repo_id):
         ret['payload']['msg'] = 'Success'
         ret['payload']['followers'] = people
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/remove_follower/<person_id>', methods=['POST'])
@@ -444,7 +426,7 @@ def removeRepoFollower(repo_id, person_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Follower Removed'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @repositories_blueprint.route('/repositories/upload', methods=['PUT', 'POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -576,7 +558,7 @@ def uploadData():
       ret['payload']['row_count'] = rowcount
     else: 
       ret['payload']['data'] = []
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/query', methods=['POST'])
@@ -605,7 +587,7 @@ def getRepoData():
     nodes = Repositories.getData( int(repo_id) )
     ret['payload']['data'] = nodes
 
-  return response_handler(ret)
+  return responseHandler(ret)
 
 
 @repositories_blueprint.route('/repositories/<repo_id>/set_entry_point', methods=['POST'])

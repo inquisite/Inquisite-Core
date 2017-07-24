@@ -1,5 +1,5 @@
 from flask import Flask, Blueprint, request, current_app, make_response, session, escape
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import makeResponse
 
 banner_blueprint = Blueprint('banner', __name__)
 
@@ -8,12 +8,6 @@ banner_blueprint = Blueprint('banner', __name__)
 #
 @banner_blueprint.route("/")
 def index():
-  ret = {
-    'status_code': 200,
-    'payload': {
+  return makeResponse(payload={
       'v1': "https://api.org/api/v1"
-    }
-  }
-
-  return response_handler(ret)
-
+    })

@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 
 from lib.models.organizationsClass import Organizations
 from lib.utils.db import db
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import responseHandler
 from lib.crossDomain import crossdomain
 
 organizations_blueprint = Blueprint('organizations', __name__)
@@ -23,7 +23,7 @@ def orgList():
       }
     }
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @organizations_blueprint.route('/organizations/add', methods=['POST'])
@@ -80,7 +80,7 @@ def addOrg():
         ret['status_code'] = 422
         ret['payload']['msg'] = 'Missing required fields'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @organizations_blueprint.route('/organizations/<org_id>', methods=['GET'])
@@ -106,7 +106,7 @@ def getOrg(org_id):
         ret['status_code'] = 400
         ret['payload']['msg'] = 'No organization found'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/edit', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -169,7 +169,7 @@ def editOrg(org_id):
         ret['status_code'] = 422 
         ret['payload']['msg'] = 'Nothing to update'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @organizations_blueprint.route('/organizations/<org_id>/delete', methods=['POST'])
@@ -192,7 +192,7 @@ def deleteOrg(org_id):
         ret['status_code'] = 400
         ret['payload']['msg'] = 'Problem deleting Organization'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/repos', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -215,7 +215,7 @@ def getOrgRepos(org_id):
         ret['status_code'] = 400
         ret['payload']['msg'] = 'Problem getting repos for Organization'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/repos/<repo_id>/add', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -237,7 +237,7 @@ def addRepoToOrg(org_id, repo_id):
         ret['status_code'] = 400
         ret['payload']['msg'] = 'There was a problem adding Rep to Org'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/repos/<repo_id>/delete', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -259,7 +259,7 @@ def removeRepoFromOrg(org_id, repo_id):
         ret['status_code'] = 400
         ret['payload']['msg'] = 'There was a problem, Repo was not removed from Org'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/add_person/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -278,7 +278,7 @@ def addPersonToOrg(org_id, person_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person was added to Org'
     
-    return response_handler(ret)
+    return responseHandler(ret)
 
 @organizations_blueprint.route('/organizations/<org_id>/remove_person/<person_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
@@ -297,7 +297,7 @@ def removePersonFromOrg(org_id, person_id):
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person was successfully removed from Org'
 
-    return response_handler(ret)
+    return responseHandler(ret)
 
 
 @organizations_blueprint.route('/organizations/<org_id>/people', methods=['GET'])
@@ -310,4 +310,4 @@ def getOrgPeople(org_id):
     ret['status_code'] = 200
     ret['payload']['people'] = org_people
 
-    return response_handler(ret)
+    return responseHandler(ret)
