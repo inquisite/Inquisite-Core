@@ -15,8 +15,7 @@ from werkzeug.security import safe_str_cmp
 from neo4j.v1 import GraphDatabase, basic_auth
 from lib.crossDomain import crossdomain
 from lib.basicAuth import check_auth, requires_auth
-
-from lib.responseHandler import response_handler
+from lib.utils.requestHelpers import responseHandler
 
 from api.auth import auth_blueprint
 from api.banner import banner_blueprint
