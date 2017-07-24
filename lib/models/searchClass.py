@@ -1,5 +1,6 @@
 from lib.utils.db import db
 import re
+import from lib.exceptions.SearchError import SearchError
 
 class Search:
 
@@ -14,12 +15,9 @@ class Search:
             "MATCH (n:Data)--(t:SchemaType)--(r:Repository) WHERE any(prop in keys(n) where TOSTRING(n[prop]) CONTAINS {expression}) return ID(r) as repository_id, r.name as repository_name, t.name as typename, ID(n) as data_id, n limit 50",
             {"expression": expression})
 
-        ret = {'payload': {'expression': expression, 'results': []}}
+        ret = {'expression': expression, 'results': []}
 
-        # TODO: clean up payload
         if result:
-            ret['status_code'] = 200
-
             display_prop = None
             max_len = 0
             for r in result:
@@ -34,7 +32,7 @@ class Search:
                             max_len = l
                             display_prop = property
 
-                ret['payload']['results'].append({
+                ret['results'].append({
                     'repository_id': r['repository_id'],
                     'repository_name': r['repository_name'],
                     'data_id': r['data_id'],
@@ -42,9 +40,7 @@ class Search:
                     #'l': max_len,
                     'display': r['n'][display_prop][0:100]
                 })
-            ret['payload']['count'] = len(ret['payload']['results'])
-        else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Could not execute search'
+            ret['count'] = len(ret['results'])
+            return ret
 
-        return ret
+        raise SearchError("Could not execute search")

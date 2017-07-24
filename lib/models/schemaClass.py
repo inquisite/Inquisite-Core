@@ -1,5 +1,8 @@
 from lib.utils.db import db
 import re
+from lib.exceptions.FindError import FindError
+from lib.exceptions.DbError import DbError
+from lib.exceptions.ValidationError import ValidationError
 
 class Schema:
     FieldTypes = ['TEXT', 'INT', 'FLOAT', 'DATERANGE', 'GEOREF']
@@ -16,141 +19,118 @@ class Schema:
             "MATCH (r:Repository {name: {code}}) RETURN ID(r) AS id, r.name AS  name",
             {"code": code})
 
-        ret = {'payload': {}}
+        ret = {}
 
-        # TODO: clean up payload
         if result:
             for r in result:
-                ret['status_code'] = 200
-                ret['payload']['repository_id'] = r['id']
-                ret['payload']['name'] = r['name']
-                break
+                ret['repository_id'] = r['id']
+                ret['name'] = r['name']
+                return ret
         else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Could not find repository'
+            raise FindError("Could not find repository")
 
         return ret
 
     # Get list of data types for repository
     @staticmethod
     def getTypes(repository_id):
-
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'types': []
-            }
-        }
-
         # TODO validate params
-
 
         # TODO: check that repository is owned by current user
 
-        result = db.run("MATCH (t:SchemaType)--(r:Repository) WHERE ID(r) = {repository_id}  RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"repository_id": int(repository_id)})
+        try:
+            result = db.run("MATCH (t:SchemaType)--(r:Repository) WHERE ID(r) = {repository_id}  RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"repository_id": int(repository_id)})
 
-        if result:
-            typelist = []
-            for r in result:
-                t = { 'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description']}
-                # get fields
-                t['fields'] = Schema.getFieldsForType(r['id'])
+            if result:
+                typelist = []
+                for r in result:
+                    t = { 'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description']}
+                    # get fields
+                    t['fields'] = Schema.getFieldsForType(r['id'])
 
-                typelist.append(t)
-            ret['payload']['types'] = typelist
+                    typelist.append(t)
+                return typelist
+        except Exception as e:
+            raise DbError(message="Could not get types", context="Schema.getTypes", dberror=e.message)
 
-        return ret
     @staticmethod
     def getFieldsForType(type_id):
         # TODO validate params
 
-
         # TODO: check that repository is owned by current user
 
-        result = db.run(
-            "MATCH (f:SchemaField)--(t:SchemaType) WHERE ID(t) = {type_id}  RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description",
-            {"type_id": int(type_id)})
+        try:
+            result = db.run(
+                "MATCH (f:SchemaField)--(t:SchemaType) WHERE ID(t) = {type_id}  RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description",
+                {"type_id": int(type_id)})
 
-        fieldlist = []
-        if result:
-            for r in result:
-                t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type']}
+            fieldlist = []
+            if result:
+                for r in result:
+                    t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type']}
 
-                fieldlist.append(t)
+                    fieldlist.append(t)
 
-        return fieldlist
+            return fieldlist
+        except Exception as e:
+            raise DbError(message="Could not get fields for types", context="Schema.getFieldsForType", dberror=e.message)
 
     @staticmethod
     def addType(repository_id, name, code, description, fields):
-
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'type': ''
-            }
-        }
-
         # TODO validate params
 
-
         # TODO: check that repository is owned by current user
+        ret = { "exists": False}
+        try:
+            result = db.run("MATCH (t:SchemaType{code: {code}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t.id as id, t.name as name, t.code as code, t.description as description", {"code": code, "repository_id": int(repository_id)}).peek()
+            if result is not None and len(list(result)):
+               ret = { "exists": True }
+               for r in result:
+                   ret['type'] = {
+                       "id": r['id'],
+                       "name": r['name'],
+                       "code": r['code'],
+                       "description": r['description']
+                   }
 
-        result = db.run("MATCH (t:SchemaType{code: {code}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t", {"code": code, "repository_id": int(repository_id)}).peek()
-        if result is not None and len(list(result)):
-            ret['payload']['msg'] = "Type already exists"
-        else:
-            result = db.run("MATCH (r:Repository) WHERE ID(r) = {repository_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph' })-[:PART_OF]->(r) RETURN ID(t) as id",
-                            {"repository_id": int(repository_id),"name": name, "code": code, "description": description})
-
-
-            # add fields
-            # add/edit fields
-            field_status = {}
-            for k in fields:
-                # add field
-                fret = Schema.addField(repository_id, code, k['name'], k['code'], k['type'],
-                                           k['description'])
-
-                if 'field_id' in fret['payload']:
-                    field_status[k['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'],
-                                                           'msg': 'Created new field'}
-                else:
-                    field_status[k['code']] = {'status_code': 200, 'field_id': None,
-                                                           'msg': 'Could not create new field'}
-
-            # TODO: clean up payload
-            if result:
-                for r in result:
-                    ret['status_code'] = 200
-                    ret['payload']['msg'] = "Added type " + name + "//" + str(repository_id)
-                    ret['payload']['type'] = {
-                        "id": r['id'],
-                        "name": name,
-                        "code": code,
-                        "description": description,
-                        "field_status": field_status
-                    }
-                    break
+               return ret
             else:
-                ret['status_code'] = 400
-                ret['payload']['msg'] = 'Something went wrong saving new type'
+                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repository_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph' })-[:PART_OF]->(r) RETURN ID(t) as id",
+                            {"repository_id": int(repository_id),"name": name, "code": code, "description": description})
+        except Exception as e:
+            raise DbError(message="Could not add type", context="Schema.addType",
+                          dberror=e.message)
+
+        # add/edit fields
+        field_status = {}
+        for k in fields:
+            # add field
+            fret = Schema.addField(repository_id, code, k['name'], k['code'], k['type'], k['description'])
+
+            if 'field_id' in fret['payload']:
+                field_status[k['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'], 'msg': 'Created new field'}
+            else:
+                field_status[k['code']] = {'status_code': 200, 'field_id': None, 'msg': 'Could not create new field'}
+
+        if result:
+            for r in result:
+                ret['type'] = {
+                    "id": r['id'],
+                    "name": name,
+                    "code": code,
+                    "description": description,
+                    "field_status": field_status
+                }
+                break
+        else:
+            raise DbError(message="Could not add type", context="Schema.addType",
+                          dberror="")
 
 
         return ret
 
     @staticmethod
     def editType(repository_id, type_id, name, code, description, fields, fieldsToDelete):
-
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'type': ''
-            }
-        }
-
         # TODO validate params
 
         # TODO: check that repository is owned by current user
@@ -189,131 +169,94 @@ class Schema:
                 Schema.deleteField(repository_id, code, field_id)
 
 
-        # TODO: clean up payload
         if result:
             for r in result:
-                ret['status_code'] = 200
-                ret['payload']['msg'] = "Edited type " + name
-                ret['payload']['type'] = {
+                ret['type'] = {
                     "id": r['id'],
                     "name": name,
                     "code": code,
                     "description": description,
                     "field_status": field_status
                 }
-                break
+                return ret
         else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Something went wrong editing type'
-
-        return ret
+            raise DbError(message="Could not edit type", context="Schema.editType",
+                          dberror="")
 
     @staticmethod
     def deleteType(repository_id, type_id):
-
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success'
-            }
-        }
-
         # TODO validate params
-
 
         # TODO: check that repository is owned by current user
 
         try:
             result = db.run("MATCH (t:SchemaType)-[x]-(r:Repository) WHERE ID(r) = {repository_id} AND ID(t) = {type_id} optional match (f:SchemaField)-[y]-(t) DELETE x,y,t,f",
                             {"type_id": int(type_id), "repository_id": int(repository_id)})
-            #r = result.peek()
             if result is not None:
-                ret['status_code'] = 200
-                ret['payload']['msg'] = "Deleted type " + str(type_id)
-                ret['payload']['repository_id'] =  repository_id
-                ret['payload']['type_id'] = type_id
+                return True
             else:
-                ret['status_code'] = 400
-                ret['payload']['msg'] = 'Something went wrong deleting type'
-        except:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Something went wrong deleting type'
-
-        return ret
+                raise DbError(message="Something went wrong deleting type", context="Schema.deleteType", dberror="")
+        except Exception as e:
+            raise DbError(message="Something went wrong deleting type", context="Schema.deleteType", dberror=e.message)
 
     @staticmethod
     def addField(repository_id, typecode, name, code, fieldtype, description):
         # TODO validate params
 
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'type': ''
-            }
-        }
-
         # Check field type
         if fieldtype not in Schema.FieldTypes:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Invalid field type'
-            return ret
+            raise ValidationError(message="Invalid field type", context="Schema.addField")
 
+        ret = {}
 
         # TODO: check that repository is owned by current user
 
         result = db.run(
-            "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN t",
+            "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repository_id}  RETURN f.name as name, ID(f) as id",
             {"typecode": typecode, "code": code, "repository_id": int(repository_id)}).peek()
         if result is not None:
-            ret['payload']['msg'] = "Field already exists"
+            r = result.peek()
+            ret['exists'] = True
+            ret['field_id'] = r['id']
+            ret['name'] = r['name']
+            return ret
         else:
             result = db.run(
-                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { name: {name}, code: {code}, description: {description}, type: {fieldtype} })-[:PART_OF]->(t) RETURN ID(f) as id",
+                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { name: {name}, code: {code}, description: {description}, type: {fieldtype} })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name",
                 {"repository_id": int(repository_id), "name": name, "code": code, "description": description,
                  "typecode": typecode, "fieldtype": fieldtype})
             r = result.peek()
 
             # TODO: check query result
 
-            # TODO: clean up payload
             if r:
-                ret['payload']['xxx'] = 'xxx'
-                ret['status_code'] = 200
-                ret['payload']['msg'] = "Added field " + name + "//" + str(repository_id)
-                ret['payload']['field_id'] = r['id']
+                ret['exists'] = False
+                ret['field_id'] = r['id']
+                ret['name'] = r['name']
+                return ret
             else:
-                ret['status_code'] = 400
-                ret['payload']['msg'] = 'Something went wrong saving new field'
+                raise DbError(message="Could not add field", context="Schema.addField", dberror="")
 
-        return ret
 
     @staticmethod
     def editField(repository_id, typecode, field_id, name, code, fieldtype, description):
         # TODO validate params
 
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'type': ''
-            }
-        }
 
         # Check field type
         if fieldtype not in Schema.FieldTypes:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Invalid field type'
-            return ret
+            raise ValidationError(message="Invalid field type", context="Schema.addField")
 
         # TODO: check that repository is owned by current user
 
         result = db.run(
-            "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repository_id} AND ID(f) <> {field_id}  RETURN t",
+            "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repository_id} AND ID(f) <> {field_id}  RETURN ID(f) as id, f.name as name",
             {"typecode": typecode, "code": code, "repository_id": int(repository_id), "field_id": int(field_id)}).peek()
         if result is not None:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = "Field already exists"
+            r = result.peek()
+            ret['msg'] = "Field already exists"
+            ret['field_id'] = r['id']
+            ret['name'] = r['name']
         else:
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repository_id} AND ID(f) = {field_id} SET f.name = {name}, f.code = {code}, f.description = {description}, f.type = {fieldtype} RETURN ID(f) as id",
@@ -323,28 +266,15 @@ class Schema:
 
             # TODO: check query result
 
-            # TODO: clean up payload
             if r:
-                ret['payload']['xxx'] = 'xxx'
-                ret['status_code'] = 200
-                ret['payload']['msg'] = "Edited field " + field_id + "//" + str(repository_id)
-                ret['payload']['field_id'] = r['id']
+                ret['field_id'] = r['id']
+                ret['name'] = r['name']
             else:
-                ret['status_code'] = 400
-                ret['payload']['msg'] = 'Something went wrong when editing field'
-        return ret
+                raise DbError(message="Could not edit field", context="Schema.editField", dberror="")
 
     @staticmethod
     def deleteField(repository_id, typecode, field_id):
         # TODO validate params
-
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'type': ''
-            }
-        }
 
 
         # TODO: check that repository is owned by current user
@@ -356,17 +286,11 @@ class Schema:
                 {"repository_id": int(repository_id),  "field_id": int(field_id), "typecode": typecode})
 
             if result is not None:
-                ret['status_code'] = 200
-                ret['payload']['msg'] = "Deleted field "
-                ret['payload']['repository_id'] =  repository_id
+                return True
             else:
-                ret['status_code'] = 400
-                ret['payload']['msg'] = 'Something went wrong deleting field'
-        except:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Something went wrong deleting field'
-
-        return ret
+                raise DbError(message="Could not delete field", context="Schema.deleteField", dberror="")
+        except Exception as e:
+            raise DbError(message="Could not delete field", context="Schema.deleteField", dberror=e.message)
 
     @staticmethod
     def createDataTypeFromFields(repository_id, typecode, field_names):
@@ -386,15 +310,9 @@ class Schema:
         Schema.addType(repository_id, typecode_proc_disp, typecode_proc, "Created by data import", field_spec)
 
         return field_names
+
     @staticmethod
     def addDataToRepo(repository_id, typecode, data):
-        ret = {
-            'status_code': 200,
-            'payload': {
-                'msg': 'Success',
-                'type': ''
-            }
-        }
 
         typecode_proc = re.sub(r"[^A-Za-z0-9_]", "_", typecode)[0:15].strip()
 
@@ -420,7 +338,10 @@ class Schema:
 
         q = "MATCH (t:SchemaType{code: {typecode_proc}}) CREATE (n:Data {" + ",".join(flds) + "})-[:IS]->(t) RETURN ID(n) as id"
 
-        result = db.run(q, data)
+        try:
+            result = db.run(q, data)
+        except Exception as e:
+            raise DbError(message="Could not create data", context="Schema.addDataToRepo", dberror=e.message)
         id = None
 
         for record in result:
@@ -440,10 +361,6 @@ class Schema:
                     rel_created = True
 
                 if rel_created:
-                    ret['status_code'] = 200
-                    ret['payload']['msg'] = "Added data " + typecode + "//" + str(repository_id)
-                    ret['payload']['type'] = "xxx"
+                    return True
                 else:
-                    ret['status_code'] = 400
-                    ret['payload']['msg'] = 'Something went wrong saving new data'
-        return ret
+                    return False

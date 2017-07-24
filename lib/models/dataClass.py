@@ -1,6 +1,8 @@
 import re
 from lib.utils.db import db
 from lib.utils.cypherHelpers import makeDataMapForCypher
+from lib.exceptions.SaveError import SaveError
+from lib.exceptions.FindError import FindError
 
 class Data:
     # For now all class methods are going to be static
@@ -15,20 +17,11 @@ class Data:
             "MATCH (d:Data)--(t:SchemaType) WHERE ID(d) = {node_id} RETURN d, t.name as typename, t.code as typecode",
             {"node_id": int(node_id)})
 
-        ret = {'status_code': 200, 'payload': {}}
-
-        # TODO: clean up payload
         if result.peek():
             for r in result:
-                ret['status_code'] = 200
-                ret['payload']['node_id'] = node_id
-                ret['payload']['typename'] = r['typename']
-                ret['payload']['typecode'] = r['typecode']
-                ret['payload']['data'] = r['d'].properties
-                break
+                return {"node_id": node_id, "typename": r["typename"], "typecode": r["typecode"], "data": r["d"].properties}
         else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Could not find data'
+            raise FindError(message="Node does not exist")
 
         return ret
 
@@ -42,17 +35,8 @@ class Data:
             "MATCH (d:Data) WHERE ID(d) = {node_id} SET d = " + makeDataMapForCypher(data) + " RETURN count(d) as c",
             f)
 
-        ret = {'status_code': 200, 'payload': {}}
-
-        # TODO: clean up payload
         if result.peek():
             for r in result:
-                ret['status_code'] = 200
-                ret['payload']['node_id'] = node_id
-                ret['payload']['count'] = r['c']
-                break
+                return {"node_id": node_id, "count": r["c"] }
         else:
-            ret['status_code'] = 400
-            ret['payload']['msg'] = 'Could not update data'
-
-        return ret
+            raise SaveError(message="Could not save node")
