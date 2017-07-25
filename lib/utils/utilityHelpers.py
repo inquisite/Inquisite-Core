@@ -16,3 +16,10 @@ def flatten_json(y):
 
     flatten(y)
     return out
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False

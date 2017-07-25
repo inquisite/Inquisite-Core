@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required
 from lib.models.schemaClass import Schema
 from lib.utils.requestHelpers import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest, responseHandler
 from lib.crossDomain import crossdomain
+from lib.utils.requestHelpers import makeResponse
 
 schema_blueprint = Blueprint('schema', __name__)
 

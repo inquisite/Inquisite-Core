@@ -107,8 +107,8 @@ class Schema:
             # add field
             fret = Schema.addField(repository_id, code, k['name'], k['code'], k['type'], k['description'])
 
-            if 'field_id' in fret['payload']:
-                field_status[k['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'], 'msg': 'Created new field'}
+            if 'field_id' in fret:
+                field_status[k['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
             else:
                 field_status[k['code']] = {'status_code': 200, 'field_id': None, 'msg': 'Could not create new field'}
 
@@ -148,8 +148,8 @@ class Schema:
                 fret = Schema.editField(repository_id, code, fields[k]['id'], fields[k]['name'], fields[k]['code'], fields[k]['type'],
                                        fields[k]['description'])
 
-                if 'field_id' in fret['payload']:
-                    field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'],
+                if 'field_id' in fret:
+                    field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'],
                                                        'msg': 'Edited field'}
                 else:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': None,
@@ -158,8 +158,8 @@ class Schema:
                 # add field
                 fret = Schema.addField(repository_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'], fields[k]['description'])
 
-                if 'field_id' in fret['payload']:
-                    field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['payload']['field_id'], 'msg': 'Created new field'}
+                if 'field_id' in fret:
+                    field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
                 else:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': None, 'msg': 'Could not create new field'}
 
@@ -170,6 +170,7 @@ class Schema:
 
 
         if result:
+            ret = {}
             for r in result:
                 ret['type'] = {
                     "id": r['id'],
@@ -195,9 +196,9 @@ class Schema:
             if result is not None:
                 return True
             else:
-                raise DbError(message="Something went wrong deleting type", context="Schema.deleteType", dberror="")
+                raise FindError(message="Could not find type", context="Schema.deleteType", dberror="")
         except Exception as e:
-            raise DbError(message="Something went wrong deleting type", context="Schema.deleteType", dberror=e.message)
+            raise DbError(message="Could not delete type", context="Schema.deleteType", dberror=e.message)
 
     @staticmethod
     def addField(repository_id, typecode, name, code, fieldtype, description):
@@ -243,6 +244,8 @@ class Schema:
         # TODO validate params
 
 
+        ret = {}
+
         # Check field type
         if fieldtype not in Schema.FieldTypes:
             raise ValidationError(message="Invalid field type", context="Schema.addField")
@@ -257,9 +260,10 @@ class Schema:
             ret['msg'] = "Field already exists"
             ret['field_id'] = r['id']
             ret['name'] = r['name']
+            return ret
         else:
             result = db.run(
-                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repository_id} AND ID(f) = {field_id} SET f.name = {name}, f.code = {code}, f.description = {description}, f.type = {fieldtype} RETURN ID(f) as id",
+                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repository_id} AND ID(f) = {field_id} SET f.name = {name}, f.code = {code}, f.description = {description}, f.type = {fieldtype} RETURN ID(f) as id, f.name as name",
                 {"repository_id": int(repository_id), "name": name, "code": code, "description": description,
                  "typecode": typecode, "fieldtype": fieldtype, "field_id": int(field_id)})
             r = result.peek()
@@ -269,8 +273,10 @@ class Schema:
             if r:
                 ret['field_id'] = r['id']
                 ret['name'] = r['name']
+                return ret
             else:
                 raise DbError(message="Could not edit field", context="Schema.editField", dberror="")
+
 
     @staticmethod
     def deleteField(repository_id, typecode, field_id):
@@ -288,7 +294,7 @@ class Schema:
             if result is not None:
                 return True
             else:
-                raise DbError(message="Could not delete field", context="Schema.deleteField", dberror="")
+                raise FindError(message="Could not find field", context="Schema.deleteField", dberror="")
         except Exception as e:
             raise DbError(message="Could not delete field", context="Schema.deleteField", dberror=e.message)
 

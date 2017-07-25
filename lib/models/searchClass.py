@@ -1,6 +1,6 @@
 from lib.utils.db import db
 import re
-import from lib.exceptions.SearchError import SearchError
+from lib.exceptions.SearchError import SearchError
 
 class Search:
 
