@@ -29,8 +29,12 @@ class Repositories:
     return repos
 
   @staticmethod
-  def nameCheck(name):
-    res = db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name})
+  def nameCheck(name, repo_id=None):
+    if repo_id is not None:
+        res = db.run("MATCH (n:Repository {name: {name}}) WHERE n.repo_id <> {repo_id} RETURN n", {"name": name, "repo_id": repo_id})
+    else:
+        res = db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name})
+
     if len(list(res)) > 0:
       return False
     else:
@@ -72,7 +76,7 @@ class Repositories:
     if url is None or name is None or readme is None:
       raise ValidationError(message="Name, URL and README must be set", context="Repositories.edit")
 
-    if Repositories.nameCheck(name) is False:
+    if Repositories.nameCheck(name, repo_id) is False:
       raise ValidationError(message="Name is in use", context="Repositories.edit")
 
     update = []
