@@ -7,6 +7,9 @@ from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
 from lib.exceptions.ValidationError import ValidationError
 from lib.utils.utilityHelpers import is_number
+from passlib.hash import sha256_crypt
+import time
+import datetime
 
 
 class People:
@@ -150,12 +153,11 @@ class People:
         raise DbError(message="Could not look up user", context="People.addPerson", dberror=e.message)
 
       if result:
-        r = result.peek()
         return {
           "exists": True,
-          "user_id": r['id'],
-          "name": r['name'],
-          "email": r['email']
+          "user_id": result['id'],
+          "name": result['name'],
+          "email": result['email']
         }
       else:
         try:
@@ -171,7 +173,13 @@ class People:
         if result:
           person = {}
           for p in result:
-            return p
+            person['name'] = p['name']
+            person['location'] = p['location']
+            person['email'] = p['email']
+            person['url'] = p['url']
+            person['tagline'] = p['tagline']
+            person['user_id'] = p['user_id']
+            return person
 
         else:
           raise SaveError(message="Could not add person", context="People.addPerson")
