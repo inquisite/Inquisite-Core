@@ -29,11 +29,17 @@ class Repositories:
     return repos
 
   @staticmethod
-  def nameCheck(name, repo_id=None):
+  def nameCheck(name, repo_id=None, identity=None, ident_str=None):
     if repo_id is not None:
-        res = db.run("MATCH (n:Repository {name: {name}}) WHERE n.repo_id <> {repo_id} RETURN n", {"name": name, "repo_id": repo_id})
+        if identity is not None and ident_str is not None:
+            res = db.run("MATCH (n:Repository {name: {name}})--(p:Person) WHERE n.repo_id <> {repo_id} AND " + ident_str + " RETURN n", {"name": name, "repo_id": repo_id, "identity": identity})
+        else:
+            res = db.run("MATCH (n:Repository {name: {name}}) WHERE n.repo_id <> {repo_id} RETURN n", {"name": name, "repo_id": repo_id})
     else:
-        res = db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name})
+        if identity is not None and ident_str is not None:
+            res = db.run("MATCH (n:Repository {name: {name}})--(p:Person) WHERE " + ident_str + " RETURN n", {"name": name, "identity": identity})
+        else:
+            res = db.run("MATCH (n:Repository {name: {name}}) RETURN n", {"name": name})
 
     if len(list(res)) > 0:
       return False
@@ -48,7 +54,7 @@ class Repositories:
       if url is None or name is None or readme is None:
         raise ValidationError(message="Name, URL and README must be set", context="Repositories.create")
 
-      if Repositories.nameCheck(name) is False:
+      if Repositories.nameCheck(name=name, identity=identity, ident_str=ident_str) is False:
         raise ValidationError(message="Name is in use", context="Repositories.create")
 
       new_repo = {}
@@ -209,11 +215,11 @@ class Repositories:
     return repo
 
   @staticmethod
-  def addCollaborator(repo_id, person_id):
+  def addCollaborator(repo_id, person_id, access="read-only"):
     Repositories.validate_repo_id(repo_id)
 
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:COLLABORATES_WITH]->(n)",
-      {"repo_id": repo_id, "person_id": person_id})
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[x:COLLABORATES_WITH]->(n) ON CREATE SET x.access = {access}",
+      {"repo_id": repo_id, "person_id": person_id, "access": access})
 
     summary = result.consume()
     if summary.counters.relationships_created >= 1:
@@ -244,7 +250,7 @@ class Repositories:
     Repositories.validate_repo_id(repo_id)
 
     users = []
-    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, p.email as email, ID(p) AS id",
+    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, p.email as email, rel.access AS access, ID(p) AS id",
       {"repo_id": repo_id})
 
     for p in result:
@@ -258,6 +264,7 @@ class Repositories:
         "id": p['id'],
         "name": p['name'],
         "email": p['email'],
+        "access": p['access'],
         "role": user_role
       })
     return users

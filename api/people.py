@@ -61,7 +61,8 @@ def getPerson():
 @people_blueprint.route('/people/add', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def addPerson():
-    name = request.form.get('name')
+    surname = request.form.get('surname')
+    forename = request.form.get('forename')
     location = request.form.get('location')
     email = request.form.get('email')
     url = request.form.get('url')
@@ -69,7 +70,7 @@ def addPerson():
     password = request.form.get('password')
 
     try:
-        ret = People.addPerson(name, location, email, url, tagline, password)
+        ret = People.addPerson(forename, surname, location, email, url, tagline, password)
         return makeResponse(payload=ret, message="Added person")
     except DbError as e:
         return makeResponse(error=e)
@@ -85,7 +86,8 @@ def addPerson():
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def editPerson():
-    name = request.form.get('name')
+    surname = request.form.get('surname')
+    forename = request.form.get('forename')
     location = request.form.get('location')
     email = request.form.get('email')
     url = request.form.get('url')
@@ -99,7 +101,7 @@ def editPerson():
     # email address
     identity = current_token['identity']
     try:
-        return makeResponse(payload=People.editPerson(identity, name, location, email, url, tagline), message="")
+        return makeResponse(payload=People.editPerson(identity, forename, surname, location, email, url, tagline), message="")
     except FindError as e:
         return makeResponse(error=e)
     except ValidationError as e:
@@ -149,7 +151,7 @@ def findPerson():
     ret = {'q': q, 'results': []}
 
     if q is not None and len(q) > 0:
-        people = People.find({'name': q, 'email': q})
+        people = People.find({'surname': q, 'email': q})
 
         if people is not None:
             msg = 'Success'

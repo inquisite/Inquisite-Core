@@ -10,6 +10,7 @@ from lib.utils.utilityHelpers import is_number
 from passlib.hash import sha256_crypt
 import time
 import datetime
+from validate_email import validate_email
 
 
 class People:
@@ -19,12 +20,14 @@ class People:
   def getAll():
 
     persons = []
-    result = db.run("Match (p:Person) RETURN ID(p) AS id, p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
+    result = db.run("Match (p:Person) RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
 
     for p in result:
       persons.append({
         "id": p['id'],
-        "name": p['name'],
+        "name": str(p['forename']) + " " + str(p['surname']),
+        "surname": p['surname'],
+        "forename": p['forename'],
         "location": p['location'],
         "email": p['email'],
         "url": p['url'],
@@ -41,24 +44,18 @@ class People:
       ident_str = "p.email={identity}"
 
     person = {}
-    result = db.run("MATCH (p:Person) WHERE " + ident_str + " RETURN ID(p) AS id, p.name AS name, p.email AS email, " +
+    result = db.run("MATCH (p:Person) WHERE " + ident_str + " RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.email AS email, " +
       "p.url AS url, p.location AS location, p.tagline AS tagline, p.prefs AS prefs", {"identity": identity})
 
     for p in result:
-      #prefs = {}
-      #if (p['prefs'] != None):
-      #  try:
-      #    prefs = json.loads(p['prefs'])
-      #  except:
-      #    prefs = {}
-
       person['id'] = p['id']
-      person['name'] = p['name']
+      person['name'] = str(p['forename']) + " " + str(p['surname'])
+      person['surname'] = p['surname']
+      person['forename'] = p['forename']
       person['email'] = p['email']
       person['url'] = p['url']
       person['location'] = p['location']
       person['tagline'] = p['tagline']
-      #person['prefs'] = prefs
     
     return person
 
@@ -71,8 +68,8 @@ class People:
     else:
       ident_str = "p.email={identity}"
 
-    result = db.run("MATCH (n:Repository)<-[:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme As readme, " +
-      "n.url AS url, n.created_on AS created_on", {"identity": identity})
+    result = db.run("MATCH (n:Repository)<-[x:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme As readme, " +
+      "n.url AS url, n.created_on AS created_on, x.access AS access", {"identity": identity})
 
     for item in result:
 
@@ -89,6 +86,7 @@ class People:
         "data": data,
         "users": users,
         "owner": owner,
+        "access": item['access'],
         "schema_type_count" : 0,
         "schema_field_count" : 0,
         "data_element_count": 0
@@ -112,12 +110,14 @@ class People:
   @staticmethod
   def find(params):
     people = []
-
     criteria = []
 
-    if ('name' in params) and (params['name']) and len(params['name']) > 0:
-      params['name'] = params['name'].lower()
-      criteria.append("lower(p.name) CONTAINS {name}")
+    if ('surname' in params) and (params['surname']) and len(params['surname']) > 0:
+      params['surname'] = params['surname'].lower()
+      criteria.append("lower(p.surname) CONTAINS {surname}")
+    if ('forename' in params) and (params['forename']) and len(params['forename']) > 0:
+      params['forename'] = params['forename'].lower()
+      criteria.append("lower(p.forename) CONTAINS {forename}")
     if ('email' in params) and (params['email']) and len(params['email']) > 0:
       params['email'] = params['email'].lower()
       criteria.append("lower(p.email) STARTS WITH {email}")
@@ -126,20 +126,23 @@ class People:
       return None
 
 
-    result = db.run("MATCH (p:Person) WHERE " + " OR ".join(criteria) + " RETURN ID(p) AS id, p.name AS name, p.email AS email, " +
+    result = db.run("MATCH (p:Person) WHERE " + " OR ".join(criteria) + " RETURN ID(p) AS id, p.surname AS surname, p.forename AS forename, p.email AS email, " +
                     "p.url AS url, p.location AS location, p.tagline AS tagline",
                     params)
 
     for p in result:
-      r = {}
-      for f in ['id', 'name', 'email', 'url', 'location', 'tagline']:
+      r = {'name': str(p['forename']) + ' ' + p['surname'] }
+      for f in ['id', 'surname', 'forename', 'email', 'url', 'location', 'tagline']:
         r[f] = p[f]
       people.append(r)
 
     return people
 
   @staticmethod
-  def addPerson(name, location, email, url, tagline, password):
+  def addPerson(forename, surname, location, email, url, tagline, password):
+    if validate_email(email, verify=False) is False:
+      raise SaveError(message="Email address is invalid", context="People.addPerson")
+
     # TODO - Enforce password more complex password requirements?
     if password is not None and (len(password) >= 6):
       password_hash = sha256_crypt.hash(password)
@@ -148,7 +151,7 @@ class People:
       created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
       try:
-        result = db.run("MATCH (n:Person{email: {email}}) RETURN ID(n) as id, n.name as name, n.email as email", {"email": email}).peek()
+        result = db.run("MATCH (n:Person{email: {email}}) RETURN ID(n) as id, n.surname as surname, n.forename AS forename, n.email as email", {"email": email}).peek()
       except Exception as e:
         raise DbError(message="Could not look up user", context="People.addPerson", dberror=e.message)
 
@@ -156,16 +159,18 @@ class People:
         return {
           "exists": True,
           "user_id": result['id'],
-          "name": result['name'],
+          "surname": result['surname'],
+          "forename": result['forename'],
+          "name": str(result['forename']) + " " + str(result['surname']),
           "email": result['email']
         }
       else:
         try:
           result = db.run(
-            "CREATE (n:Person {url: {url}, name: {name}, email: {email}, location: {location}, tagline: {tagline}, " +
+            "CREATE (n:Person {url: {url}, surname: {surname}, forename: {forename}, email: {email}, location: {location}, tagline: {tagline}, " +
             "password: {password_hash}, created_on: {created_on}, prefs: ''})" +
-            " RETURN n.name AS name, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
-            {"url": url, "name": name, "email": email, "location": location, "tagline": tagline,
+            " RETURN n.forename AS forename, n.surname AS surname, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
+            {"url": url, "surname": surname, "forename" : forename, "email": email, "location": location, "tagline": tagline,
              "password_hash": password_hash, "created_on": created_on})
         except Exception as e:
           raise DbError(message="Could not create user", context="People.addPerson", dberror=e.message)
@@ -173,7 +178,9 @@ class People:
         if result:
           person = {}
           for p in result:
-            person['name'] = p['name']
+            person['surname'] = p['surname']
+            person['forename'] = p['forename']
+            person['name'] = str(p['forename']) + " " +  str(p['surname'])
             person['location'] = p['location']
             person['email'] = p['email']
             person['url'] = p['url']
@@ -184,12 +191,16 @@ class People:
         else:
           raise SaveError(message="Could not add person", context="People.addPerson")
 
+    raise SaveError(message="Password must be at least six characters in length", context="People.addPerson")
 
   @staticmethod
-  def editPerson(identity, name, location, email, url, tagline):
+  def editPerson(identity, forename, surname, location, email, url, tagline):
     update = []
-    if name is not None:
-        update.append("p.name = {name}")
+    if forename is not None:
+        update.append("p.forename = {forename}")
+
+    if surname is not None:
+        update.append("p.surname = {surname}")
 
     if location is not None:
         update.append("p.location = {location}")
@@ -213,13 +224,15 @@ class People:
     if update_str != '' and update_str is not None:
         updated_person = None
         result = db.run("MATCH (p:Person) WHERE p.email={identity} SET " + update_str +
-          " RETURN p.name AS name, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline",
-          {"identity": identity, "name": name, "location": location, "email": email, "url": url, "tagline": tagline}) # "prefs": prefs})
+          " RETURN p.forename AS forename, p.surname AS surname, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline",
+          {"identity": identity, "forename": forename, "surname": surname, "location": location, "email": email, "url": url, "tagline": tagline}) # "prefs": prefs})
 
         if result:
             updated_person = {}
             for p in result:
-                updated_person['name'] = p['name']
+                updated_person['forename'] = p['forename']
+                updated_person['surname'] = p['surname']
+                updated_person['name'] = str(p['forename']) + " " + str(p['surname'])
                 updated_person['location'] = p['location']
                 updated_person['email'] = p['email']
                 updated_person['url'] = p['url']

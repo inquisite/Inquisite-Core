@@ -161,9 +161,10 @@ def getRepoInfo(repo_id):
 def addRepoCollab():
     repo_id = int(request.form.get('repo_id'))
     person_id = int(request.form.get('person_id'))
+    access = request.form.get('access')
 
     try:
-        Repositories.addCollaborator(repo_id, person_id)
+        Repositories.addCollaborator(repo_id, person_id, access)
         return makeResponse(message="Collaborator added")
     except FindError as e:
         return makeResponse(error=e)
