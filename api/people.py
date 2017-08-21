@@ -12,6 +12,7 @@ from lib.utils.db import db
 from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
 from lib.exceptions.FindError import FindError
+from lib.exceptions.SaveError import SaveError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError
 import lib.models.peopleClass
@@ -68,7 +69,7 @@ def addPerson():
     password = request.form.get('password')
 
     try:
-        ret = addPerson(name, location, email, url, tagline, password)
+        ret = People.addPerson(name, location, email, url, tagline, password)
         return makeResponse(payload=ret, message="Added person")
     except DbError as e:
         return makeResponse(error=e)
