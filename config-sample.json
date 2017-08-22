@@ -2,5 +2,10 @@
   "auth_secret": "changethis",
   "database_url": "db://whatever",
   "database_user": "user",
-  "database_pass": "sample-pass"
+  "database_pass": "sample-pass",
+  
+  "unit_test_user": "steve@bionic.org",
+  "unit_test_pass": "bionicman",
+	
+  "registration_email_domains": ["nyu.edu", "whirl-i-gig.com"]
 }

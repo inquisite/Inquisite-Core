@@ -224,7 +224,7 @@ class Repositories:
     summary = result.consume()
     if summary.counters.relationships_created >= 1:
       return True
-    raise FindError(message="Could not find person or repository", context="Repositories.addCollaborator")
+    raise FindError(message="Already exists", context="Repositories.addCollaborator")
 
   @staticmethod
   def getCollaborators(repo_id):

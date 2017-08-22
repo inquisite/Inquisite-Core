@@ -11,6 +11,7 @@ from passlib.hash import sha256_crypt
 import time
 import datetime
 from validate_email import validate_email
+from lib.utils.utilityHelpers import email_domain_is_allowed
 
 
 class People:
@@ -142,6 +143,8 @@ class People:
   def addPerson(forename, surname, location, email, url, tagline, password):
     if validate_email(email, verify=False) is False:
       raise SaveError(message="Email address is invalid", context="People.addPerson")
+    if email_domain_is_allowed(email) is False:
+      raise SaveError(message="You cannot register with this email address", context="People.addPerson")
 
     # TODO - Enforce password more complex password requirements?
     if password is not None and (len(password) >= 6):
