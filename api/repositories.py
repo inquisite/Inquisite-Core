@@ -91,7 +91,7 @@ def deleteRepo():
     repo_id = int(request.form.get('repo_id'))
     try:
         Repositories.delete(repo_id)
-        return makeResponse(payload={}, message="Repository deleted")
+        return makeResponse(payload={"repo_id": repo_id}, message="Repository deleted")
     except FindError as e:
         return makeResponse(error=e)
     except DbError as e:
