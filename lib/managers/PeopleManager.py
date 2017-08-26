@@ -1,6 +1,6 @@
 import json
 
-from lib.managers.RepoManager import Repositories
+from lib.managers.RepoManager import RepoManager
 from lib.utils.db import db
 from lib.exceptions.DbError import DbError
 from lib.exceptions.SaveError import SaveError
@@ -14,7 +14,7 @@ from validate_email import validate_email
 from lib.utils.utilityHelpers import email_domain_is_allowed
 
 
-class People:
+class PeopleManager:
   # For Now All class methods are going to be static
 
   @staticmethod
@@ -74,9 +74,9 @@ class People:
 
     for item in result:
 
-      owner = Repositories.getOwner( int(item['id']) )
-      data  = Repositories.getData( int(item['id']) )
-      users = Repositories.getUsers( int(item['id']) )
+      owner = RepoManager.getOwner(int(item['id']))
+      data  = RepoManager.getData(int(item['id']))
+      users = RepoManager.getUsers(int(item['id']))
 
       repos.append({
         "id": item['id'],
@@ -268,8 +268,8 @@ class People:
 
   @staticmethod
   def getReposForPerson(identity):
-    repos = People.getRepos(identity)
-    user = People.getInfo(identity)
+    repos = PeopleManager.getRepos(identity)
+    user = PeopleManager.getInfo(identity)
 
     if repos is not None:
       return {"repos": repos, "userinfo": user}

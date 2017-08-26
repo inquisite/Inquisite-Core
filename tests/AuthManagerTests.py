@@ -5,7 +5,7 @@ import unittest
 from BaseTest import BaseTest
 
 
-class LoginTest(BaseTest):
+class AuthManagerTests(BaseTest):
   def test_login_logout(self):
     # Test Login
     rv = self.login(self.config['unit_test_user'], self.config['unit_test_pass'])

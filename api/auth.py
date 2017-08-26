@@ -15,7 +15,7 @@ from lib.utils.db import db
 
 from lib.exceptions.AuthError import AuthError
 from lib.utils.requestHelpers import makeResponse
-from lib.managers.AuthManger import Auth
+from lib.managers.AuthManger import AuthManager
 
 auth_blueprint = Blueprint('auth', __name__)
 
@@ -30,7 +30,7 @@ def login():
     password = request.form.get('password')
 
     try:
-        return makeResponse(message="Login successful", payload=Auth.login(username, password))
+        return makeResponse(message="Login successful", payload=AuthManager.login(username, password))
     except AuthError as e:
         return makeResponse(error=e)
 
@@ -78,7 +78,7 @@ def setPassword(person_id):
     new_password = request.form.get('new_password')
 
     try:
-        if Auth.setPassword(person_id, password, new_password):
+        if AuthManager.setPassword(person_id, password, new_password):
             msg = "Password changed"
         else:
             msg = "Password not changed"

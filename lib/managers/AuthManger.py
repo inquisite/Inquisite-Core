@@ -7,7 +7,7 @@ from lib.exceptions.FindError import FindError
 from lib.utils.db import db
 from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_required, create_access_token, create_refresh_token, get_jwt_identity, get_raw_jwt, revoke_token
 
-class Auth:
+class AuthManager:
     # For now all class methods are going to be static
     def __init__():
         pass

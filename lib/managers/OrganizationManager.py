@@ -1,7 +1,7 @@
 import json
 from lib.utils.db import db
 
-class Organizations:
+class OrganizationManager:
 
   # For Now All class methods are going to be static
   def __init__(self):

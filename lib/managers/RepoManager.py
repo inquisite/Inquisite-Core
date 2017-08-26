@@ -10,7 +10,7 @@ from lib.exceptions.DbError import DbError
 from lib.exceptions.FindError import FindError
 
 
-class Repositories:
+class RepoManager:
   # For Now All class methods are going to be static
 
   @staticmethod
@@ -54,7 +54,7 @@ class Repositories:
       if url is None or name is None or readme is None:
         raise ValidationError(message="Name, URL and README must be set", context="Repositories.create")
 
-      if Repositories.nameCheck(name=name, identity=identity, ident_str=ident_str) is False:
+      if RepoManager.nameCheck(name=name, identity=identity, ident_str=ident_str) is False:
         raise ValidationError(message="Name is in use", context="Repositories.create")
 
       new_repo = {}
@@ -73,7 +73,7 @@ class Repositories:
         repo_created = True
 
       if repo_created:  # Set Owner
-        owner_set = Repositories.setOwner(new_repo['id'], identity, ident_str)
+        owner_set = RepoManager.setOwner(new_repo['id'], identity, ident_str)
 
       return new_repo   
 
@@ -82,7 +82,7 @@ class Repositories:
     if url is None or name is None or readme is None:
       raise ValidationError(message="Name, URL and README must be set", context="Repositories.edit")
 
-    if Repositories.nameCheck(name, repo_id) is False:
+    if RepoManager.nameCheck(name, repo_id) is False:
       raise ValidationError(message="Name is in use", context="Repositories.edit")
 
     update = []
@@ -117,7 +117,7 @@ class Repositories:
 
   @staticmethod
   def getData(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     nodes = []
     result = db.run("MATCH (r:Repository)--(f:SchemaType)--(n:Data) WHERE ID(r)={repo_id} RETURN n LIMIT 20", {"repo_id": int(repo_id)})
@@ -129,7 +129,7 @@ class Repositories:
 
   @staticmethod
   def getInfo(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     repo = {}
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme",
@@ -144,7 +144,7 @@ class Repositories:
 
   @staticmethod
   def delete(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     # TODO: clean up all repo nodes (currently schema and data nodes are not removed)
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
@@ -157,7 +157,7 @@ class Repositories:
 
   @staticmethod
   def setOwner(repo_id, identity, ident_str):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE " + ident_str +
       " MERGE (p)<-[:OWNED_BY]->(n)", {"repo_id": repo_id, "identity": identity})
@@ -170,7 +170,7 @@ class Repositories:
 
   @staticmethod
   def getOwner(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     owner = {}
     result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN ID(p) AS id, p.name AS name, p.email as email, p.url AS url, " +
@@ -188,7 +188,7 @@ class Repositories:
 
   @staticmethod
   def deleteOwner(repo_id, owner_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     result = db.run("START p=node(*) MATCH (p)-[rel:OWNED_BY]->(n) WHERE ID(p)={owner_id} AND ID(n)={repo_id} DELETE rel",
       {"owner_id": owner_id, "repo_id": repo_id})
@@ -201,7 +201,7 @@ class Repositories:
 
   @staticmethod
   def getInfo(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     repo = {}
     result = dub.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme",
@@ -216,7 +216,7 @@ class Repositories:
 
   @staticmethod
   def addCollaborator(repo_id, person_id, access="read-only"):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[x:COLLABORATES_WITH]->(n) ON CREATE SET x.access = {access}",
       {"repo_id": repo_id, "person_id": person_id, "access": access})
@@ -228,7 +228,7 @@ class Repositories:
 
   @staticmethod
   def getCollaborators(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     people = []
     result = db.run("MATCH (n)<-[:COLLABORATES_WITH]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, " +
@@ -247,7 +247,7 @@ class Repositories:
 
   @staticmethod
   def getUsers(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     users = []
     result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, p.email as email, rel.access AS access, ID(p) AS id",
@@ -271,7 +271,7 @@ class Repositories:
 
   @staticmethod
   def removeCollaborator(repo_id, person_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     result = db.run("START p=node(*) MATCH (p)-[rel:COLLABORATES_WITH]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel",
       {"person_id": person_id, "repo_id": repo_id})
@@ -284,7 +284,7 @@ class Repositories:
 
   @staticmethod
   def addFollower(repo_id, person_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} MATCH (p:Person) WHERE ID(p)={person_id} MERGE (p)-[:FOLLOWS]->(n)",
       {"repo_id": repo_id, "person_id": person_id})
@@ -297,7 +297,7 @@ class Repositories:
 
   @staticmethod
   def getFollowers(repo_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     people = []
     result = db.run("MATCH (n)<-[:FOLLOWS]-(p) WHERE ID(n)={repo_id} RETURN p.name AS name, p.email AS email, p.url AS url, p.location AS location, " +
@@ -316,7 +316,7 @@ class Repositories:
 
   @staticmethod
   def removeFollower(repo_id, person_id):
-    Repositories.validate_repo_id(repo_id)
+    RepoManager.validate_repo_id(repo_id)
 
     result = db.run("START p=node(*) MATCH (p)-[rel:FOLLOWS]->(n) WHERE ID(p)={person_id} AND ID(n)={repo_id} DELETE rel",
       {"person_id": person_id, "repo_id": repo_id})

@@ -5,12 +5,14 @@ import unittest
 from BaseTest import BaseTest
 
 
-class RepoTest(BaseTest):
+class SchemaManagerTests(BaseTest):
   def setUp(self):
-    super(RepoTest, self).setUp()
-    rv = self.login(self.config['unit_test_user'], self.config['unit_test_pass'])
-    retobj = json.loads(rv.data)
-    self.token = retobj['access_token']
+    self.plugin_base = PluginBase(package='lib.plugins.dataTypes')
+    self.plugin_source = self.plugin_base.make_plugin_source(
+      searchpath=['lib/plugins/dataTypes'])
+    self.dataTypePlugins = {}
+    self.pluginsAreLoaded = False
+    self.loadDataTypePlugins()
 
 
   def tearDown(self):

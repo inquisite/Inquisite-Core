@@ -3,14 +3,19 @@ import re
 from lib.exceptions.FindError import FindError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError
+from pluginbase import PluginBase
 
-class Schema:
+class SchemaManager:
     FieldTypes = ['TEXT', 'INT', 'FLOAT', 'DATERANGE', 'GEOREF']
 
 
-    # For now All class methods are going to be static
-    def __init__():
-        pass
+    def __init__(self):
+        self.plugin_base = PluginBase(package='lib.plugins.dataTypes')
+        self.plugin_source = self.plugin_base.make_plugin_source(
+            searchpath=['lib/plugins/dataTypes'])
+        self.dataTypePlugins = {}
+        self.pluginsAreLoaded = False
+        self.loadDataTypePlugins()
 
     # Return repository name and id for given repo code
     @staticmethod
@@ -46,7 +51,7 @@ class Schema:
                 for r in result:
                     t = { 'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description']}
                     # get fields
-                    t['fields'] = Schema.getFieldsForType(r['id'])
+                    t['fields'] = SchemaManager.getFieldsForType(r['id'])
 
                     typelist.append(t)
                 return typelist
@@ -105,7 +110,7 @@ class Schema:
         field_status = {}
         for k in fields:
             # add field
-            fret = Schema.addField(repository_id, code, k['name'], k['code'], k['type'], k['description'])
+            fret = SchemaManager.addField(repository_id, code, k['name'], k['code'], k['type'], k['description'])
 
             if 'field_id' in fret:
                 field_status[k['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
@@ -145,8 +150,8 @@ class Schema:
         for k in fields:
             if 'id' in fields[k]:
                 # edit existing field
-                fret = Schema.editField(repository_id, code, fields[k]['id'], fields[k]['name'], fields[k]['code'], fields[k]['type'],
-                                       fields[k]['description'])
+                fret = SchemaManager.editField(repository_id, code, fields[k]['id'], fields[k]['name'], fields[k]['code'], fields[k]['type'],
+                                               fields[k]['description'])
 
                 if 'field_id' in fret:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'],
@@ -156,7 +161,7 @@ class Schema:
                                                        'msg': 'Could not edit field'}
             else:
                 # add field
-                fret = Schema.addField(repository_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'], fields[k]['description'])
+                fret = SchemaManager.addField(repository_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'], fields[k]['description'])
 
                 if 'field_id' in fret:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
@@ -166,7 +171,7 @@ class Schema:
         # delete fields
         if fieldsToDelete:
             for field_id in fieldsToDelete:
-                Schema.deleteField(repository_id, code, field_id)
+                SchemaManager.deleteField(repository_id, code, field_id)
 
 
         if result:
@@ -205,7 +210,7 @@ class Schema:
         # TODO validate params
 
         # Check field type
-        if fieldtype not in Schema.FieldTypes:
+        if fieldtype not in SchemaManager.FieldTypes:
             raise ValidationError(message="Invalid field type", context="Schema.addField")
 
         ret = {}
@@ -247,7 +252,7 @@ class Schema:
         ret = {}
 
         # Check field type
-        if fieldtype not in Schema.FieldTypes:
+        if fieldtype not in SchemaManager.FieldTypes:
             raise ValidationError(message="Invalid field type", context="Schema.addField")
 
         # TODO: check that repository is owned by current user
@@ -313,7 +318,7 @@ class Schema:
                 'type': 'TEXT'  # TODO: support other types
             })
 
-        Schema.addType(repository_id, typecode_proc_disp, typecode_proc, "Created by data import", field_spec)
+        SchemaManager.addType(repository_id, typecode_proc_disp, typecode_proc, "Created by data import", field_spec)
 
         return field_names
 
@@ -370,3 +375,22 @@ class Schema:
                     return True
                 else:
                     return False
+
+    #
+    #
+    #
+    def loadDataTypePlugins(self):
+        for n in self.plugin_source.list_plugins():
+            if re.match("Base", n):
+                continue
+            self.dataTypePlugins[n] = self.plugin_source.load_plugin(n)
+
+        self.pluginsAreLoaded = True
+
+    #
+    #
+    #
+    def getDataTypes(self):
+        if self.pluginsAreLoaded is False:
+                self.loadDataTypePlugins()
+        return self.dataTypePlugins.keys()

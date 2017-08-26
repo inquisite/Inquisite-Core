@@ -4,7 +4,7 @@ from lib.utils.cypherHelpers import makeDataMapForCypher
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
 
-class Data:
+class DataManager:
     # For now all class methods are going to be static
     def __init__():
         pass

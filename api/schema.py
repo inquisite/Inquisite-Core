@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
-from lib.managers.SchemaManager import Schema
+from lib.managers.SchemaManager import SchemaManager
 from lib.utils.requestHelpers import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest, responseHandler
 from lib.crossDomain import crossdomain
 from lib.utils.requestHelpers import makeResponse
@@ -16,7 +16,7 @@ schema_blueprint = Blueprint('schema', __name__)
 def getTypes(repository_id):
     # TODO: check that user has access to this data
     try:
-        return makeResponse(payload=Schema.getTypes(repository_id))
+        return makeResponse(payload=SchemaManager.getTypes(repository_id))
     except Exception as e:
         return makeResponse(error=e)
 
@@ -30,7 +30,7 @@ def addType(repository_id):
 
     # TODO: check that user has access to this data
     try:
-        return makeResponse(message="Added type", payload=Schema.addType(repository_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields')))
+        return makeResponse(message="Added type", payload=SchemaManager.addType(repository_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields')))
     except Exception as e:
         return makeResponse(error=e)
 
@@ -42,9 +42,12 @@ def editType(repository_id, type_id):
     code = request.form.get('code')
     description = request.form.get('description')
 
+    x = SchemaManager()
+    print "GOT "
+    print x.get
     # TODO: check that user has access to this data
     try:
-        return makeResponse(message="Edited type", payload=Schema.editType(repository_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))
+        return makeResponse(message="Edited type", payload=SchemaManager.editType(repository_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))
     except Exception as e:
         return makeResponse(error=e)
 
@@ -69,7 +72,7 @@ def addField(repository_id, typecode):
 
     # TODO: check that user has access to this data
     try:
-        return makeResponse(payload=Schema.addField(repository_id, typecode, name, code, fieldtype, description), message="Added field")
+        return makeResponse(payload=SchemaManager.addField(repository_id, typecode, name, code, fieldtype, description), message="Added field")
     except Exception as e:
         return makeResponse(error=e)
 
@@ -81,7 +84,7 @@ def addData(repository_id, typecode):
 
     # TODO: check that user has access to this data
     try:
-        if Schema.addDataToRepo(repository_id, typecode, json.loads(data)):
+        if SchemaManager.addDataToRepo(repository_id, typecode, json.loads(data)):
             return makeResponse(payload={"msg": "Added data to repository"})
         else:
             return makeResponse(payload={"msg": "No data to add"})

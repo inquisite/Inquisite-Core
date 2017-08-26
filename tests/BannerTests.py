@@ -5,7 +5,7 @@ import unittest
 from BaseTest import BaseTest
 
 
-class BannerTest(BaseTest):
+class BannerTests(BaseTest):
   def test_banner(self):
     # Get repo - bad user id
     rv = self.client.get('/')

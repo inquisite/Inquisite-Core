@@ -4,13 +4,13 @@ import re
 
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_raw_jwt
-from lib.managers.RepoManager import Repositories
+from lib.managers.RepoManager import RepoManager
 from werkzeug.utils import secure_filename
 
 from lib.dataReaders.CSVData import CsvHandler
 from lib.dataReaders.JSONData import JSONHandler
 from lib.dataReaders.XLSData import XlsHandler
-from lib.managers.SchemaManager import Schema
+from lib.managers.SchemaManager import SchemaManager
 from lib.utils.db import db
 from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
@@ -35,7 +35,7 @@ def allowed_file(filename):
 @jwt_required
 def repoList():
     try:
-        return makeResponse(payload=Repositories.getAll())
+        return makeResponse(payload=RepoManager.getAll())
     except DbError as e:
         return makeResponse(error=e)
 
@@ -44,7 +44,7 @@ def repoList():
 @jwt_required
 def getRepo(repo_id):
     try:
-        return makeResponse(payload=Repositories.getInfo( int(repo_id)))
+        return makeResponse(payload=RepoManager.getInfo(int(repo_id)))
     except FindError as e:
         return makeResponse(error=e)
 
@@ -65,7 +65,7 @@ def addRepo():
     ident_str = "p.email = {identity}"
 
     try:
-        return makeResponse(payload=Repositories.create(url, name, readme, identity, ident_str), message="Created repository")
+        return makeResponse(payload=RepoManager.create(url, name, readme, identity, ident_str), message="Created repository")
     except ValidationError as e:
         return makeResponse(error=e)
 
@@ -78,7 +78,7 @@ def editRepo(repo_id):
     readme = request.form.get('readme')
 
     try:
-        return makeResponse(payload=Repositories.edit(repo_id, name, url, readme), message="Edited repository")
+        return makeResponse(payload=RepoManager.edit(repo_id, name, url, readme), message="Edited repository")
     except FindError as e:
         return makeResponse(error=e)
     except ValidationError as e:
@@ -90,7 +90,7 @@ def editRepo(repo_id):
 def deleteRepo():
     repo_id = int(request.form.get('repo_id'))
     try:
-        Repositories.delete(repo_id)
+        RepoManager.delete(repo_id)
         return makeResponse(payload={"repo_id": repo_id}, message="Repository deleted")
     except FindError as e:
         return makeResponse(error=e)
@@ -111,7 +111,7 @@ def setRepoOwner(repo_id):
     ident_str = "p.email = {identity}"
 
     try:
-        Repositories.setOwner(int(repo_id), identity, ident_str)
+        RepoManager.setOwner(int(repo_id), identity, ident_str)
         return makeResponse(payload={}, message="Set repository owner")
     except FindError as e:
         return makeResponse(error=e)
@@ -124,7 +124,7 @@ def setRepoOwner(repo_id):
 @jwt_required
 def getRepoOwner(repo_id):
     try:
-        owner = Repositories.getOwner(int(repo_id))
+        owner = RepoManager.getOwner(int(repo_id))
         return makeResponse(payload=owner)
     except FindError as e:
         return makeResponse(error=e)
@@ -136,7 +136,7 @@ def getRepoOwner(repo_id):
 @jwt_required
 def deleteRepoOwner(repo_id, person_id):
     try:
-        rel_deleted = Repositories.deleteOwner(int(repo_id), int(person_id))
+        rel_deleted = RepoManager.deleteOwner(int(repo_id), int(person_id))
         return makeResponse(payload={}, message="Deleted owner")
     except FindError as e:
         return makeResponse(error=e)
@@ -148,7 +148,7 @@ def deleteRepoOwner(repo_id, person_id):
 @jwt_required
 def getRepoInfo(repo_id):
     try:
-        repo = Repositories.getInfo(int(repo_id))
+        repo = RepoManager.getInfo(int(repo_id))
         return makeResponse(payload=repo)
     except FindError as e:
         return makeResponse(error=e)
@@ -164,7 +164,7 @@ def addRepoCollab():
     access = request.form.get('access')
 
     try:
-        Repositories.addCollaborator(repo_id, person_id, access)
+        RepoManager.addCollaborator(repo_id, person_id, access)
         return makeResponse(message="Collaborator added")
     except FindError as e:
         return makeResponse(error=e)
@@ -177,7 +177,7 @@ def addRepoCollab():
 @jwt_required
 def listRepoCollabs(repo_id):
     try:
-        return makeResponse(payload=Repositories.getCollaborators(int(repo_id)))
+        return makeResponse(payload=RepoManager.getCollaborators(int(repo_id)))
     except FindError as e:
         return makeResponse(error=e)
     except DbError as e:
@@ -190,7 +190,7 @@ def listRepoUsers():
     repo_id = int(request.form.get('repo_id'))
 
     try:
-        return makeResponse(payload=Repositories.getUsers(repo_id))
+        return makeResponse(payload=RepoManager.getUsers(repo_id))
     except FindError as e:
         return makeResponse(error=e)
     except DbError as e:
@@ -204,7 +204,7 @@ def removeRepoCollab():
     person_id = request.form.get('person_id')
 
     try:
-        Repositories.removeCollaborator(int(repo_id), int(person_id))
+        RepoManager.removeCollaborator(int(repo_id), int(person_id))
         return makeResponse(message="Collaborator removed")
     except FindError as e:
         return makeResponse(error=e)
@@ -217,7 +217,7 @@ def removeRepoCollab():
 @jwt_required
 def addRepoFollower(repo_id, person_id):
     try:
-        Repositories.addFollower(int(repo_id), int(person_id))
+        RepoManager.addFollower(int(repo_id), int(person_id))
         return makeResponse(message="Collaborator added")
     except FindError as e:
         return makeResponse(error=e)
@@ -230,7 +230,7 @@ def addRepoFollower(repo_id, person_id):
 @jwt_required
 def listRepoFollowers(repo_id):
     try:
-        return makeResponse(payload=Repositories.getFollowers(int(repo_id)))
+        return makeResponse(payload=RepoManager.getFollowers(int(repo_id)))
     except FindError as e:
         return makeResponse(error=e)
     except DbError as e:
@@ -241,7 +241,7 @@ def listRepoFollowers(repo_id):
 @jwt_required
 def removeRepoFollower(repo_id, person_id):
     try:
-        Repositories.removeFollower(int(repo_id), int(person_id))
+        RepoManager.removeFollower(int(repo_id), int(person_id))
         return makeResponse(message="Follower removed")
     except FindError as e:
         return makeResponse(error=e)
@@ -255,7 +255,7 @@ def getRepoData():
   repo_id = int(request.form.get('repo_id'))
 
   try:
-      return makeResponse(payload=Repositories.getData(repo_id))
+      return makeResponse(payload=RepoManager.getData(repo_id))
   except FindError as e:
       return makeResponse(error=e)
   except DbError as e:
@@ -311,11 +311,11 @@ def uploadData():
             rowcount = len(file_data)
             fieldnames = json.loads(file_data[0]).keys()
 
-            Schema.createDataTypeFromFields(repo_id, datatype.lower(), fieldnames)
+            SchemaManager.createDataTypeFromFields(repo_id, datatype.lower(), fieldnames)
 
             # Create nodes
             for row in file_data:
-                Schema.addDataToRepo(repo_id, datatype, json.loads(row))
+                SchemaManager.addDataToRepo(repo_id, datatype, json.loads(row))
 
         if ".json" == file_extension:
 
@@ -326,7 +326,7 @@ def uploadData():
                 fieldnames = file_data.keys()
                 rowcount = len(file_data)
 
-                Schema.createDataTypeFromFields(repo_id, datatype, fieldnames)
+                SchemaManager.createDataTypeFromFields(repo_id, datatype, fieldnames)
 
                 if len(fieldnames) <= 1:
                     nestednames = file_data[fieldnames[0]][0].keys()
@@ -336,16 +336,16 @@ def uploadData():
                         # Flatten our nested JSON for insertion into Neo4j
                         # TODO: do you use pandas json_normalize to turn into dataframe?
                         flat = flatten_json(item)
-                        Schema.addDataToRepo(repo_id, datatype, flat)
+                        SchemaManager.addDataToRepo(repo_id, datatype, flat)
 
                 else:
                     for item in file_data:
                         flat = flatten_json(item)
                         # TODO: consider pandas json_normailize to turn into dataframe?
 
-                        Schema.createDataTypeFromFields(repo_id, datatype.lower(), fieldnames)
+                        SchemaManager.createDataTypeFromFields(repo_id, datatype.lower(), fieldnames)
 
-                        Schema.addDataToRepo(repo_id, datatype, flat)
+                        SchemaManager.addDataToRepo(repo_id, datatype, flat)
 
         if ".xlsx" == file_extension or ".xls" == file_extension:
 
@@ -359,11 +359,11 @@ def uploadData():
                 # Assumes that row 1 is column headers
                 # TODO: improve this assumption? -- Parse data, get max row count, look for first row with that row count?
                 if item != fieldnames:
-                    Schema.createDataTypeFromFields(repo_id, datatype, fieldnames)
+                    SchemaManager.createDataTypeFromFields(repo_id, datatype, fieldnames)
 
                     # Create Dict of key:values by combining fieldnames with row into a dict
                     row = dict(zip(fieldnames, item))
-                    Schema.addDataToRepo(repo_id, datatype, row)
+                    SchemaManager.addDataToRepo(repo_id, datatype, row)
 
     # Send first ten rows as teaser
     if file_data:

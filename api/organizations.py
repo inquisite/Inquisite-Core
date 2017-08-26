@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
-from lib.managers.OrganizationsManager import Organizations
+from lib.managers.OrganizationManager import OrganizationManager
 from lib.utils.db import db
 from lib.utils.requestHelpers import responseHandler
 from lib.crossDomain import crossdomain
@@ -15,7 +15,7 @@ organizations_blueprint = Blueprint('organizations', __name__)
 @jwt_required
 def orgList():
 
-    orgslist = Organizations.getAll()
+    orgslist = OrganizationManager.getAll()
     ret = {
       'status_code': 200,
       'payload': {
@@ -96,7 +96,7 @@ def getOrg(org_id):
       }
     }
 
-    org = Organizations.getInfo( int(org_id) )
+    org = OrganizationManager.getInfo(int(org_id))
     if org:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Success, organization found'
@@ -184,7 +184,7 @@ def deleteOrg(org_id):
       }
     }
 
-    node_delete = Organizations.delete( int(org_id) )
+    node_delete = OrganizationManager.delete(int(org_id))
     if node_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Organization deleted'
@@ -207,7 +207,7 @@ def getOrgRepos(org_id):
       }
     }
 
-    repos = Organizations.getRepos( int(org_id) )
+    repos = OrganizationManager.getRepos(int(org_id))
     if repos:
         ret['status_code'] = 200
         ret['payload']['repos'] = repos
@@ -229,7 +229,7 @@ def addRepoToOrg(org_id, repo_id):
       }
     }
 
-    rel_created = Organizations.addRepository( int(org_id), int(repo_id) )
+    rel_created = OrganizationManager.addRepository(int(org_id), int(repo_id))
     if rel_created:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Added Repo to Org'
@@ -251,7 +251,7 @@ def removeRepoFromOrg(org_id, repo_id):
       }
     }
  
-    rel_deleted = Organizations.removeRepository( int(org_id), int(repo_id) )
+    rel_deleted = OrganizationManager.removeRepository(int(org_id), int(repo_id))
     if rel_deleted:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Repo removed from Org'
@@ -273,7 +273,7 @@ def addPersonToOrg(org_id, person_id):
       }
     }
 
-    rel_created = Organizations.addPerson( int(org_id), int(person_id) )
+    rel_created = OrganizationManager.addPerson(int(org_id), int(person_id))
     if rel_created:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person was added to Org'
@@ -292,7 +292,7 @@ def removePersonFromOrg(org_id, person_id):
       }
     }
 
-    removed = Organizations.removePerson( int(org_id), int(person_id) )
+    removed = OrganizationManager.removePerson(int(org_id), int(person_id))
     if removed:
         ret['status_code'] = 200
         ret['payload']['msg'] = 'Person was successfully removed from Org'
@@ -305,7 +305,7 @@ def removePersonFromOrg(org_id, person_id):
 @jwt_required
 def getOrgPeople(org_id):
 
-    org_people = Organizations.getPeople( int(org_id) )
+    org_people = OrganizationManager.getPeople(int(org_id))
 
     ret['status_code'] = 200
     ret['payload']['people'] = org_people

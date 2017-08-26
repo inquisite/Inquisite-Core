@@ -2,7 +2,7 @@ from lib.utils.db import db
 import re
 from lib.exceptions.SearchError import SearchError
 
-class Search:
+class SearchManager:
 
     # For now all class methods are going to be static
     def __init__():

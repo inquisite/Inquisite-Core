@@ -7,7 +7,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_raw_jwt
 from passlib.hash import sha256_crypt
 
-from lib.managers.PeopleManager import People
+from lib.managers.PeopleManager import PeopleManager
 from lib.utils.db import db
 from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
@@ -25,7 +25,7 @@ people_blueprint = Blueprint('people', __name__)
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def peopleList():
-    return makeResponse(payload={"people": People.getAll()})
+    return makeResponse(payload={"people": PeopleManager.getAll()})
 
 
 # Get Person by ID
@@ -44,7 +44,7 @@ def getPerson():
     if request.method == 'POST':
       identity = int(request.form.get('person_id'))
 
-    person = People.getInfo(identity)
+    person = PeopleManager.getInfo(identity)
 
     ret = {}
     if person is not None:
@@ -52,7 +52,7 @@ def getPerson():
 
     # If request method is GET, then it's our logged in user, get Repos and repo data too!
     if request.method == 'GET':
-      ret['repos'] = People.getRepos(identity)
+      ret['repos'] = PeopleManager.getRepos(identity)
 
     return makeResponse(payload=ret)
 
@@ -70,7 +70,7 @@ def addPerson():
     password = request.form.get('password')
 
     try:
-        ret = People.addPerson(forename, surname, location, email, url, tagline, password)
+        ret = PeopleManager.addPerson(forename, surname, location, email, url, tagline, password)
         return makeResponse(payload=ret, message="Added person")
     except DbError as e:
         return makeResponse(error=e)
@@ -101,7 +101,7 @@ def editPerson():
     # email address
     identity = current_token['identity']
     try:
-        return makeResponse(payload=People.editPerson(identity, forename, surname, location, email, url, tagline), message="")
+        return makeResponse(payload=PeopleManager.editPerson(identity, forename, surname, location, email, url, tagline), message="")
     except FindError as e:
         return makeResponse(error=e)
     except ValidationError as e:
@@ -118,7 +118,7 @@ def editPerson():
 @jwt_required
 def deletePerson(person_id):
     try:
-        People.deletePerson(person_id)
+        PeopleManager.deletePerson(person_id)
         return makeResponse(message="Deleted person", payload={})
     except FindError as e:
         return makeResponse(error=e)
@@ -135,7 +135,7 @@ def getPersonRepos():
         identity = current_token['identity']
 
     try:
-        return makeResponse(payload=People.getReposForPerson(identity))
+        return makeResponse(payload=PeopleManager.getReposForPerson(identity))
     except FindError as e:
         return makeResponse(error=e)
 
@@ -151,7 +151,7 @@ def findPerson():
     ret = {'q': q, 'results': []}
 
     if q is not None and len(q) > 0:
-        people = People.find({'surname': q, 'email': q})
+        people = PeopleManager.find({'surname': q, 'email': q})
 
         if people is not None:
             msg = 'Success'
