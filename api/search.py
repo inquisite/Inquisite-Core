@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 
-from lib.models.searchClass import Search
+from lib.managers.searchManager import Search
 from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
 from lib.exceptions.SearchError import SearchError

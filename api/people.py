@@ -7,7 +7,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_raw_jwt
 from passlib.hash import sha256_crypt
 
-from lib.models.peopleClass import People
+from lib.managers.peopleManager import People
 from lib.utils.db import db
 from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain
@@ -15,7 +15,7 @@ from lib.exceptions.FindError import FindError
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError
-import lib.models.peopleClass
+import lib.managers.peopleManager
 
 people_blueprint = Blueprint('people', __name__)
 

@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
-from lib.models.organizationsClass import Organizations
+from lib.managers.organizationsManager import Organizations
 from lib.utils.db import db
 from lib.utils.requestHelpers import responseHandler
 from lib.crossDomain import crossdomain

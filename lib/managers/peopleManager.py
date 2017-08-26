@@ -1,6 +1,6 @@
 import json
 
-from lib.models.repositoriesClass import Repositories
+from lib.managers.repositoriesManager import Repositories
 from lib.utils.db import db
 from lib.exceptions.DbError import DbError
 from lib.exceptions.SaveError import SaveError

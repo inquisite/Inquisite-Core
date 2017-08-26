@@ -4,13 +4,13 @@ import re
 
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_raw_jwt
-from lib.models.repositoriesClass import Repositories
+from lib.managers.repositoriesManager import Repositories
 from werkzeug.utils import secure_filename
 
 from lib.dataReaders.csvdata import CsvHandler
 from lib.dataReaders.jsondata import JSONHandler
 from lib.dataReaders.xlsdata import XlsHandler
-from lib.models.schemaClass import Schema
+from lib.managers.schemaManager import Schema
 from lib.utils.db import db
 from lib.utils.requestHelpers import makeResponse
 from lib.crossDomain import crossdomain

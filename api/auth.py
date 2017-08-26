@@ -15,7 +15,7 @@ from lib.utils.db import db
 
 from lib.exceptions.AuthError import AuthError
 from lib.utils.requestHelpers import makeResponse
-from lib.models.authClass import Auth
+from lib.managers.authManger import Auth
 
 auth_blueprint = Blueprint('auth', __name__)
 
