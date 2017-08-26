@@ -1,4 +1,4 @@
-from lib.plugins import BasePlugin
+from lib.plugins.BasePlugin import BasePlugin
 
 class BaseDataType(BasePlugin):
     def __init__(self):
