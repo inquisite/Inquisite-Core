@@ -2,7 +2,7 @@ import os
 import json
 import sys
 import unittest
-from baseTest import BaseTest
+from BaseTest import BaseTest
 
 
 class RepoTest(BaseTest):

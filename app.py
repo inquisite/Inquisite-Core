@@ -21,7 +21,7 @@ from api.auth import auth_blueprint
 from api.banner import banner_blueprint
 from api.people import people_blueprint
 from api.organizations import organizations_blueprint
-from api.repositories import repositories_blueprint
+from api.repos import repositories_blueprint
 from api.schema import schema_blueprint
 from api.data import data_blueprint
 from api.search import search_blueprint

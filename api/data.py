@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
-from lib.managers.dataManager import Data
+from lib.managers.DataManager import Data
 from lib.utils.requestHelpers import responseHandler
 from lib.crossDomain import crossdomain
 from lib.exceptions.SaveError import SaveError
