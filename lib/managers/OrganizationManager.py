@@ -1,5 +1,5 @@
 import json
-from lib.utils.db import db
+from lib.utils.Db import db
 
 class OrganizationManager:
 

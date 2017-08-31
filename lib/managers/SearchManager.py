@@ -1,4 +1,4 @@
-from lib.utils.db import db
+from lib.utils.Db import db
 import re
 from lib.exceptions.SearchError import SearchError
 

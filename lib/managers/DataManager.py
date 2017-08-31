@@ -1,6 +1,6 @@
 import re
-from lib.utils.db import db
-from lib.utils.cypherHelpers import makeDataMapForCypher
+from lib.utils.Db import db
+from lib.utils.CypherHelpers import makeDataMapForCypher
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
 

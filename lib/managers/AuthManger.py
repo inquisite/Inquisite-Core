@@ -1,10 +1,10 @@
 import re
-from lib.utils.db import db
-from lib.utils.cypherHelpers import makeDataMapForCypher
+from lib.utils.Db import db
+from lib.utils.CypherHelpers import makeDataMapForCypher
 from passlib.hash import sha256_crypt
 from lib.exceptions.AuthError import AuthError
 from lib.exceptions.FindError import FindError
-from lib.utils.db import db
+from lib.utils.Db import db
 from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_required, create_access_token, create_refresh_token, get_jwt_identity, get_raw_jwt, revoke_token
 
 class AuthManager:

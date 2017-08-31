@@ -1,10 +1,10 @@
 import time
 import datetime
-from lib.utils.db import db
+from lib.utils.Db import db
 import datetime
 import time
 
-from lib.utils.db import db
+from lib.utils.Db import db
 from lib.exceptions.ValidationError import ValidationError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.FindError import FindError

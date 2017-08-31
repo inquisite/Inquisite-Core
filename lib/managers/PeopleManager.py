@@ -1,17 +1,17 @@
 import json
 
 from lib.managers.RepoManager import RepoManager
-from lib.utils.db import db
+from lib.utils.Db import db
 from lib.exceptions.DbError import DbError
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
 from lib.exceptions.ValidationError import ValidationError
-from lib.utils.utilityHelpers import is_number
+from lib.utils.UtilityHelpers import is_number
 from passlib.hash import sha256_crypt
 import time
 import datetime
 from validate_email import validate_email
-from lib.utils.utilityHelpers import email_domain_is_allowed
+from lib.utils.UtilityHelpers import email_domain_is_allowed
 
 
 class PeopleManager:
