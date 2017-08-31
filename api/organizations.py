@@ -2,8 +2,8 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from lib.managers.OrganizationManager import OrganizationManager
-from lib.utils.db import db
-from lib.utils.requestHelpers import responseHandler
+from lib.utils.Db import db
+from lib.utils.RequestHelpers import responseHandler
 from lib.crossDomain import crossdomain
 
 organizations_blueprint = Blueprint('organizations', __name__)

@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 
 from lib.managers.SearchManager import SearchManager
-from lib.utils.requestHelpers import makeResponse
+from lib.utils.RequestHelpers import makeResponse
 from lib.crossDomain import crossdomain
 from lib.exceptions.SearchError import SearchError
 

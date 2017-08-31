@@ -2,11 +2,11 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from lib.managers.DataManager import DataManager
-from lib.utils.requestHelpers import responseHandler
+from lib.utils.RequestHelpers import responseHandler
 from lib.crossDomain import crossdomain
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
-from lib.utils.requestHelpers import makeResponse
+from lib.utils.RequestHelpers import makeResponse
 
 data_blueprint = Blueprint('data', __name__)
 

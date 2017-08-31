@@ -8,8 +8,8 @@ from flask_jwt_extended import jwt_required, get_raw_jwt
 from passlib.hash import sha256_crypt
 
 from lib.managers.PeopleManager import PeopleManager
-from lib.utils.db import db
-from lib.utils.requestHelpers import makeResponse
+from lib.utils.Db import db
+from lib.utils.RequestHelpers import makeResponse
 from lib.crossDomain import crossdomain
 from lib.exceptions.FindError import FindError
 from lib.exceptions.SaveError import SaveError

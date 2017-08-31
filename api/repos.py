@@ -11,10 +11,10 @@ from lib.dataReaders.CSVData import CsvHandler
 from lib.dataReaders.JSONData import JSONHandler
 from lib.dataReaders.XLSData import XlsHandler
 from lib.managers.SchemaManager import SchemaManager
-from lib.utils.db import db
-from lib.utils.requestHelpers import makeResponse
+from lib.utils.Db import db
+from lib.utils.RequestHelpers import makeResponse
 from lib.crossDomain import crossdomain
-from lib.utils.utilityHelpers import flatten_json
+from lib.utils.UtilityHelpers import flatten_json
 from lib.exceptions.FindError import FindError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError

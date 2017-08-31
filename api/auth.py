@@ -11,10 +11,10 @@ from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_requi
 from werkzeug.security import safe_str_cmp
 from lib.crossDomain import crossdomain
 from lib.basicAuth import check_auth, requires_auth
-from lib.utils.db import db
+from lib.utils.Db import db
 
 from lib.exceptions.AuthError import AuthError
-from lib.utils.requestHelpers import makeResponse
+from lib.utils.RequestHelpers import makeResponse
 from lib.managers.AuthManger import AuthManager
 
 auth_blueprint = Blueprint('auth', __name__)
