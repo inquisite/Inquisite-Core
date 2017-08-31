@@ -1,4 +1,4 @@
-from lib.utils.db import db
+from lib.utils.Db import db
 import re
 from lib.exceptions.FindError import FindError
 from lib.exceptions.DbError import DbError
@@ -6,16 +6,15 @@ from lib.exceptions.ValidationError import ValidationError
 from pluginbase import PluginBase
 
 class SchemaManager:
-    FieldTypes = ['TEXT', 'INT', 'FLOAT', 'DATERANGE', 'GEOREF']
+    plugin_source = PluginBase(package='lib.plugins.dataTypes').make_plugin_source(
+        searchpath=['lib/plugins/dataTypes'], identifier='inquisite')
 
+    FieldTypes = [] #self.getDataTypes()
+    dataTypePlugins = {}
+    pluginsAreLoaded = False
 
     def __init__(self):
-        self.plugin_base = PluginBase(package='lib.plugins.dataTypes')
-        self.plugin_source = self.plugin_base.make_plugin_source(
-            searchpath=['lib/plugins/dataTypes'])
-        self.dataTypePlugins = {}
-        self.pluginsAreLoaded = False
-        self.loadDataTypePlugins()
+        pass
 
     # Return repository name and id for given repo code
     @staticmethod
@@ -379,18 +378,44 @@ class SchemaManager:
     #
     #
     #
-    def loadDataTypePlugins(self):
-        for n in self.plugin_source.list_plugins():
+    @classmethod
+    def loadDataTypePlugins(cls):
+        for n in cls.plugin_source.list_plugins():
             if re.match("Base", n):
                 continue
-            self.dataTypePlugins[n] = self.plugin_source.load_plugin(n)
+            c = getattr(cls.plugin_source.load_plugin(n), n)
+            cls.dataTypePlugins[n] = c
 
-        self.pluginsAreLoaded = True
+        cls.pluginsAreLoaded = True
+        return True
 
     #
     #
     #
-    def getDataTypes(self):
-        if self.pluginsAreLoaded is False:
-                self.loadDataTypePlugins()
-        return self.dataTypePlugins.keys()
+    @classmethod
+    def getDataTypes(cls):
+        if cls.pluginsAreLoaded is False:
+            cls.loadDataTypePlugins()
+        return cls.dataTypePlugins.keys()
+
+    #
+    #
+    #
+    @classmethod
+    def getDataTypePlugin(cls, n):
+        if cls.pluginsAreLoaded is False:
+            cls.loadDataTypePlugins()
+        if n in cls.dataTypePlugins:
+            return cls.dataTypePlugins[n]
+        return None
+
+    #
+    #
+    #
+    @classmethod
+    def getDataTypeInstance(cls, n):
+        if cls.pluginsAreLoaded is False:
+           cls.loadDataTypePlugins()
+        if n in cls.dataTypePlugins:
+            return cls.dataTypePlugins[n]()
+        return None

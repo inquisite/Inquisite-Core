@@ -17,7 +17,11 @@ class SchemaManagerTests(BaseTest):
 
   def test_getDataTypes(self):
     print "Data types are: "
-    print self.schema_manager.getDataTypes()
+    print SchemaManager.getDataTypes()
+
+    for x in SchemaManager.getDataTypes():
+      p = SchemaManager.getDataTypePlugin(x)
+      print p.getSettingsList()
     return True
 
 if __name__ == '__main__':

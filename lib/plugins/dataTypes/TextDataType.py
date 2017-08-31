@@ -1,7 +1,7 @@
 from lib.plugins.dataTypes.BaseDataType import BaseDataType
 from lib.utils.Settings import Settings
 
-class Text(BaseDataType):
+class TextDataType(BaseDataType):
     settings_spec = {
         "min_length": {
             "type": "integer",
@@ -24,8 +24,5 @@ class Text(BaseDataType):
     settings = Settings(settings_spec)
 
     def __init__(self, value=None):
-        print "INIT TEXT"
         self.name = "Text"
-        super(Text, self, value).__init__(value)
-    def setup(self):
-        print "SET UP" + self.name
+        super(TextDataType, self).__init__(value)

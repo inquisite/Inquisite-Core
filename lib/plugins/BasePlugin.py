@@ -1,4 +1,4 @@
-class BasePlugin:
+class BasePlugin(object):
     def __init__(self):
         pass
 
