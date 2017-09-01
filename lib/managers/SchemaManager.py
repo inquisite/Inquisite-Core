@@ -9,7 +9,6 @@ class SchemaManager:
     plugin_source = PluginBase(package='lib.plugins.dataTypes').make_plugin_source(
         searchpath=['lib/plugins/dataTypes'], identifier='inquisite')
 
-    FieldTypes = [] #self.getDataTypes()
     dataTypePlugins = {}
     pluginsAreLoaded = False
 
@@ -65,13 +64,24 @@ class SchemaManager:
 
         try:
             result = db.run(
-                "MATCH (f:SchemaField)--(t:SchemaType) WHERE ID(t) = {type_id}  RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description",
+                "MATCH (f:SchemaField)--(t:SchemaType) WHERE ID(t) = {type_id}  RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description, properties(f) as props",
                 {"type_id": int(type_id)})
 
             fieldlist = []
             if result:
                 for r in result:
+                    ft = SchemaManager.getDataTypeInstance(r['type'])
+                    if ft is None:
+                        #raise ValidationError(message="Invalid field type", context="Schema.getFieldsForType")
+                        continue
+
                     t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type']}
+
+                    for s in ft.getSettingsList():
+                        if "settings_" + s in r['props']:
+                            t["settings_" + s] = r['props']["settings_" + s]
+
+                    print t
 
                     fieldlist.append(t)
 
@@ -99,7 +109,7 @@ class SchemaManager:
 
                return ret
             else:
-                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repository_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph' })-[:PART_OF]->(r) RETURN ID(t) as id",
+                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repository_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph',  })-[:PART_OF]->(r) RETURN ID(t) as id",
                             {"repository_id": int(repository_id),"name": name, "code": code, "description": description})
         except Exception as e:
             raise DbError(message="Could not add type", context="Schema.addType",
@@ -107,9 +117,11 @@ class SchemaManager:
 
         # add/edit fields
         field_status = {}
+        settings =  {f.replace("settings_", ""):v for f,v in fields.iteritems() if 'settings_' in f}
         for k in fields:
+
             # add field
-            fret = SchemaManager.addField(repository_id, code, k['name'], k['code'], k['type'], k['description'])
+            fret = SchemaManager.addField(repository_id, code, k['name'], k['code'], k['type'], k['description'], settings)
 
             if 'field_id' in fret:
                 field_status[k['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
@@ -147,10 +159,11 @@ class SchemaManager:
         # add/edit fields
         field_status = {}
         for k in fields:
+            settings = {f.replace("settings_", ""): v for f, v in fields[k].iteritems() if 'settings_' in f}
             if 'id' in fields[k]:
                 # edit existing field
                 fret = SchemaManager.editField(repository_id, code, fields[k]['id'], fields[k]['name'], fields[k]['code'], fields[k]['type'],
-                                               fields[k]['description'])
+                                               fields[k]['description'], settings)
 
                 if 'field_id' in fret:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'],
@@ -160,7 +173,7 @@ class SchemaManager:
                                                        'msg': 'Could not edit field'}
             else:
                 # add field
-                fret = SchemaManager.addField(repository_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'], fields[k]['description'])
+                fret = SchemaManager.addField(repository_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'], fields[k]['description'], settings)
 
                 if 'field_id' in fret:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
@@ -205,14 +218,20 @@ class SchemaManager:
             raise DbError(message="Could not delete type", context="Schema.deleteType", dberror=e.message)
 
     @staticmethod
-    def addField(repository_id, typecode, name, code, fieldtype, description):
+    def addField(repository_id, typecode, name, code, fieldtype, description, settings):
         # TODO validate params
+        print "meow" + fieldtype
 
         # Check field type
-        if fieldtype not in SchemaManager.FieldTypes:
+        if fieldtype not in SchemaManager.getDataTypes():
             raise ValidationError(message="Invalid field type", context="Schema.addField")
 
         ret = {}
+
+        ft = SchemaManager.getDataTypeInstance(fieldtype)
+        if ft is None:
+            raise ValidationError(message="Invalid field type", context="Schema.addField")
+
 
         # TODO: check that repository is owned by current user
 
@@ -226,10 +245,17 @@ class SchemaManager:
             ret['name'] = r['name']
             return ret
         else:
+            flds = ["name: {name}", "code: {code}", "description: {description}", "type: {fieldtype}"]
+            params =  {"repository_id": int(repository_id), "name": name, "code": code, "description": description,
+                 "typecode": typecode, "fieldtype": fieldtype}
+            for s in settings:
+                flds.append("settings_" + s + ": {settings_" + s + "}")
+                params["settings_" + s] = settings[s]
+            print flds
+            print params
             result = db.run(
-                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { name: {name}, code: {code}, description: {description}, type: {fieldtype} })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name",
-                {"repository_id": int(repository_id), "name": name, "code": code, "description": description,
-                 "typecode": typecode, "fieldtype": fieldtype})
+                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { " + ", ".join(flds) + " })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name",
+                params)
             r = result.peek()
 
             # TODO: check query result
@@ -244,14 +270,18 @@ class SchemaManager:
 
 
     @staticmethod
-    def editField(repository_id, typecode, field_id, name, code, fieldtype, description):
+    def editField(repository_id, typecode, field_id, name, code, fieldtype, description, settings):
         # TODO validate params
 
 
         ret = {}
 
         # Check field type
-        if fieldtype not in SchemaManager.FieldTypes:
+        if fieldtype not in SchemaManager.getDataTypes():
+            raise ValidationError(message="Invalid field type", context="Schema.addField")
+
+        ft = SchemaManager.getDataTypeInstance(fieldtype)
+        if ft is None:
             raise ValidationError(message="Invalid field type", context="Schema.addField")
 
         # TODO: check that repository is owned by current user
@@ -266,10 +296,17 @@ class SchemaManager:
             ret['name'] = r['name']
             return ret
         else:
+            flds = ["f.name = {name}", "f.code = {code}", "f.description = {description}", "f.type = {fieldtype}"]
+            params = {"repository_id": int(repository_id), "name": name, "code": code, "description": description,
+                 "typecode": typecode, "fieldtype": fieldtype, "field_id": int(field_id)}
+
+            for s in settings:
+                flds.append("f.settings_" + s + " = {settings_" + s + "}")
+                params["settings_" + s] = settings[s]
+
             result = db.run(
-                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repository_id} AND ID(f) = {field_id} SET f.name = {name}, f.code = {code}, f.description = {description}, f.type = {fieldtype} RETURN ID(f) as id, f.name as name",
-                {"repository_id": int(repository_id), "name": name, "code": code, "description": description,
-                 "typecode": typecode, "fieldtype": fieldtype, "field_id": int(field_id)})
+                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repository_id} AND ID(f) = {field_id} SET " + ", ".join(flds) + " RETURN ID(f) as id, f.name as name",
+                params)
             r = result.peek()
 
             # TODO: check query result
@@ -397,6 +434,19 @@ class SchemaManager:
         if cls.pluginsAreLoaded is False:
             cls.loadDataTypePlugins()
         return cls.dataTypePlugins.keys()
+
+    #
+    #
+    #
+    @classmethod
+    def getInfoForDataTypes(cls):
+        if cls.pluginsAreLoaded is False:
+            cls.loadDataTypePlugins()
+        types = {}
+        for x in SchemaManager.getDataTypes():
+            p = SchemaManager.getDataTypePlugin(x)
+            types[x] = { "name": p.name, "description": p.description, "settings": p.getSettingsList(), "order": p.getSettingsOrder() }
+        return types
 
     #
     #

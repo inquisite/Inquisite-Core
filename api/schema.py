@@ -10,6 +10,15 @@ from lib.utils.RequestHelpers import makeResponse
 
 schema_blueprint = Blueprint('schema', __name__)
 
+@schema_blueprint.route('/schema/getDataTypes', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+#@jwt_required
+def getDataTypes():
+    try:
+        return makeResponse(payload=SchemaManager.getInfoForDataTypes())
+    except Exception as e:
+        return makeResponse(error=e)
+
 @schema_blueprint.route('/schema/getTypes/<repository_id>', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
@@ -42,9 +51,6 @@ def editType(repository_id, type_id):
     code = request.form.get('code')
     description = request.form.get('description')
 
-    x = SchemaManager()
-    print "GOT "
-    print x.get
     # TODO: check that user has access to this data
     try:
         return makeResponse(message="Edited type", payload=SchemaManager.editType(repository_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))

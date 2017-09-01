@@ -39,6 +39,13 @@ class BaseDataType(BasePlugin):
         return cls.settings.getSettings()
 
     #
+    # Get order of settings for display.
+    #
+    @classmethod
+    def getSettingsOrder(cls):
+        return cls.settings.getSettingsOrder()
+
+    #
     # Get settings instance
     #
     @classmethod
