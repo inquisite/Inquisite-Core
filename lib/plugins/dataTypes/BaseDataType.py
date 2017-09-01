@@ -51,3 +51,9 @@ class BaseDataType(BasePlugin):
     @classmethod
     def getSettingsInstance(cls):
         return cls.settings
+
+    #
+    # Validate settings values
+    #
+    def validateSettings(self, settingsValues):
+        return self.settings.validate(settingsValues)

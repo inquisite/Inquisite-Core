@@ -3,6 +3,7 @@ import re
 from lib.exceptions.FindError import FindError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError
+from lib.exceptions.SettingsValidationError import SettingsValidationError
 from pluginbase import PluginBase
 
 class SchemaManager:
@@ -80,8 +81,6 @@ class SchemaManager:
                     for s in ft.getSettingsList():
                         if "settings_" + s in r['props']:
                             t["settings_" + s] = r['props']["settings_" + s]
-
-                    print t
 
                     fieldlist.append(t)
 
@@ -220,7 +219,11 @@ class SchemaManager:
     @staticmethod
     def addField(repository_id, typecode, name, code, fieldtype, description, settings):
         # TODO validate params
-        print "meow" + fieldtype
+        if code is None or len(code) == 0:
+            raise ValidationError(message="Field code is required", context="Schema.addField")
+
+        if name is None or len(name) == 0:
+            raise ValidationError(message="Field name is required", context="Schema.addField")
 
         # Check field type
         if fieldtype not in SchemaManager.getDataTypes():
@@ -231,6 +234,10 @@ class SchemaManager:
         ft = SchemaManager.getDataTypeInstance(fieldtype)
         if ft is None:
             raise ValidationError(message="Invalid field type", context="Schema.addField")
+
+        sv = ft.validateSettings(settings)
+        if sv is not True:
+            raise SettingsValidationError(message="Invalid field type", errors={code: sv}, context="Schema.addField")
 
 
         # TODO: check that repository is owned by current user
@@ -251,8 +258,7 @@ class SchemaManager:
             for s in settings:
                 flds.append("settings_" + s + ": {settings_" + s + "}")
                 params["settings_" + s] = settings[s]
-            print flds
-            print params
+
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repository_id} CREATE (f:SchemaField { " + ", ".join(flds) + " })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name",
                 params)
@@ -271,18 +277,27 @@ class SchemaManager:
 
     @staticmethod
     def editField(repository_id, typecode, field_id, name, code, fieldtype, description, settings):
-        # TODO validate params
+
+        if code is None or len(code) == 0:
+            raise ValidationError(message="Field code is required", context="Schema.editField")
+
+        if name is None or len(name) == 0:
+            raise ValidationError(message="Field name is required", context="Schema.editField")
 
 
         ret = {}
 
         # Check field type
         if fieldtype not in SchemaManager.getDataTypes():
-            raise ValidationError(message="Invalid field type", context="Schema.addField")
+            raise ValidationError(message="Invalid field type " + fieldtype, context="Schema.editField")
 
         ft = SchemaManager.getDataTypeInstance(fieldtype)
         if ft is None:
-            raise ValidationError(message="Invalid field type", context="Schema.addField")
+            raise ValidationError(message="Invalid field type " + fieldtype, context="Schema.editField")
+
+        sv = ft.validateSettings(settings)
+        if sv is not True:
+            raise SettingsValidationError(message="Invalid settings for field " + name, errors={code: sv}, context="Schema.editField")
 
         # TODO: check that repository is owned by current user
 

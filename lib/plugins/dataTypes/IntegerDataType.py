@@ -33,3 +33,21 @@ class IntegerDataType(BaseDataType):
 
     def __init__(self, value=None):
         super(IntegerDataType, self).__init__(value)
+
+
+    #
+    # Validate settings values
+    #
+    def validateSettings(self, settingsValues):
+        errs = super(IntegerDataType, self).validateSettings(settingsValues)
+        if errs is not True:
+            return errs
+
+        errs = []
+
+        if (int(settingsValues['min_value']) > int(settingsValues['max_value'])):
+            errs.append("Minimum value must be less than maximum value")
+
+        if len(errs) > 0:
+            return errs
+        return True

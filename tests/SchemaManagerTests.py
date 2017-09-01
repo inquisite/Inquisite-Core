@@ -22,6 +22,8 @@ class SchemaManagerTests(BaseTest):
     for x in SchemaManager.getDataTypes():
       p = SchemaManager.getDataTypePlugin(x)
       print p.getSettingsList()
+      i = SchemaManager.getDataTypeInstance(x)
+      i.validateSettings({"min_length": "0", "max_length": "100"})
     return True
 
 if __name__ == '__main__':

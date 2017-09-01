@@ -31,18 +31,30 @@ class TextDataType(BaseDataType):
 
     settings = Settings(settings_spec)
 
-    values = {
-        "text": {
-            "label": "Text",
-            "description": "Text value"
-        }
-    }
-
     def __init__(self, value=None):
         super(TextDataType, self).__init__(value)
 
     #
-    #
+    # Validate value
     #
     def validate(self, settings, *args):
         pass
+
+    #
+    # Validate settings values
+    #
+    def validateSettings(self, settingsValues):
+        errs = super(TextDataType, self).validateSettings(settingsValues)
+        if errs is not True:
+            return errs
+
+        errs = []
+
+        if (int(settingsValues['min_length']) > int(settingsValues['max_length'])):
+            errs.append("Minimum length must be less than maximum length")
+
+        if len(errs) > 0:
+            return errs
+        return True
+
+

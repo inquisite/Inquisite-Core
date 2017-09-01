@@ -7,6 +7,7 @@ from lib.managers.SchemaManager import SchemaManager
 from lib.utils.RequestHelpers import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest, responseHandler
 from lib.crossDomain import crossdomain
 from lib.utils.RequestHelpers import makeResponse
+from lib.exceptions.SettingsValidationError import SettingsValidationError
 
 schema_blueprint = Blueprint('schema', __name__)
 
@@ -54,6 +55,8 @@ def editType(repository_id, type_id):
     # TODO: check that user has access to this data
     try:
         return makeResponse(message="Edited type", payload=SchemaManager.editType(repository_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))
+    except SettingsValidationError as e:
+        return makeResponse(error=e)
     except Exception as e:
         return makeResponse(error=e)
 

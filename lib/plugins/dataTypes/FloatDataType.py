@@ -33,3 +33,21 @@ class FloatDataType(BaseDataType):
 
     def __init__(self, value=None):
         super(FloatDataType, self).__init__(value)
+
+
+    #
+    # Validate settings values
+    #
+    def validateSettings(self, settingsValues):
+        errs = super(FloatDataType, self).validateSettings(settingsValues)
+        if errs is not True:
+            return errs
+
+        errs = []
+
+        if (float(settingsValues['min_value']) > float(settingsValues['max_value'])):
+            errs.append("Minimum value must be less than maximum value")
+
+        if len(errs) > 0:
+            return errs
+        return True

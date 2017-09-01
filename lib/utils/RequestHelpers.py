@@ -2,6 +2,7 @@ import re
 import json
 from collections import OrderedDict
 from flask import Response
+from flask.json import jsonify
 
 #
 # Extract into a dictionary repeating parameters encoded thusly:
@@ -57,10 +58,13 @@ def responseHandler(return_object):
     resp = return_object['payload']
   if "msg" in return_object:
     resp["msg"] = return_object["msg"]
+  print return_object
+  if "errors" in return_object:
+    resp["errors"] = return_object["errors"]
 
   return Response(response=json.dumps(resp).encode('utf8'), status=status_code, mimetype=mime_type)
 #
-#
+# returnPayload = Return raw payload instead of request. [Default is false]
 #
 def makeResponse(status=200, message=None, payload=None, returnPayload=False, error=None):
     if error:
@@ -91,6 +95,8 @@ def makeErrorResponse(e, status_code=400, returnPayload=False):
         "msg": e.message,
         "context": context
     }
+    if hasattr(e, "errors"):
+        resp["errors"] = e.errors
 
     if returnPayload:
         return resp
