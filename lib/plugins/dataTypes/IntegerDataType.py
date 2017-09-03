@@ -36,7 +36,7 @@ class IntegerDataType(BaseDataType):
 
 
     #
-    # Validate settings values
+    # Integer-specific settings validation
     #
     def validateSettings(self, settingsValues):
         errs = super(IntegerDataType, self).validateSettings(settingsValues)

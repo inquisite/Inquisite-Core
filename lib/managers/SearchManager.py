@@ -12,7 +12,7 @@ class SearchManager:
     @staticmethod
     def quick(expression):
         result = db.run(
-            "MATCH (n:Data)--(t:SchemaType)--(r:Repository) WHERE any(prop in keys(n) where TOSTRING(n[prop]) CONTAINS {expression}) return ID(r) as repository_id, r.name as repository_name, t.name as typename, ID(n) as data_id, n limit 50",
+            "MATCH (n:Data)--(t:SchemaType)--(r:Repository) WHERE any(prop in keys(n) where TOSTRING(n[prop]) CONTAINS {expression}) return ID(r) as repo_id, r.name as repository_name, t.name as typename, ID(n) as data_id, n limit 50",
             {"expression": expression})
 
         ret = {'expression': expression, 'results': []}
@@ -33,7 +33,7 @@ class SearchManager:
                             display_prop = property
 
                 ret['results'].append({
-                    'repository_id': r['repository_id'],
+                    'repo_id': r['repo_id'],
                     'repository_name': r['repository_name'],
                     'data_id': r['data_id'],
                     #'p': display_prop,

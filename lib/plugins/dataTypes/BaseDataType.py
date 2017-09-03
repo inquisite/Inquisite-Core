@@ -27,7 +27,7 @@ class BaseDataType(BasePlugin):
     #
     # Validate a value for the data type subject to settings. Should be overridden by data type sub-class.
     #
-    def validate(self, settings, value=None):
+    def validate(self, value):
         return True
 
     #
@@ -57,3 +57,10 @@ class BaseDataType(BasePlugin):
     #
     def validateSettings(self, settingsValues):
         return self.settings.validate(settingsValues)
+
+
+    #
+    # Set settings values
+    #
+    def setSettings(self, settingsValues):
+        return self.settings.setValues(settingsValues)

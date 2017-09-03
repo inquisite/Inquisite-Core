@@ -35,13 +35,25 @@ class TextDataType(BaseDataType):
         super(TextDataType, self).__init__(value)
 
     #
-    # Validate value
+    # Validate a value for the data type subject to settings. Should be overridden by data type sub-class.
     #
-    def validate(self, settings, *args):
-        pass
+    def validate(self, value):
+        min_length = self.settings.getSetting("min_length")
+        max_length = self.settings.getSetting("max_length")
+
+        l = len(value)
+        errors = []
+        if (l < min_length):
+            errors.append("Value must be longer than " + str(min_length) + " characters")
+        if (l > max_length):
+            errors.append("Value must be shorter than " + str(max_length) + " characters")
+
+        if (len(errors) > 0):
+            return errors
+        return True
 
     #
-    # Validate settings values
+    # Text-specific settings validation
     #
     def validateSettings(self, settingsValues):
         errs = super(TextDataType, self).validateSettings(settingsValues)

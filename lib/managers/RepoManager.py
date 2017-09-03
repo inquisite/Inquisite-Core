@@ -11,7 +11,7 @@ from lib.exceptions.FindError import FindError
 
 
 class RepoManager:
-  # For Now All class methods are going to be static
+  # For now all class methods are going to be static
 
   @staticmethod
   def getAll():
@@ -27,6 +27,25 @@ class RepoManager:
       })
 
     return repos
+
+  # Return repository name and id for given repo code
+  @staticmethod
+  def getRepositoryByCode(code):
+    result = db.run(
+      "MATCH (r:Repository {name: {code}}) RETURN ID(r) AS id, r.name AS  name",
+      {"code": code})
+
+    ret = {}
+
+    if result:
+      for r in result:
+        ret['repo_id'] = r['id']
+        ret['name'] = r['name']
+        return ret
+    else:
+      raise FindError("Could not find repository")
+
+    return ret
 
   @staticmethod
   def nameCheck(name, repo_id=None, identity=None, ident_str=None):

@@ -95,13 +95,13 @@ class PeopleManager:
 
     for item in repos:
       result = db.run(
-        "MATCH (n:Repository)--(t:SchemaType)--(d:Data) WHERE ID(n) = {repository_id} RETURN count(d) as data_element_count", {"repository_id": int(item['id'])})
+        "MATCH (n:Repository)--(t:SchemaType)--(d:Data) WHERE ID(n) = {repo_id} RETURN count(d) as data_element_count", {"repo_id": int(item['id'])})
       for r in result:
           item['data_element_count'] = r['data_element_count']
 
       result = db.run(
-        "MATCH (n:Repository)--(t:SchemaType)--(f:SchemaField) WHERE ID(n) = {repository_id} RETURN count(DISTINCT(t)) as schema_type_count, count(DISTINCT(f)) as schema_field_count",
-        {"repository_id": int(item['id'])})
+        "MATCH (n:Repository)--(t:SchemaType)--(f:SchemaField) WHERE ID(n) = {repo_id} RETURN count(DISTINCT(t)) as schema_type_count, count(DISTINCT(f)) as schema_field_count",
+        {"repo_id": int(item['id'])})
       for r in result:
         item['schema_type_count'] = r['schema_type_count']
         item['schema_field_count'] = r['schema_field_count']

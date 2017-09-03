@@ -36,7 +36,7 @@ class FloatDataType(BaseDataType):
 
 
     #
-    # Validate settings values
+    # Float-specific settings validation
     #
     def validateSettings(self, settingsValues):
         errs = super(FloatDataType, self).validateSettings(settingsValues)

@@ -70,11 +70,11 @@ class OrganizationManager:
     return repos
 
   @staticmethod
-  def addRepository(organization_id, repository_id):
+  def addRepository(organization_id, repo_id):
 
     repository_added = False
-    result = db.run("MATCH (o:Organization) WHERE ID(o)={organization_id} MATCH (r:Repository) WHERE ID(r)={repository_id} MERGE (r)-[:PART_OF]->(o)",
-      {"organization_id": organization_id, "repository_id": repository_id})
+    result = db.run("MATCH (o:Organization) WHERE ID(o)={organization_id} MATCH (r:Repository) WHERE ID(r)={repo_id} MERGE (r)-[:PART_OF]->(o)",
+      {"organization_id": organization_id, "repo_id": repo_id})
 
     summary = result.consume()
     if summary.counters.relationships_created >= 1:
@@ -83,11 +83,11 @@ class OrganizationManager:
     return repository_added
 
   @staticmethod
-  def removeRepository(organization_id, repository_id):
+  def removeRepository(organization_id, repo_id):
 
     del_repository = False
-    result = db.run("START r=node(*) MATCH (r)-[rel:PART_OF]->(o) WHERE ID(r)={repository_id} AND ID(o)={organization_id} DELETE rel",
-      {"organization_id": organization_id, "repository_id": repository_id})
+    result = db.run("START r=node(*) MATCH (r)-[rel:PART_OF]->(o) WHERE ID(r)={repo_id} AND ID(o)={organization_id} DELETE rel",
+      {"organization_id": organization_id, "repo_id": repo_id})
 
     summary = result.consume()
     if summary.counters.relationships_deleted >= 1:

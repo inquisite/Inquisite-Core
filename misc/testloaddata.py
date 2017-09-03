@@ -51,12 +51,12 @@ field_names = get_field_names("rothko.xlsx")
 print field_names
 data= getRepositoryByCode("Rothko works on paper")
 
-repository_id = data['payload']['repository_id']
+repo_id = data['payload']['repo_id']
 
-addType(repository_id, "Artwork", "artwork", "Artworks in collection")
+addType(repo_id, "Artwork", "artwork", "Artworks in collection")
 for f in field_names:
-    addField(repository_id, 'artwork', f, re.sub(r'[^A-Za-z0-9_\-]+', '_', f).lower(), 'TEXT', '?')
+    addField(repo_id, 'artwork', f, re.sub(r'[^A-Za-z0-9_\-]+', '_', f).lower(), 'TEXT', '?')
 
 data = read_file("rothko.xlsx")
 for d in data:
-    addDataToRepo(repository_id, 'artwork', d)
+    addDataToRepo(repo_id, 'artwork', d)

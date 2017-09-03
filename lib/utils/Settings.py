@@ -2,6 +2,7 @@ from lib.exceptions.ValidationError import ValidationError
 class Settings:
 
     settings = {}
+    settingsValues = {}
 
     #
     #
@@ -52,7 +53,6 @@ class Settings:
     # Keys are set only for settings with errors. If there are no errors returns True
     #
     def validate(self, settingsValues):
-
         errors_by_setting = {}
         for k, v in settingsValues.items():
             errs = []
@@ -111,3 +111,30 @@ class Settings:
         if len(errors) > 0:
             return errors
         return True
+
+    #
+    #
+    #
+    def setValues(self, values):
+        self.settingsValues = values
+
+    #
+    #
+    #
+    def getValues(self):
+        return self.settingsValues
+
+    #
+    # Set value for setting
+    #
+    def getValue(self, setting):
+        if setting in self.settingsValues:
+            return self.settingsValues[setting]
+        s = self.getSetting(setting)
+        if s is None:
+            return None
+
+        if "default" not in s:
+            return None
+
+        return s["default"]
