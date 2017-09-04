@@ -32,7 +32,6 @@ def is_number(s):
 #
 #
 def email_domain_is_allowed(email):
-    print "MEH"
     configFile = open('./config.json')
     config = json.load(configFile)
     if 'registration_email_domains' in config.keys():

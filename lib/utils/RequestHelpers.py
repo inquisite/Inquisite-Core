@@ -58,7 +58,7 @@ def responseHandler(return_object):
     resp = return_object['payload']
   if "msg" in return_object:
     resp["msg"] = return_object["msg"]
-  print return_object
+
   if "errors" in return_object:
     resp["errors"] = return_object["errors"]
 

@@ -1,4 +1,4 @@
-from lib.exceptions.ValidationError import ValidationError
+from lib.exceptions.SettingsValidationError import SettingsValidationError
 class Settings:
 
     settings = {}
@@ -20,7 +20,7 @@ class Settings:
         # validate spec
         errors = self.validateSettingsSpec(settingsSpec)
         if errors is not True:
-            raise ValidationError(message="; ".join(errors), context="Settings.setSettings()")
+            raise SettingsValidationError(message="; ".join(errors), errors=errors, context="Settings.setSettings()")
 
         # Add "code" attribute by copying key
         for k, v in settingsSpec['settings'].iteritems():
@@ -125,14 +125,26 @@ class Settings:
         return self.settingsValues
 
     #
-    # Set value for setting
+    # Set vale f
     #
     def getValue(self, setting):
-        if setting in self.settingsValues:
-            return self.settingsValues[setting]
         s = self.getSetting(setting)
         if s is None:
             return None
+
+        if setting in self.settingsValues:
+            v = self.settingsValues[setting]
+            if s["type"] == "integer":
+                v = int(v)
+            elif s["type"] == "text":
+                v = str(v)
+            elif s["type"] == "float":
+                v = float(v)
+            elif s["type"] == "boolean":
+                v = bool(v)
+            elif s["type"] == "list":
+                pass # TODO
+            return v
 
         if "default" not in s:
             return None

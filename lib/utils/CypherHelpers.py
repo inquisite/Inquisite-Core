@@ -3,7 +3,7 @@ import re
 #
 #
 #
-def makeDataMapForCypher(data):
+def makeDataMapForCypher(data, mode="I", prefix=None):
     flds = []
     for i in data.keys():
         if (i == '_ID'):
@@ -12,5 +12,18 @@ def makeDataMapForCypher(data):
         fname = re.sub(r"^([\d]+)", "_\1",
                        fname).strip()  # Neo4j field names cannot start with a number; prefix such fields with an underscore
 
-        flds.append(fname + ":{" + fname + "}")
-    return "{" + ",".join(flds) + "}"
+        placeholder = fname
+        if prefix is not None:
+            fname = prefix + fname
+
+        if mode == "U":
+            flds.append(fname + " = {" + placeholder + "}")
+        else:
+            flds.append(fname + ":{" + placeholder + "}")
+
+
+
+    if mode == "U":
+        return ",".join(flds)
+    else:
+        return "{" + ",".join(flds) + "}"

@@ -16,7 +16,9 @@ class SchemaManager:
     def __init__(self):
         pass
 
-    # Get list of data types for repository
+    #
+    # Get list of data types for defined for a repository
+    #
     @staticmethod
     def getTypes(repo_id):
         # TODO validate params
@@ -30,24 +32,49 @@ class SchemaManager:
                 typelist = []
                 for r in result:
                     t = { 'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description']}
+
                     # get fields
-                    t['fields'] = SchemaManager.getFieldsForType(r['id'])
+                    i = SchemaManager.getInfoForType(repo_id, r['id'])
+                    t["fields"] = i["fields"]
 
                     typelist.append(t)
                 return typelist
         except Exception as e:
             raise DbError(message="Could not get types", context="Schema.getTypes", dberror=e.message)
 
+    #
+    # Return information for a schema type. The type_id parameter can be either a numeric id or string code for the type.
+    # Returned value is a dict with keys for type information. A list of fields for the type is under the key "fields"
+    #
     @staticmethod
-    def getFieldsForType(type_id):
+    def getInfoForType(repo_id, type_id):
+        repo_id = int(repo_id)
+
         # TODO validate params
 
         # TODO: check that repository is owned by current user
-
         try:
-            result = db.run(
-                "MATCH (f:SchemaField)--(t:SchemaType) WHERE ID(t) = {type_id}  RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description, properties(f) as props",
-                {"type_id": int(type_id)})
+            if isinstance(type_id, int):
+                tres = db.run(
+                    "MATCH (r:Repository)--(t:SchemaType) WHERE ID(t) = {type_id} AND ID(r) = {repo_id} RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"type_id": type_id, "repo_id": repo_id}).peek()
+                if tres is None:
+                    return None
+
+                result = db.run(
+                    "MATCH (f:SchemaField)--(t:SchemaType)--(r:Repository) WHERE ID(t) = {type_id} AND ID(r) = {repo_id} RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description, properties(f) as props",
+                    {"type_id": int(type_id), "repo_id": repo_id})
+            else:
+                tres = db.run(
+                    "MATCH (r:Repository)--(t:SchemaType) WHERE t.code = {code} AND ID(r) = {repo_id} RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"code": type_id, "repo_id": repo_id}).peek()
+                if tres is None:
+                    return None
+
+                result = db.run(
+                    "MATCH (f:SchemaField)--(t:SchemaType)--(r:Repository) WHERE t.code = {code} AND ID(r) = {repo_id}  RETURN ID(f) as id, f.name as name, f.code as code, f.type as type, f.description as description, properties(f) as props",
+                    {"code": type_id, "repo_id": repo_id})
+
+            info = {"type_id": tres['id'], "name": tres['name'], "code": tres['code'],
+                    "description": tres['description']}
 
             fieldlist = []
             if result:
@@ -57,18 +84,40 @@ class SchemaManager:
                         #raise ValidationError(message="Invalid field type", context="Schema.getFieldsForType")
                         continue
 
-                    t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type']}
+                    t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type'], 'settings': {}}
 
                     for s in ft.getSettingsList():
                         if "settings_" + s in r['props']:
-                            t["settings_" + s] = r['props']["settings_" + s]
+                            #t["settings_" + s] = r['props']["settings_" + s]
+                            t["settings"][s] = r['props']["settings_" + s]
 
                     fieldlist.append(t)
-
-            return fieldlist
+            info["fields"] = fieldlist
+            return info
         except Exception as e:
+            print e.message
             raise DbError(message="Could not get fields for types", context="Schema.getFieldsForType", dberror=e.message)
 
+    #
+    # Get info for field within type
+    #
+    @staticmethod
+    def getInfoForField(repo_id, type_id, field_id):
+        type_info = SchemaManager.getInfoForType(repo_id, type_id)
+        if type_info is None:
+            return None
+
+        for f in type_info["fields"]:
+            if isinstance(field_id, int) and f["id"] == field_id:
+                return f
+            elif f["code"] == field_id:
+                return f
+        return None
+
+
+    #
+    #
+    #
     @staticmethod
     def addType(repo_id, name, code, description, fields):
         # TODO validate params
@@ -79,9 +128,7 @@ class SchemaManager:
             result = db.run("MATCH (t:SchemaType{code: {code}})--(r:Repository) WHERE ID(r) = {repo_id}  RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"code": code, "repo_id": int(repo_id)})
             if result is not None and len(list(result)):
                ret = { "exists": True }
-               print result
                for r in result:
-                   print "xxx " + r
                    ret['type'] = {
                        "id": r['id'],
                        "name": r['name'],
@@ -143,6 +190,7 @@ class SchemaManager:
         field_status = {}
         for k in fields:
             settings = {f.replace("settings_", ""): v for f, v in fields[k].iteritems() if 'settings_' in f}
+
             if 'id' in fields[k]:
                 # edit existing field
                 fret = SchemaManager.editField(repo_id, code, fields[k]['id'], fields[k]['name'], fields[k]['code'], fields[k]['type'],
@@ -181,6 +229,7 @@ class SchemaManager:
                 }
                 return ret
         else:
+            print "Xx" + e.message
             raise DbError(message="Could not edit type", context="Schema.editType",
                           dberror="")
 
@@ -395,3 +444,24 @@ class SchemaManager:
         if n in cls.dataTypePlugins:
             return cls.dataTypePlugins[n]()
         return None
+
+    #
+    #
+    #
+    @classmethod
+    def getDataTypeInstanceForField(cls, repo_id, type_code, field_code, value=None):
+        field_info = SchemaManager.getInfoForField(repo_id, type_code, field_code)
+        if field_info is None:
+            # TODO: throw exception?
+            return None
+
+        ft = SchemaManager.getDataTypeInstance(field_info["type"])
+        if ft is None:
+            # TODO: throw exception?
+            return None
+
+        ft.setSettings(field_info["settings"])
+        if value is not None:
+            ft.set(value)
+
+        return ft
