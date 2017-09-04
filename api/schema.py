@@ -13,7 +13,7 @@ schema_blueprint = Blueprint('schema', __name__)
 
 @schema_blueprint.route('/schema/getDataTypes', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
-#@jwt_required
+@jwt_required
 def getDataTypes():
     try:
         return makeResponse(payload=SchemaManager.getInfoForDataTypes())
