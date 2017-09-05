@@ -193,7 +193,7 @@ class SchemaManager:
 
             if 'id' in fields[k]:
                 # edit existing field
-                fret = SchemaManager.editField(repo_id, code, fields[k]['id'], fields[k]['name'], fields[k]['code'], fields[k]['type'],
+                fret = SchemaManager.editField(repo_id, code, fields[k].get('id', ''), fields[k].get('name', ''), fields[k].get('code', ''), fields[k].get('type', ''),
                                                fields[k]['description'], settings)
 
                 if 'field_id' in fret:
@@ -204,7 +204,7 @@ class SchemaManager:
                                                        'msg': 'Could not edit field'}
             else:
                 # add field
-                fret = SchemaManager.addField(repo_id, code, fields[k]['name'], fields[k]['code'], fields[k]['type'], fields[k]['description'], settings)
+                fret = SchemaManager.addField(repo_id, code, fields[k].get('name', ''), fields[k].get('code', ''), fields[k].get('type', ''), fields[k].get('description', ''), settings)
 
                 if 'field_id' in fret:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'], 'msg': 'Created new field'}
@@ -229,7 +229,6 @@ class SchemaManager:
                 }
                 return ret
         else:
-            print "Xx" + e.message
             raise DbError(message="Could not edit type", context="Schema.editType",
                           dberror="")
 
@@ -240,10 +239,11 @@ class SchemaManager:
         # TODO: check that repository is owned by current user
 
         try:
-            result = db.run("MATCH (t:SchemaType)-[x]-(r:Repository) WHERE ID(r) = {repo_id} AND ID(t) = {type_id} optional match (f:SchemaField)-[y]-(t) DELETE x,y,t,f",
+            result = db.run("MATCH (t:SchemaType)-[x]-(r:Repository) WHERE ID(r) = {repo_id} AND ID(t) = {type_id} OPTIONAL MATCH (f:SchemaField)-[y]-(t) DELETE x,y,t,f",
                             {"type_id": int(type_id), "repo_id": int(repo_id)})
+
             if result is not None:
-                return True
+                return {"type_id": type_id}
             else:
                 raise FindError(message="Could not find type", context="Schema.deleteType", dberror="")
         except Exception as e:
@@ -263,7 +263,6 @@ class SchemaManager:
             raise ValidationError(message="Invalid field type", context="Schema.addField")
 
         ret = {}
-
         ft = SchemaManager.getDataTypeInstance(fieldtype)
         if ft is None:
             raise ValidationError(message="Invalid field type", context="Schema.addField")

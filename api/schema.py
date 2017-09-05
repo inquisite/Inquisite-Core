@@ -66,7 +66,7 @@ def editType(repo_id, type_id):
 def deleteType(repo_id, type_id):
     # TODO: check that user has access to this data
     try:
-        return makeResponse(payload={}, message="Deleted type")
+        return makeResponse(payload=SchemaManager.deleteType(repo_id, type_id), message="Deleted type")
     except Exception as e:
         return makeResponse(error=e)
 
