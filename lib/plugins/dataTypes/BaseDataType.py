@@ -16,6 +16,8 @@ class BaseDataType(BasePlugin):
     # Set value
     #
     def set(self, value):
+        if self.parse(value) is False:
+            return False
         self.val = value
 
     #
@@ -29,6 +31,18 @@ class BaseDataType(BasePlugin):
     #
     def validate(self, value):
         return True
+
+    #
+    #
+    #
+    def parse(self, value):
+        return self.val
+
+    #
+    #
+    #
+    def getParsedValue(self):
+        return self.val
 
     #
     # Get settings specifications for data type. This is a dictionary with settings codes, descriptions,

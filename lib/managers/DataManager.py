@@ -56,9 +56,15 @@ class DataManager:
                                                type=type_info['code'], field=f['code'], value=v,
                                                context="DataManager.add")
 
-                # TODO: perform transformation here
-
-                data_proc[f['code']] = v
+                # parse
+                parsed_value = dt.parse(v)
+                if isinstance(parsed_value, (dict)):
+                    data_proc[f['code']] = v
+                    for k, v in parsed_value.iteritems():
+                        data_proc[f['code'] + "_" + k] = v
+                else:
+                    # simple scalar value is assigned direct
+                    data_proc[f['code']] = v
         return [data_proc, type_info]
 
     #
@@ -79,7 +85,6 @@ class DataManager:
 
             return True
         except Exception as e:
-            print e.message
             raise DbError(message="Could not update data", context="DataManager.update", dberror=e.message)
 
     #
