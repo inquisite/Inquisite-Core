@@ -1,33 +1,13 @@
-import json
-import os
-import re
-
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_raw_jwt
 from lib.managers.RepoManager import RepoManager
-from werkzeug.utils import secure_filename
-
-from lib.dataReaders.CSVData import CsvHandler
-from lib.dataReaders.JSONData import JSONHandler
-from lib.dataReaders.XLSData import XlsHandler
-from lib.managers.SchemaManager import SchemaManager
-from lib.utils.Db import db
 from lib.utils.RequestHelpers import makeResponse
 from lib.crossDomain import crossdomain
-from lib.utils.UtilityHelpers import flatten_json
 from lib.exceptions.FindError import FindError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError
 
 repositories_blueprint = Blueprint('repositories', __name__)
-
-UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/uploads"
-ALLOWED_EXTENSIONS = set(['xls', 'xlsx', 'csv', 'json'])
-
-# File Upload
-def allowed_file(filename):
-  return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 # Repositories
 @repositories_blueprint.route('/repositories', methods=['GET'])

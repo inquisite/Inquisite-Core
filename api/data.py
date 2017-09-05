@@ -2,7 +2,6 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from lib.managers.DataManager import DataManager
-from lib.utils.RequestHelpers import responseHandler
 from lib.crossDomain import crossdomain
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
@@ -16,7 +15,7 @@ data_blueprint = Blueprint('data', __name__)
 def getNode(node_id):
     # TODO: check that user has access to this data
     try:
-        return makeResponse(payload=DataManager.getNode(node_id))
+        return makeResponse(payload=DataManager.getByID(node_id))
     except FindError as e:
         return makeResponse(error=e)
 
@@ -26,6 +25,6 @@ def getNode(node_id):
 def saveNode(node_id):
     # TODO: check that user has access to this data
     try:
-        return makeResponse(payload=DataManager.saveNode(node_id, request.form))
+        return makeResponse(payload=DataManager.update(node_id, request.form))
     except SaveError as e:
         return makeResponse(error=e)
