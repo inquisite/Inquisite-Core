@@ -78,7 +78,7 @@ class UploadManager:
         if mimetype in ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']:
             preview_type = "table"
 
-            data = XLSReader.getRows(filepath=filepath, rows=11)
+            data = XLSReader.getRows(filepath=filepath, rows=rows)
             if data is None or len(data) == 0:
                 return []
             headers = data[0]
@@ -94,7 +94,7 @@ class UploadManager:
             preview_type = "table"
             # TODO: distinguish between CSV and TAB
 
-            data_dict = CSVReader.getRows(filepath=filepath, rows=11)
+            data_dict = CSVReader.getRows(filepath=filepath, rows=rows)
             if data_dict is None or len(data_dict) == 0:
                 return []
             headers = data_dict[0].keys()
@@ -120,7 +120,8 @@ class UploadManager:
     @staticmethod
     def importData(repo_id, type, filename, data_mapping):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
-        data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=None)
+        data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=1000000)
+        print "got " + str(len(data["data"]))
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
 

@@ -62,7 +62,7 @@ def responseHandler(return_object):
   if "errors" in return_object:
     resp["errors"] = return_object["errors"]
 
-  return Response(response=json.dumps(resp).encode('utf8'), status=status_code, mimetype=mime_type)
+  return Response(response=json.dumps(resp, encoding='latin1', ensure_ascii=False).encode('utf8', errors='ignore'), status=status_code, mimetype=mime_type)
 #
 # returnPayload = Return raw payload instead of request. [Default is false]
 #
