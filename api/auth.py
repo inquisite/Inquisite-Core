@@ -62,7 +62,7 @@ def logout():
         return makeResponse(payload={}, message="Logged out")
     except KeyError as e:
         return makeResponse(error=e)
-    except Exception:
+    except Exception as e:
         return makeResponse(error=e)
 
 #
