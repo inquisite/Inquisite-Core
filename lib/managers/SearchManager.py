@@ -22,11 +22,8 @@ class SearchManager:
             max_len = 0
             for r in result:
                 if display_prop is None:
-                    for property, value in (r['n'].properties).iteritems():
-                        if isinstance(value, str):
-                            l = len(value.encode('utf-8').strip())
-                        else:
-                            l = len(str(value))
+                    for property, value in (r['n'].properties).iteritems()
+                        l = len(value.encode('utf-8', errors='ignore').strip())
 
                         if l > max_len:
                             max_len = l
