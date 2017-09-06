@@ -46,9 +46,14 @@ class DataManager:
         # gather data
         data_proc = {}
         for f in type_info["fields"]:
+            v = None
             if f['code'] in data:
                 v = data[f['code']]
-                dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], data[f['code']])
+            if v is None and f['id'] in data:
+                v = data[f['id']]
+
+            if v is not None:
+                dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
                 dtv = dt.validate(v)
 
                 if dtv is not True:

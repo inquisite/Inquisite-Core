@@ -1,5 +1,7 @@
+import re
 from lib.plugins.dataTypes.BaseDataType import BaseDataType
 from lib.utils.Settings import Settings
+import dateutil.parser
 from daterangeparser import parse
 from pyparsing import ParseException
 
@@ -38,15 +40,29 @@ class DateRangeDataType(BaseDataType):
         self.parsed_date = None
         self.value_parsed = None
 
+    #
+    #
+    #
+    @staticmethod
+    def _preprocess(value):
+        value = re.sub(r'([\d]+)/([\d]+)/([\d]+)', r"\3-\1-\2", value)
+        return value
+
 
     #
     #
     #
     def validate(self, value):
+        value = DateRangeDataType._preprocess(value)
         try:
             d = parse(value, allow_implicit=True)
         except ParseException as e:
-            d = None
+            # fall back to dateutil parser
+            dx = dateutil.parser.parse(value)
+            if dx is not None:
+                d = [dx, None]
+            else:
+                d = None
         if d is None:
             return ["Invalid date"]
         self.parsed_date = {"start": str(d[0]), "end": str(d[1])}

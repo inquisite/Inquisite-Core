@@ -20,7 +20,7 @@ class Settings:
         # validate spec
         errors = self.validateSettingsSpec(settingsSpec)
         if errors is not True:
-            raise SettingsValidationError(message="; ".join(errors), errors=errors, context="Settings.setSettings()")
+            raise SettingsValidationError(message="; ".join(errors), errors=errors, context="Settings.setSettings")
 
         # Add "code" attribute by copying key
         for k, v in settingsSpec['settings'].iteritems():

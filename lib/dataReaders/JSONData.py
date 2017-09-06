@@ -1,15 +1,17 @@
 import json
 
-class JSONHandler():
+class JSONReader():
 
   input_file = None
 
-  def __init__(self, input_file):
-    self.input_file = input_file
+  #def __init__(self, input_file):
+  #  self.input_file = input_file
 
-  def read_file(self):
-
+  @classmethod
+  def getRows(cls, filepath, rows=None, start=0):
     file_data = []
+
+    # TODO: support start/rows?
     with open(self.input_file) as jsonfile:
       file_data = json.load(jsonfile)
 

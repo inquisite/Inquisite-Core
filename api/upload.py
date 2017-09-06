@@ -18,3 +18,17 @@ def uploadData():
         return makeResponse(payload=UploadManager.processUpload(repo_id), message="File uploaded")
     except UploadError as e:
         return makeResponse(error=e)
+
+@upload_blueprint.route('/upload/import', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def importData():
+    repo_id = int(request.form.get('repo_id'))
+    filename = request.form.get('filename')
+    data_mapping = request.form.get('data_mapping').split("|")
+    type = request.form.get('type')
+
+    try:
+        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, data_mapping), message="File imported")
+    except UploadError as e:
+        return makeResponse(error=e)

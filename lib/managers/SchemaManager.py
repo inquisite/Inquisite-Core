@@ -47,16 +47,22 @@ class SchemaManager:
     # Returned value is a dict with keys for type information. A list of fields for the type is under the key "fields"
     #
     @staticmethod
-    def getInfoForType(repo_id, type_id):
+    def getInfoForType(repo_id, type):
         repo_id = int(repo_id)
 
         # TODO validate params
+
+        try:
+            type_id = int(type)
+        except Exception:
+            type_id = str(type)
 
         # TODO: check that repository is owned by current user
         try:
             if isinstance(type_id, int):
                 tres = db.run(
                     "MATCH (r:Repository)--(t:SchemaType) WHERE ID(t) = {type_id} AND ID(r) = {repo_id} RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"type_id": type_id, "repo_id": repo_id}).peek()
+
                 if tres is None:
                     return None
 
@@ -95,20 +101,24 @@ class SchemaManager:
             info["fields"] = fieldlist
             return info
         except Exception as e:
-            print e.message
             raise DbError(message="Could not get fields for types", context="Schema.getFieldsForType", dberror=e.message)
 
     #
     # Get info for field within type
     #
     @staticmethod
-    def getInfoForField(repo_id, type_id, field_id):
+    def getInfoForField(repo_id, type_id, field):
+        try:
+            field_id = int(field)
+        except:
+            field_id = str(field)
+
         type_info = SchemaManager.getInfoForType(repo_id, type_id)
         if type_info is None:
             return None
 
         for f in type_info["fields"]:
-            if isinstance(field_id, int) and f["id"] == field_id:
+            if isinstance(field_id, int) and int(f["id"]) == field_id:
                 return f
             elif f["code"] == field_id:
                 return f
@@ -252,6 +262,14 @@ class SchemaManager:
     @staticmethod
     def addField(repo_id, typecode, name, code, fieldtype, description, settings):
         # TODO validate params
+        if typecode is None or len(typecode) == 0:
+            raise ValidationError(message="Type code is required", context="Schema.addField")
+
+        type_info = SchemaManager.getInfoForType(repo_id, typecode)
+        if type_info is None:
+            raise ValidationError(message="Type code is invalid", context="Schema.addField")
+        typecode = type_info["code"]    # always use code
+
         if code is None or len(code) == 0:
             raise ValidationError(message="Field code is required", context="Schema.addField")
 
@@ -292,16 +310,16 @@ class SchemaManager:
                 params["settings_" + s] = settings[s]
 
             result = db.run(
-                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repo_id} CREATE (f:SchemaField { " + ", ".join(flds) + " })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name",
+                "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repo_id} CREATE (f:SchemaField { " + ", ".join(flds) + " })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name, f.code as code",
                 params)
             r = result.peek()
-
             # TODO: check query result
 
             if r:
                 ret['exists'] = False
                 ret['field_id'] = r['id']
                 ret['name'] = r['name']
+                ret['code'] = r['code']
                 return ret
             else:
                 raise DbError(message="Could not add field", context="Schema.addField", dberror="")
