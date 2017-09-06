@@ -68,9 +68,10 @@ def addPerson():
     url = request.form.get('url')
     tagline = request.form.get('tagline')
     password = request.form.get('password')
+    nyunetid = request.form.get('nyunetid')
 
     try:
-        ret = PeopleManager.addPerson(forename, surname, location, email, url, tagline, password)
+        ret = PeopleManager.addPerson(forename, surname, location, email, nyunetid, url, tagline, password)
         return makeResponse(payload=ret, message="Added person")
     except DbError as e:
         return makeResponse(error=e)

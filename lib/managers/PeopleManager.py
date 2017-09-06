@@ -140,7 +140,7 @@ class PeopleManager:
     return people
 
   @staticmethod
-  def addPerson(forename, surname, location, email, url, tagline, password):
+  def addPerson(forename, surname, location, email, nyunetid, url, tagline, password):
     if validate_email(email, verify=False) is False:
       raise SaveError(message="Email address is invalid", context="People.addPerson")
     if email_domain_is_allowed(email) is False:
@@ -154,7 +154,7 @@ class PeopleManager:
       created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
       try:
-        result = db.run("MATCH (n:Person{email: {email}}) RETURN ID(n) as id, n.surname as surname, n.forename AS forename, n.email as email", {"email": email}).peek()
+        result = db.run("MATCH (n:Person{email: {email}}) RETURN ID(n) as id, n.surname as surname, n.forename AS forename, n.email as email, n.nyunetid as nyunetid", {"email": email}).peek()
       except Exception as e:
         raise DbError(message="Could not look up user", context="People.addPerson", dberror=e.message)
 
@@ -165,15 +165,16 @@ class PeopleManager:
           "surname": result['surname'],
           "forename": result['forename'],
           "name": str(result['forename']) + " " + str(result['surname']),
-          "email": result['email']
+          "email": result['email'],
+          "nyunetid": result['nyunetid']
         }
       else:
         try:
           result = db.run(
-            "CREATE (n:Person {url: {url}, surname: {surname}, forename: {forename}, email: {email}, location: {location}, tagline: {tagline}, " +
+            "CREATE (n:Person {url: {url}, surname: {surname}, forename: {forename}, email: {email}, location: {location}, tagline: {tagline}, nyunetid: {nyunetid}, " +
             "password: {password_hash}, created_on: {created_on}, prefs: ''})" +
-            " RETURN n.forename AS forename, n.surname AS surname, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, ID(n) AS user_id",
-            {"url": url, "surname": surname, "forename" : forename, "email": email, "location": location, "tagline": tagline,
+            " RETURN n.forename AS forename, n.surname AS surname, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, n.nyunetid as nyunetid, ID(n) AS user_id",
+            {"url": url, "surname": surname, "forename" : forename, "email": email, "location": location, "tagline": tagline, "nyunetid": nyunetid,
              "password_hash": password_hash, "created_on": created_on})
         except Exception as e:
           raise DbError(message="Could not create user", context="People.addPerson", dberror=e.message)
@@ -186,6 +187,7 @@ class PeopleManager:
             person['name'] = str(p['forename']) + " " +  str(p['surname'])
             person['location'] = p['location']
             person['email'] = p['email']
+            person['nyunetid'] = p['nyunetid']
             person['url'] = p['url']
             person['tagline'] = p['tagline']
             person['user_id'] = p['user_id']
