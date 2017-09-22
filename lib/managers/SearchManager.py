@@ -1,6 +1,9 @@
 from lib.utils.Db import db
 import re
 from lib.exceptions.SearchError import SearchError
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search
+from elasticsearch_dsl.connections import connections
 
 class SearchManager:
 
@@ -11,33 +14,34 @@ class SearchManager:
     # Return repository name and id for given repo code
     @staticmethod
     def quick(expression):
-        result = db.run(
-            "MATCH (n:Data)--(t:SchemaType)--(r:Repository) WHERE any(prop in keys(n) where TOSTRING(n[prop]) CONTAINS {expression}) return ID(r) as repo_id, r.name as repository_name, t.name as typename, ID(n) as data_id, n limit 50",
-            {"expression": expression})
+        client = Elasticsearch()
 
-        ret = {'expression': expression, 'results': []}
+        try:
+            s = Search(using=client, index="neo4j-inquisite-node") \
+                .query("match", _all=expression)
+        except Exception as e:
+            raise SearchError(e.message)
+
+        s = s[0:100]
+        result = s.execute()
+        #print "GOT"
+        #print result
+
+        ret = {'expression': expression, 'results': {}, 'counts': {}}
 
         if result:
-            display_prop = None
-            max_len = 0
             for r in result:
-                if display_prop is None:
-                    for property, value in (r['n'].properties).iteritems()
-                        l = len(value.encode('utf-8', errors='ignore').strip())
+                d = r.to_dict()
+                d['__id'] = r.meta.id
+                d['__type'] = r.meta.doc_type
+                d['__score'] = r.meta.score
+                if r.meta.doc_type not in ret['results']:
+                    ret['results'][r.meta.doc_type] = []
+                    ret['counts'][r.meta.doc_type] = 0
+                ret['results'][r.meta.doc_type].append(d)
+                ret['counts'][r.meta.doc_type] = ret['counts'][r.meta.doc_type] + 1
+            ret['count'] = len(result)
+        else:
+            ret['count'] = 0
 
-                        if l > max_len:
-                            max_len = l
-                            display_prop = property
-
-                ret['results'].append({
-                    'repo_id': r['repo_id'],
-                    'repository_name': r['repository_name'],
-                    'data_id': r['data_id'],
-                    #'p': display_prop,
-                    #'l': max_len,
-                    'display': r['n'][display_prop][0:100]
-                })
-            ret['count'] = len(ret['results'])
-            return ret
-
-        raise SearchError("Could not execute search")
+        return ret
