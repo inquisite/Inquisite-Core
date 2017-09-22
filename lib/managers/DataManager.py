@@ -78,15 +78,29 @@ class DataManager:
     @staticmethod
     def update(node_id, data):
         # TODO: does user have access to this repo?
+        try:
+            id = int(node_id)
+        except:
+            id = node_id
 
         try:
-            res = db.run("MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE ID(d) = {node_id} RETURN ID(r) as repo_id, ID(t) as type_id", {"node_id": node_id}).peek()
+            if isinstance(id, (int)):
+                res = db.run("MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE ID(d) = {node_id} RETURN ID(r) as repo_id, ID(t) as type_id", {"node_id": id}).peek()
+            else:
+                res = db.run(
+                    "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE d.uuid = {uuid} RETURN ID(r) as repo_id, ID(t) as type_id",
+                    {"uuid": id}).peek()
             if res is None:
                 return None
             data_proc, type_info = DataManager._validateData(int(res['repo_id']), int(res['type_id']), data)
 
-            data_proc["node_id"] = node_id
-            db.run("MATCH (d:Data) WHERE ID(d) = {node_id} SET " + makeDataMapForCypher(data=data_proc, mode="U", prefix="d."), data_proc)
+            if isinstance(id, (int)):
+                data_proc["node_id"] = id
+                db.run("MATCH (d:Data) WHERE ID(d) = {node_id} SET " + makeDataMapForCypher(data=data_proc, mode="U", prefix="d."), data_proc)
+            else:
+                data_proc["uuid"] = id
+                db.run("MATCH (d:Data) WHERE d.uuid = {uuid} SET " + makeDataMapForCypher(data=data_proc, mode="U",
+                                                                                            prefix="d."), data_proc)
 
             return True
         except Exception as e:
@@ -99,7 +113,15 @@ class DataManager:
     def delete(node_id):
         # TODO: does user have access to this repo?
         try:
-            db.run("MATCH (d:Data) WHERE ID(d) = {node_id} DELETE d")
+            id = int(node_id)
+        except:
+            id = node_id
+
+        try:
+            if isinstance(id, (int)):
+                db.run("MATCH (d:Data) WHERE ID(d) = {node_id} DELETE d", {"node_id": id})
+            else:
+                db.run("MATCH (d:Data) WHERE d.uuid = {uuid} DELETE d", {"uuid": id})
 
             # TODO: return false is no node is deleted?
             return True
@@ -209,12 +231,18 @@ class DataManager:
     def getByID(node_id):
         # TODO: does user have access to this node?
 
-        result = db.run(
-            "MATCH (d:Data)--(t:SchemaType) WHERE ID(d) = {node_id} RETURN d, t.name as typename, t.code as typecode",
-            {"node_id": int(node_id)})
+        try:
+            id = int(node_id)
+            result = db.run(
+                "MATCH (d:Data)--(t:SchemaType) WHERE ID(d) = {node_id} RETURN d, t.name as typename, t.code as typecode",
+                {"node_id": id})
+        except:
+            result = db.run(
+                "MATCH (d:Data)--(t:SchemaType) WHERE d.uuid = {uuid} RETURN d, ID(d) as node_id, t.name as typename, t.code as typecode",
+                {"uuid": node_id})
 
         if result.peek():
             for r in result:
-                return {"node_id": node_id, "typename": r["typename"], "typecode": r["typecode"], "data": r["d"].properties}
+                    return {"node_id": r["node_id"], "typename": r["typename"], "typecode": r["typecode"], "data": r["d"].properties}
         else:
             raise FindError(message="Node does not exist")
