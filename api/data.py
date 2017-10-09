@@ -28,3 +28,13 @@ def saveNode(node_id):
         return makeResponse(payload=DataManager.update(node_id, request.form))
     except SaveError as e:
         return makeResponse(error=e)
+
+@data_blueprint.route('/data/getDataForType/<repo_id>/<type>', methods=['GET', 'POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def getDataForType(repo_id, type):
+    # TODO: check that user has access to this data
+    try:
+        return makeResponse(payload=DataManager.getDataForType(repo_id, type))
+    except SaveError as e:
+        return makeResponse(error=e)

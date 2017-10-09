@@ -7,6 +7,8 @@ from lib.exceptions.DbError import DbError
 from lib.exceptions.FieldValidationError import FieldValidationError
 from lib.exceptions.ParameterError import ParameterError
 from lib.managers.SchemaManager import SchemaManager
+from lib.managers.RepoManager import RepoManager
+from timeit import default_timer as timer
 
 class DataManager:
     # For now all class methods are going to be static
@@ -40,11 +42,13 @@ class DataManager:
     @staticmethod
     def _validateData(repo_id, type_code, data):
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
+
         if type_info is None:
             raise FindError("Could not load type info")
 
         # gather data
         data_proc = {}
+
         for f in type_info["fields"]:
             v = None
             if f['code'] in data:
@@ -54,6 +58,7 @@ class DataManager:
 
             if v is not None:
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
+
                 dtv = dt.validate(v)
 
                 if dtv is not True:
@@ -92,6 +97,7 @@ class DataManager:
                     {"uuid": id}).peek()
             if res is None:
                 return None
+
             data_proc, type_info = DataManager._validateData(int(res['repo_id']), int(res['type_id']), data)
 
             if isinstance(id, (int)):
@@ -246,3 +252,29 @@ class DataManager:
                     return {"node_id": r["node_id"], "typename": r["typename"], "typecode": r["typecode"], "data": r["d"].properties}
         else:
             raise FindError(message="Node does not exist")
+
+    @staticmethod
+    def getDataForType(repo_id, type_code):
+        repo_id = int(repo_id)
+        RepoManager.validate_repo_id(repo_id)
+        type_info = SchemaManager.getInfoForType(repo_id, type_code)
+
+        nodes = []
+
+        try:
+            # TODO: implement start/limit rather than fixed limit
+            q = "MATCH (r:Repository)--(t:SchemaType)--(n:Data) WHERE ID(r)={repo_id} AND ID(t)={type_id} RETURN n LIMIT 1000"
+
+            result = db.run(q, {"repo_id": repo_id, "type_id": type_info["type_id"]})
+
+            for data in result:
+                nodes.append(data.items()[0][1].properties)
+
+            cols = []
+            if nodes[0]:
+                cols = nodes[0].keys()
+
+            return {"data": nodes, "columns": cols, "type_id": type_info["type_id"], "repo_id": repo_id}
+        except Exception as e:
+            print e.message
+            raise DbError(message="Could not create data", context="DataManager.add", dberror=e.message)

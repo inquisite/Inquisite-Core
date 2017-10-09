@@ -3,7 +3,6 @@ import re
 from lib.exceptions.SearchError import SearchError
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
-from elasticsearch_dsl.connections import connections
 
 class SearchManager:
 
@@ -40,6 +39,30 @@ class SearchManager:
                     ret['counts'][r.meta.doc_type] = 0
                 ret['results'][r.meta.doc_type].append(d)
                 ret['counts'][r.meta.doc_type] = ret['counts'][r.meta.doc_type] + 1
+
+            # Populate repository and data type fields for data nodes
+            if 'Data' in ret['results']:
+                uuids = []
+                for i, r in enumerate(ret['results']['Data']):
+                    uuids.append(r['__id'])
+
+                repolist = {}
+                try:
+                    nodes = db.run(
+                        "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE d.uuid IN {uuid} RETURN ID(r) as repo_id, r.name as repo_name, r.uuid as repo_uuid, d.uuid as uuid",
+                        {"uuid": uuids})
+
+                    for n in nodes:
+                        repolist[n['uuid']] = [n['repo_id'], n['repo_name'], n['repo_uuid']]
+                except Exception as e:
+                    pass
+
+                for i, r in enumerate(ret['results']['Data']):
+                    repoinfo = repolist[r['__id']]
+                    ret['results']['Data'][i]['__repo_id'] = repoinfo[0]
+                    ret['results']['Data'][i]['__repo_name'] = repoinfo[1]
+                    ret['results']['Data'][i]['__repo_uuid'] = repoinfo[2]
+
             ret['count'] = len(result)
         else:
             ret['count'] = 0

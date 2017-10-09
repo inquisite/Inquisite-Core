@@ -5,6 +5,7 @@ from lib.exceptions.DbError import DbError
 from lib.exceptions.ValidationError import ValidationError
 from lib.exceptions.SettingsValidationError import SettingsValidationError
 from pluginbase import PluginBase
+from lib.decorators.Memoize import memoized
 
 class SchemaManager:
     plugin_source = PluginBase(package='lib.plugins.dataTypes').make_plugin_source(
@@ -47,6 +48,7 @@ class SchemaManager:
     # Returned value is a dict with keys for type information. A list of fields for the type is under the key "fields"
     #
     @staticmethod
+    @memoized
     def getInfoForType(repo_id, type):
         repo_id = int(repo_id)
 
@@ -107,6 +109,7 @@ class SchemaManager:
     # Get info for field within type
     #
     @staticmethod
+    @memoized
     def getInfoForField(repo_id, type_id, field):
         try:
             field_id = int(field)
@@ -422,6 +425,7 @@ class SchemaManager:
     #
     #
     @classmethod
+    @memoized
     def getDataTypes(cls):
         if cls.pluginsAreLoaded is False:
             cls.loadDataTypePlugins()
@@ -431,6 +435,7 @@ class SchemaManager:
     #
     #
     @classmethod
+    @memoized
     def getInfoForDataTypes(cls):
         if cls.pluginsAreLoaded is False:
             cls.loadDataTypePlugins()
@@ -444,6 +449,7 @@ class SchemaManager:
     #
     #
     @classmethod
+    @memoized
     def getDataTypePlugin(cls, n):
         if cls.pluginsAreLoaded is False:
             cls.loadDataTypePlugins()
@@ -455,6 +461,7 @@ class SchemaManager:
     #
     #
     @classmethod
+    @memoized
     def getDataTypeInstance(cls, n):
         if cls.pluginsAreLoaded is False:
            cls.loadDataTypePlugins()
@@ -466,6 +473,7 @@ class SchemaManager:
     #
     #
     @classmethod
+    @memoized
     def getDataTypeInstanceForField(cls, repo_id, type_code, field_code, value=None):
         field_info = SchemaManager.getInfoForField(repo_id, type_code, field_code)
         if field_info is None:
