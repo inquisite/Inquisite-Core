@@ -269,6 +269,10 @@ class SchemaManager:
             raise ValidationError(message="Type code is required", context="Schema.addField")
 
         type_info = SchemaManager.getInfoForType(repo_id, typecode)
+        SchemaManager.getInfoForType.reset()
+        SchemaManager.getInfoForField.reset()
+        SchemaManager.getDataTypeInstanceForField.reset()
+        
         if type_info is None:
             raise ValidationError(message="Type code is invalid", context="Schema.addField")
         typecode = type_info["code"]    # always use code
@@ -299,10 +303,9 @@ class SchemaManager:
             "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repo_id}  RETURN f.name as name, ID(f) as id",
             {"typecode": typecode, "code": code, "repo_id": int(repo_id)}).peek()
         if result is not None:
-            r = result.peek()
             ret['exists'] = True
-            ret['field_id'] = r['id']
-            ret['name'] = r['name']
+            ret['field_id'] = result['id']
+            ret['name'] = result['name']
             return ret
         else:
             flds = ["name: {name}", "code: {code}", "description: {description}", "type: {fieldtype}"]
@@ -354,6 +357,10 @@ class SchemaManager:
 
         # TODO: check that repository is owned by current user
 
+        SchemaManager.getInfoForType.reset()
+        SchemaManager.getInfoForField.reset()
+        SchemaManager.getDataTypeInstanceForField.reset()
+        
         result = db.run(
             "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repo_id} AND ID(f) <> {field_id}  RETURN ID(f) as id, f.name as name",
             {"typecode": typecode, "code": code, "repo_id": int(repo_id), "field_id": int(field_id)}).peek()
@@ -394,7 +401,9 @@ class SchemaManager:
 
         # TODO: check that repository is owned by current user
 
-
+        SchemaManager.getInfoForType.reset()
+        SchemaManager.getInfoForField.reset()
+        SchemaManager.getDataTypeInstanceForField.reset()
         try:
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})-[x]-(f:SchemaField) WHERE ID(r) = {repo_id} AND ID(f) = {field_id} DELETE f,x",

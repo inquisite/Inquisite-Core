@@ -8,6 +8,10 @@ class memoized(object):
    '''
    def __init__(self, func):
       self.func = func
+      
+      '''Support class methods.'''
+      self.reset = self._reset
+      
       self.cache = {}
    def __call__(self, *args):
       if not isinstance(args, collections.Hashable):
@@ -25,4 +29,8 @@ class memoized(object):
       return self.func.__doc__
    def __get__(self, obj, objtype):
       '''Support instance methods.'''
-      return functools.partial(self.__call__, obj)
+      fn = functools.partial(self.__call__, obj)
+      fn.reset = self._reset
+      return fn
+   def _reset(self):
+      self.cache = {}
