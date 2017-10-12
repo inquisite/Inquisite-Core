@@ -254,27 +254,32 @@ class DataManager:
             raise FindError(message="Node does not exist")
 
     @staticmethod
-    def getDataForType(repo_id, type_code):
+    def getDataForType(repo_id, type_code, start=0, limit=100):
         repo_id = int(repo_id)
         RepoManager.validate_repo_id(repo_id)
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
 
         nodes = []
+        cols = []
+        c = 0
 
         try:
             # TODO: implement start/limit rather than fixed limit
-            q = "MATCH (r:Repository)--(t:SchemaType)--(n:Data) WHERE ID(r)={repo_id} AND ID(t)={type_id} RETURN n LIMIT 1000"
+            q = "MATCH (r:Repository)--(t:SchemaType)--(n:Data) WHERE ID(r)={repo_id} AND ID(t)={type_id} RETURN n SKIP {start} LIMIT {limit}"
 
-            result = db.run(q, {"repo_id": repo_id, "type_id": type_info["type_id"]})
+            result = db.run(q, {"repo_id": repo_id, "type_id": type_info["type_id"],  "start": start, "limit": limit})
+            if result is not None:
+                for data in result:
+                    nodes.append(data.items()[0][1].properties)
+                    c = c + 1
 
-            for data in result:
-                nodes.append(data.items()[0][1].properties)
 
-            cols = []
-            if nodes[0]:
-                cols = nodes[0].keys()
+                if nodes[0]:
+                    cols = nodes[0].keys()
 
-            return {"data": nodes, "columns": cols, "type_id": type_info["type_id"], "repo_id": repo_id}
+
+            return {"data": nodes, "columns": cols, "type_id": type_info["type_id"], "repo_id": repo_id, "start": start, "limit": limit, "count": c}
         except Exception as e:
             print e.message
-            raise DbError(message="Could not create data", context="DataManager.add", dberror=e.message)
+            return {"data": [], "columns": [], "type_id": type_info["type_id"], "repo_id": repo_id, "start": start,
+                    "limit": limit, "count": 0}
