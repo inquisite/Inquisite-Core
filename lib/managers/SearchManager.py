@@ -53,11 +53,14 @@ class SearchManager:
                         {"uuid": uuids})
 
                     for n in nodes:
+                        print n
                         repolist[n['uuid']] = [n['repo_id'], n['repo_name'], n['repo_uuid']]
                 except Exception as e:
                     pass
 
                 for i, r in enumerate(ret['results']['Data']):
+                    if r['__id'] not in repolist:
+                        continue
                     repoinfo = repolist[r['__id']]
                     ret['results']['Data'][i]['__repo_id'] = repoinfo[0]
                     ret['results']['Data'][i]['__repo_name'] = repoinfo[1]
