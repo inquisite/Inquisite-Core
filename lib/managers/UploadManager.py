@@ -7,10 +7,9 @@ from flask import Blueprint, request
 from lib.exceptions.UploadError import UploadError
 from lib.exceptions.ImportError import ImportError
 from lib.utils.FileHelpers import getMimetypeForFile
-from lib.dataReaders.XLSData import XLSReader
-from lib.dataReaders.CSVData import CSVReader
 from lib.managers.DataManager import DataManager
 from lib.managers.SchemaManager import SchemaManager
+from lib.managers.DataReaderManager import DataReaderManager
 
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/../../uploads"
@@ -75,10 +74,16 @@ class UploadManager:
     def _generatePreview(filepath, mimetype, rows=10):
         data = []
         headers = []
-        if mimetype in ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']:
+
+        reader = DataReaderManager.identify(filepath)
+
+        if reader is not None:
+            # TODO: set preview type from reader
             preview_type = "table"
 
-            data = XLSReader.getRows(filepath=filepath, rows=rows)
+            # TODO: error checking
+            reader.read(filepath)
+            data = reader.getRows(rows=rows)
             if data is None or len(data) == 0:
                 return []
             headers = data[0]
@@ -89,22 +94,9 @@ class UploadManager:
             else:
                 # TODO: looks like valid headers... maybe clean them up somehow?
                 pass
-
-        elif mimetype == "text/plain":
-            preview_type = "table"
-            # TODO: distinguish between CSV and TAB
-
-            data_dict = CSVReader.getRows(filepath=filepath, rows=rows)
-            if data_dict is None or len(data_dict) == 0:
-                return []
-            headers = data_dict[0].keys()
-
-            data = map(lambda x: x.values(), data_dict)
-        elif mimetype == "text/json":
-            preview_type = "json"
-            pass
         else:
-            raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype, context="UploadManager._generatePreview")
+            raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
+                              context="UploadManager._generatePreview")
         return {"headers": headers, "data": data, "type": preview_type}
 
     #
@@ -121,7 +113,7 @@ class UploadManager:
     def importData(repo_id, type, filename, data_mapping):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=1000000)
-        print "got " + str(len(data["data"]))
+        print "UPLOADED FILE LENGTH: " + str(len(data["data"])) + " bytes"
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
 
