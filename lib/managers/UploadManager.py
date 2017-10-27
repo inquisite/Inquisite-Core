@@ -84,16 +84,7 @@ class UploadManager:
             # TODO: error checking
             reader.read(filepath)
             data = reader.getRows(rows=rows)
-            if data is None or len(data) == 0:
-                return []
-            headers = data[0]
-
-            if len(filter(lambda x: re.match(r'^[\d]$', x), headers)) > 0 or len(set(headers)) < len(headers):
-                # no headers
-                headers = range(1, len(headers))
-            else:
-                # TODO: looks like valid headers... maybe clean them up somehow?
-                pass
+            headers = reader.getHeaders()
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
                               context="UploadManager._generatePreview")

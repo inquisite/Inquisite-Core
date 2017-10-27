@@ -274,7 +274,7 @@ class DataManager:
                     c = c + 1
 
 
-                if nodes[0]:
+                if 0 in nodes:
                     cols = nodes[0].keys()
 
 

@@ -29,12 +29,22 @@ class CSVDataReader(BaseDataReader):
     def read(self, filepath):
         self.input_file = None
 
+
         try:
             self.input_file = open(filepath, 'rb')
         except:
-            pass
+            return False
+
+        if csv.Sniffer().has_header(self.input_file.read(8192)):
+          self.input_file.seek(0)
+          hr = self.headers = csv.reader(self.input_file)
+          for h in hr:
+            self.headers = h
+            break
+          self.input_file.seek(0)
 
         super(CSVDataReader, self).read(filepath)
+
 
         if self.input_file:
             return True

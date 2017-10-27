@@ -14,9 +14,15 @@ class BaseDataReader(BasePlugin):
     #
     #
     #
+    headers = []
+
+    #
+    #
+    #
     def __init__(self, filepath=None):
         super(BaseDataReader, self).__init__()
-        self.read(filepath)
+        if filepath:
+            self.read(filepath)
 
     #
     #
@@ -26,6 +32,9 @@ class BaseDataReader(BasePlugin):
         if self.input_file:
             self.filepath = filepath
         return self.filepath
+
+    def getHeaders(self):
+        return self.headers
 
     #
     # Should be overridden. Returns true if file can be read by plugin.

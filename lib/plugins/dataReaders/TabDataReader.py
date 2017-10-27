@@ -31,7 +31,15 @@ class TabDataReader(BaseDataReader):
     try:
       self.input_file = open(filepath, 'rb')
     except:
-      pass
+      return False
+
+    if csv.Sniffer().has_header(self.input_file.read(8192)):
+      self.input_file.seek(0)
+      hr = self.headers = csv.reader(self.input_file, delimiter='\t')
+      for h in hr:
+        self.headers = h
+        break
+      self.input_file.seek(0)
 
     super(TabDataReader, self).read(filepath)
 
@@ -46,7 +54,6 @@ class TabDataReader(BaseDataReader):
 
     file_data = []
     with self.input_file as line:
-
       c = 0
       for row in csv.DictReader(line, delimiter='\t'):
         c = c + 1

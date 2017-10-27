@@ -318,6 +318,7 @@ class SchemaManager:
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}}) WHERE ID(r) = {repo_id} CREATE (f:SchemaField { " + ", ".join(flds) + " })-[:PART_OF]->(t) RETURN ID(f) as id, f.name as name, f.code as code",
                 params)
+
             r = result.peek()
             # TODO: check query result
 
@@ -365,10 +366,9 @@ class SchemaManager:
             "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repo_id} AND ID(f) <> {field_id}  RETURN ID(f) as id, f.name as name",
             {"typecode": typecode, "code": code, "repo_id": int(repo_id), "field_id": int(field_id)}).peek()
         if result is not None:
-            r = result.peek()
             ret['msg'] = "Field already exists"
-            ret['field_id'] = r['id']
-            ret['name'] = r['name']
+            ret['field_id'] = result['id']
+            ret['name'] = result['name']
             return ret
         else:
             flds = ["f.name = {name}", "f.code = {code}", "f.description = {description}", "f.type = {fieldtype}"]

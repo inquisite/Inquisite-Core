@@ -1,6 +1,7 @@
 import xlrd
 from lib.plugins.dataReaders.BaseDataReader import BaseDataReader
 from lib.exceptions.FileError import FileError
+import re
 
 class XLSDataReader(BaseDataReader):
   name = "XLS Data Reader"
@@ -31,6 +32,16 @@ class XLSDataReader(BaseDataReader):
       pass
 
     super(XLSDataReader, self).read(filepath)
+
+    h = self.input_file.row(0)
+
+    h = [str(a.value) for a in h]
+
+    if len(filter(lambda x: re.match(r'^[\d]$', x), h)) > 0 or len(set(h)) < len(h):
+      # no headers
+      self.headers = range(1, len(h))
+    else:
+      self.headers = h
 
     if self.input_file:
       return True
