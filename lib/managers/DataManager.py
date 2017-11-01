@@ -28,13 +28,11 @@ class DataManager:
             q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) as id"
 
             data_proc["type_id"] = type_info["type_id"]     # add type_id to data before insert
-
             res = db.run(q, data_proc).peek()
 
             return res["id"]
         except Exception as e:
-            print e.message
-            raise DbError(message="Could not create data", context="DataManager.add", dberror=e.message)
+            raise DbError(message="Could not create data (" + e.__class__.__name__ + ")", context="DataManager.add", dberror=e.message)
 
     #
     #
@@ -52,9 +50,9 @@ class DataManager:
         for f in type_info["fields"]:
             v = None
             if f['code'] in data:
-                v = data[f['code']]
+                v = unicode(data[f['code']], errors='replace')
             if v is None and f['id'] in data:
-                v = data[f['id']]
+                v = unicode(data[f['id']], errors='replace')
 
             if v is not None:
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
