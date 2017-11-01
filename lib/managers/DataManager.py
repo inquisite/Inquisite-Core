@@ -271,10 +271,8 @@ class DataManager:
                     nodes.append(data.items()[0][1].properties)
                     c = c + 1
 
-
-                if 0 in nodes:
+                if len(nodes) > 0:
                     cols = nodes[0].keys()
-
 
             return {"data": nodes, "columns": cols, "type_id": type_info["type_id"], "repo_id": repo_id, "start": start, "limit": limit, "count": c}
         except Exception as e:
