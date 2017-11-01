@@ -1,12 +1,6 @@
-from lib.utils.Db import db
 import re
-from lib.exceptions.FindError import FindError
-from lib.exceptions.DbError import DbError
-from lib.exceptions.ValidationError import ValidationError
-from lib.exceptions.SettingsValidationError import SettingsValidationError
 from pluginbase import PluginBase
 from lib.decorators.Memoize import memoized
-from collections import OrderedDict
 
 class DataReaderManager:
     plugin_source = PluginBase(package='lib.plugins.dataReaders').make_plugin_source(

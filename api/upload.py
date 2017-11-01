@@ -27,8 +27,9 @@ def importData():
     filename = request.form.get('filename')
     data_mapping = request.form.get('data_mapping').split("|")
     type = request.form.get('type')
+    ignore_first = request.form.get('ignore_first')
 
     try:
-        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, data_mapping), message="File imported")
+        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, data_mapping, ignore_first), message="File imported")
     except UploadError as e:
         return makeResponse(error=e)

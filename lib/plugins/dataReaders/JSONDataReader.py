@@ -37,6 +37,7 @@ class JSONDataReader(BaseDataReader):
     else:
       return False
 
+  # TODO: support start parameter
   def getRows(self, rows=None, start=0):
     if self.input_file is None:
         raise FileError("No file loaded", "JSONDataReader.getRows")

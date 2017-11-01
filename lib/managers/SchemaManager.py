@@ -153,6 +153,8 @@ class SchemaManager:
             else:
                 result = db.run("MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (t:SchemaType { name: {name}, code: {code}, description: {description}, storage: 'Graph'})-[:PART_OF]->(r) RETURN ID(t) as id",
                             {"repo_id": int(repo_id),"name": name, "code": code, "description": description})
+
+            SchemaManager.resetTypeInfoCache()
         except Exception as e:
             raise DbError(message="Could not add type: " + e.message, context="Schema.addType",
                           dberror=e.message)
@@ -230,6 +232,8 @@ class SchemaManager:
                 SchemaManager.deleteField(repo_id, code, field_id)
 
 
+        SchemaManager.resetTypeInfoCache()
+
         if result:
             ret = {}
             for r in result:
@@ -256,6 +260,7 @@ class SchemaManager:
                             {"type_id": int(type_id), "repo_id": int(repo_id)})
 
             if result is not None:
+                SchemaManager.resetTypeInfoCache()
                 return {"type_id": type_id}
             else:
                 raise FindError(message="Could not find type", context="Schema.deleteType", dberror="")
@@ -269,9 +274,7 @@ class SchemaManager:
             raise ValidationError(message="Type code is required", context="Schema.addField")
 
         type_info = SchemaManager.getInfoForType(repo_id, typecode)
-        SchemaManager.getInfoForType.reset()
-        SchemaManager.getInfoForField.reset()
-        SchemaManager.getDataTypeInstanceForField.reset()
+        SchemaManager.resetTypeInfoCache()
         
         if type_info is None:
             raise ValidationError(message="Type code is invalid", context="Schema.addField")
@@ -357,10 +360,7 @@ class SchemaManager:
             raise SettingsValidationError(message="Invalid settings for field " + name, errors={code: sv}, context="Schema.editField")
 
         # TODO: check that repository is owned by current user
-
-        SchemaManager.getInfoForType.reset()
-        SchemaManager.getInfoForField.reset()
-        SchemaManager.getDataTypeInstanceForField.reset()
+        SchemaManager.resetTypeInfoCache()
         
         result = db.run(
             "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repo_id} AND ID(f) <> {field_id}  RETURN ID(f) as id, f.name as name",
@@ -400,10 +400,8 @@ class SchemaManager:
 
 
         # TODO: check that repository is owned by current user
+        SchemaManager.resetTypeInfoCache()
 
-        SchemaManager.getInfoForType.reset()
-        SchemaManager.getInfoForField.reset()
-        SchemaManager.getDataTypeInstanceForField.reset()
         try:
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})-[x]-(f:SchemaField) WHERE ID(r) = {repo_id} AND ID(f) = {field_id} DELETE f,x",
@@ -499,3 +497,12 @@ class SchemaManager:
             ft.set(value)
 
         return ft
+
+    #
+    #
+    #
+    @classmethod
+    def resetTypeInfoCache(cls):
+        SchemaManager.getInfoForType.reset()
+        SchemaManager.getInfoForField.reset()
+        SchemaManager.getDataTypeInstanceForField.reset()

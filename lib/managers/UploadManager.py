@@ -71,9 +71,15 @@ class UploadManager:
     # Generate preview data for file
     #
     @staticmethod
-    def _generatePreview(filepath, mimetype, rows=10):
+    def _generatePreview(filepath, mimetype, rows=100, start=0):
         data = []
         headers = []
+
+        try:
+            start = int(start)
+        except:
+            start = 0
+
 
         reader = DataReaderManager.identify(filepath)
 
@@ -83,7 +89,7 @@ class UploadManager:
 
             # TODO: error checking
             reader.read(filepath)
-            data = reader.getRows(rows=rows)
+            data = reader.getRows(rows=rows, start=start)
             headers = reader.getHeaders()
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
@@ -101,12 +107,20 @@ class UploadManager:
     #
     #
     @staticmethod
-    def importData(repo_id, type, filename, data_mapping):
+    def importData(repo_id, type, filename, data_mapping, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
-        data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=1000000)
-        print "UPLOADED FILE LENGTH: " + str(len(data["data"])) + " bytes"
+        data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=1000000, start=start)
+        print "UPLOADED FILE: " + str(len(data["data"])) + " rows"
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
+
+        if str(type) == "-1":
+            # create type
+            # TODO: make sure "new type" name is unique
+            new_type = SchemaManager.addType(repo_id, "New type", "new_type", "Type created by import", {})
+
+            if "type" in new_type:
+                type = new_type["type"]["code"]
 
         type_info = SchemaManager.getInfoForType(repo_id, type)
         if type_info is None:
@@ -147,7 +161,7 @@ class UploadManager:
         for line, r in enumerate(data["data"]):
             fields = {}
             for i, fid in enumerate(data_mapping):
-                fields[fid] = r[i]
+                fields[fid] = r[fid]
             try:
                 DataManager.add(repo_id, type, fields)
                 if type not in counts:
