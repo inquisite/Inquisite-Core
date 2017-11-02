@@ -36,7 +36,6 @@ def email_domain_is_allowed(email):
     config = json.load(configFile)
     if 'registration_email_domains' in config.keys():
         domains = config['registration_email_domains']
-        print domains
         if len(domains) == 0:
             return True     # empty list = allow all domains
 

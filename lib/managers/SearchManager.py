@@ -23,8 +23,6 @@ class SearchManager:
 
         s = s[0:100]
         result = s.execute()
-        #print "GOT"
-        #print result
 
         ret = {'expression': expression, 'results': {}, 'counts': {}}
 
@@ -53,7 +51,6 @@ class SearchManager:
                         {"uuid": uuids})
 
                     for n in nodes:
-                        print n
                         repolist[n['uuid']] = [n['repo_id'], n['repo_name'], n['repo_uuid']]
                 except Exception as e:
                     pass
