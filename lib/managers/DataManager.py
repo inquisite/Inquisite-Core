@@ -9,6 +9,7 @@ from lib.exceptions.ParameterError import ParameterError
 from lib.managers.SchemaManager import SchemaManager
 from lib.managers.RepoManager import RepoManager
 from timeit import default_timer as timer
+import json
 
 class DataManager:
     # For now all class methods are going to be static
@@ -46,13 +47,21 @@ class DataManager:
 
         # gather data
         data_proc = {}
-
         for f in type_info["fields"]:
             v = None
             if f['code'] in data:
-                v = unicode(data[f['code']], errors='replace')
+                v = data[f['code']]
             if v is None and f['id'] in data:
-                v = unicode(data[f['id']], errors='replace')
+                v = data[f['id']]
+
+            # Convert data-as-dict to JSON for serialized storage
+            if isinstance(v, dict):
+                v = json.dumps(v)
+
+            if v is not None and isinstance(v, unicode) is False:
+                if isinstance(v, basestring) is False:  # force non-string values to string prior to casting to unicode
+                    v = str(v)
+                v = unicode(v, errors='replace')
 
             if v is not None:
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
@@ -64,9 +73,15 @@ class DataManager:
                                                type=type_info['code'], field=f['code'], value=v,
                                                context="DataManager.add")
 
-                # parse
+                # Parse the data using the relevant datatype plugin
+                # NOTE: If the datatype parser returns a dict we serialize to Neo4j with properties for each key
+                # in the dict. This allows data types to serialize data across multiple node properties if required.
+                # This is distinct from the case where the caller submits a dict as data. In that case we convert it to
+                # JSON prior to performing any parsing.
                 parsed_value = dt.parse(v)
-                if isinstance(parsed_value, (dict)):
+
+                # If a dict is returned we need to stored parsed value in multiple fields
+                if isinstance(parsed_value, dict):
                     data_proc[f['code']] = v
                     for k, v in parsed_value.iteritems():
                         data_proc[f['code'] + "_" + k] = v
@@ -276,6 +291,5 @@ class DataManager:
 
             return {"data": nodes, "columns": cols, "type_id": type_info["type_id"], "repo_id": repo_id, "start": start, "limit": limit, "count": c}
         except Exception as e:
-            print e.message
             return {"data": [], "columns": [], "type_id": type_info["type_id"], "repo_id": repo_id, "start": start,
                     "limit": limit, "count": 0}

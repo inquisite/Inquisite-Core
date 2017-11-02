@@ -110,7 +110,7 @@ class UploadManager:
     def importData(repo_id, type, filename, data_mapping, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=1000000, start=start)
-        print "UPLOADED FILE: " + str(len(data["data"])) + " rows"
+        print("UPLOADED FILE: " + str(len(data["data"])) + " rows")
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
 
@@ -153,15 +153,24 @@ class UploadManager:
                     # set mapping to use field code
                     data_mapping[i] = field_info["code"]
 
+        fieldmap = {}
+        for v in type_info["fields"]:
+            fieldmap[v["code"]] = v
+
         data_mapping = map(lambda x: str(x), data_mapping)
 
         num_errors = 0
         errors = {}
         counts = {}
+
         for line, r in enumerate(data["data"]):
             fields = {}
             for i, fid in enumerate(data_mapping):
-                fields[fid] = r[fid]
+                if fid not in fieldmap:
+                    continue
+                if data["headers"][i] not in r:
+                    continue
+                fields[fid] = r[data["headers"][i]]
             try:
                 DataManager.add(repo_id, type, fields)
                 if type not in counts:

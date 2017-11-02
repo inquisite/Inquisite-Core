@@ -63,18 +63,18 @@ class GeoJSONDataReader(BaseDataReader):
         continue
       if rows is not None and c > rows:
         break
-      if "properties" not in row:
+      if ("properties" not in row) or (row["type"] != "Feature"):
         continue
 
       # process geometry
-      geometry = ""
+      geometry = None
+
+      # Handle geometry
       if "geometry" in row:
-        if row["geometry"]["type"] == "Polygon":
-          # TODO: handle multiple polygons
-          acc = []
-          for coord in row["geometry"]["coordinates"][0]:
-            acc.append(",".join(str(x) for x in coord))
-          geometry = ";".join(acc)
+        geometry = row["geometry"]
+      elif "geometryCollection" in row:
+        # TODO: handle geometry collections
+        pass
 
       # flatten properties
       row_proc = row["properties"]
