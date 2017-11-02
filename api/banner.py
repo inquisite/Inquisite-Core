@@ -9,5 +9,5 @@ banner_blueprint = Blueprint('banner', __name__)
 @banner_blueprint.route("/")
 def index():
   return makeResponse(payload={
-      'v1': "https://api.org/api/v1"
+      'v1': "https://api.inquisite.org/api/v1"
     })
