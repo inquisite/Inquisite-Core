@@ -23,7 +23,8 @@ class RepoManager:
       repos.append({
         "name": r['name'],
         "url": r['url'],
-        "readme": r['readme']
+        "readme": r['readme'],
+        "published": r['published']
       })
 
     return repos
@@ -66,7 +67,7 @@ class RepoManager:
       return True    
 
   @staticmethod
-  def create(url, name, readme, identity, ident_str):
+  def create(url, name, readme, published, identity, ident_str):
       ts = time.time()
       created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -77,14 +78,15 @@ class RepoManager:
         raise ValidationError(message="Name is in use", context="Repositories.create")
 
       new_repo = {}
-      result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}}) " +
-        "RETURN n.url AS url, n.name AS name, n.readme AS readme, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on})
+      result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}, published: {published}}) " +
+        "RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on, "published": published})
 
       for r in result:
         new_repo['id'] = r['repo_id']
         new_repo['url'] = r['url']
         new_repo['name'] = r['name']
         new_repo['readme'] = r['readme']
+        new_repo['published'] = r['published']
 
       repo_created = False
       summary = result.consume()
@@ -97,7 +99,7 @@ class RepoManager:
       return new_repo   
 
   @staticmethod
-  def edit(repo_id, name, url, readme):
+  def edit(repo_id, name, url, readme, published):
     if url is None or name is None or readme is None:
       raise ValidationError(message="Name, URL and README must be set", context="Repositories.edit")
 
@@ -114,12 +116,17 @@ class RepoManager:
     if readme is not None:
       update.append("n.readme = {readme}")
 
+    if ((published != 0) and (published != 1)) or published is None:
+      published = 0
+
+    update.append("n.published = {published}")
+
     update_str = "%s" % ", ".join(map(str, update))
 
     if update_str:
       result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
-                      " RETURN n.name AS name, n.url AS url, n.readme AS readme, ID(n) as id",
-                      {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme})
+                      " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.published as published, ID(n) as id",
+                      {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme, "published": published})
 
       updated_repo = {}
       for r in result:
@@ -127,6 +134,7 @@ class RepoManager:
         updated_repo['name'] = r['name']
         updated_repo['url'] = r['url']
         updated_repo['readme'] = r['readme']
+        updated_repo['published'] = r['published']
 
       summary = result.consume()
       if summary.counters.properties_set >= 1:
@@ -151,13 +159,14 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     repo = {}
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme",
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published",
       {"repo_id": repo_id})
 
     for r in result:
       repo['url'] = r['url']
       repo['name'] = r['name']
       repo['readme'] = r['readme']
+      repo['published'] = r['published']
 
     return repo
 
@@ -223,13 +232,14 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     repo = {}
-    result = dub.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme",
+    result = dub.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme, n.published AS published",
       {"repo_id": repo_id})
 
     for r in result:
       repo['name'] = r['name']
       repo['url'] = r['url']
       repo['readme'] = r['readme']
+      repo['published'] = r['published']
 
     return repo
 
