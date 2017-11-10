@@ -13,6 +13,8 @@ from lib.exceptions.FindError import FindError
 class RepoManager:
   # For now all class methods are going to be static
 
+  licenses = ['PD', 'ODbL', 'CC0', 'CC-BY', 'CC-BY-NC', 'CC-BY-SA', 'CC-BY-ND', 'CC-BY-NC-ND']
+
   @staticmethod
   def getAll():
 
@@ -67,7 +69,7 @@ class RepoManager:
       return True    
 
   @staticmethod
-  def create(url, name, readme, published, identity, ident_str):
+  def create(url, name, readme, license, published, identity, ident_str):
       ts = time.time()
       created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -77,16 +79,21 @@ class RepoManager:
       if RepoManager.nameCheck(name=name, identity=identity, ident_str=ident_str) is False:
         raise ValidationError(message="Name is in use", context="Repositories.create")
 
+      if ((published != 0) and (published != 1)) or published is None:
+        published = 0
+
+      if license not in RepoManager.licenses:
+        license = ''
+
       new_repo = {}
-      result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}, published: {published}}) " +
-        "RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, ID(n) AS repo_id", {"url": url, "name": name, "readme": readme, "created_on": created_on, "published": published})
+      result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}, "
+                      "published: {published}, license: {license}}) " +
+                      "RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, ID(n) AS repo_id",
+                      {"url": url, "name": name, "readme": readme, "created_on": created_on,
+                       "published": published, "license": license})
 
       for r in result:
-        new_repo['id'] = r['repo_id']
-        new_repo['url'] = r['url']
-        new_repo['name'] = r['name']
-        new_repo['readme'] = r['readme']
-        new_repo['published'] = r['published']
+        new_repo = r
 
       repo_created = False
       summary = result.consume()
@@ -99,7 +106,7 @@ class RepoManager:
       return new_repo   
 
   @staticmethod
-  def edit(repo_id, name, url, readme, published):
+  def edit(repo_id, name, url, readme, license, published):
     if url is None or name is None or readme is None:
       raise ValidationError(message="Name, URL and README must be set", context="Repositories.edit")
 
@@ -119,14 +126,21 @@ class RepoManager:
     if ((published != 0) and (published != 1)) or published is None:
       published = 0
 
+    print RepoManager.licenses
+    print "l=" + str(license)
+    if license not in RepoManager.licenses:
+      license = ''
+
     update.append("n.published = {published}")
+    update.append("n.license = {license}")
 
     update_str = "%s" % ", ".join(map(str, update))
 
     if update_str:
       result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
                       " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.published as published, ID(n) as id",
-                      {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme, "published": published})
+                      {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme, "published": published,
+                       "license": license})
 
       updated_repo = {}
       for r in result:

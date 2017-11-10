@@ -35,6 +35,7 @@ def addRepo():
     url = request.form.get('url')
     name = request.form.get('name')
     readme = request.form.get('readme')
+    license = request.form.get('license')
     published = request.form.get('published')
 
     # Get person by auth token 
@@ -46,7 +47,7 @@ def addRepo():
     ident_str = "p.email = {identity}"
 
     try:
-        return makeResponse(payload=RepoManager.create(url, name, readme, published, identity, ident_str), message="Created repository")
+        return makeResponse(payload=RepoManager.create(url, name, readme, license, published, identity, ident_str), message="Created repository")
     except ValidationError as e:
         return makeResponse(error=e)
 
@@ -57,10 +58,11 @@ def editRepo(repo_id):
     url = request.form.get('url')
     name = request.form.get('name')
     readme = request.form.get('readme')
+    license = request.form.get('license')
     published = request.form.get('published')
 
     try:
-        return makeResponse(payload=RepoManager.edit(repo_id, name, url, readme, published), message="Edited repository")
+        return makeResponse(payload=RepoManager.edit(repo_id, name, url, readme, license, published), message="Edited repository")
     except FindError as e:
         return makeResponse(error=e)
     except ValidationError as e:

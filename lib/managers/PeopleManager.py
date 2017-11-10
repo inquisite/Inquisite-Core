@@ -46,7 +46,7 @@ class PeopleManager:
 
     person = {}
     result = db.run("MATCH (p:Person) WHERE " + ident_str + " RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.email AS email, " +
-      "p.url AS url, p.location AS location, p.tagline AS tagline, p.prefs AS prefs", {"identity": identity})
+      "p.url AS url, p.location AS location, p.tagline AS tagline", {"identity": identity})
 
     for p in result:
       person['id'] = p['id']
@@ -69,7 +69,7 @@ class PeopleManager:
     else:
       ident_str = "p.email={identity}"
 
-    result = db.run("MATCH (n:Repository)<-[x:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.published AS published, " +
+    result = db.run("MATCH (n:Repository)<-[x:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.published AS published, n.license AS license, " +
       "n.url AS url, n.created_on AS created_on, x.access AS access", {"identity": identity})
 
     for item in result:
@@ -89,6 +89,7 @@ class PeopleManager:
         "owner": owner,
         "access": item['access'],
         "published": item['published'],
+        "license": item['license'],
         "schema_type_count" : 0,
         "schema_field_count" : 0,
         "data_element_count": 0
