@@ -79,7 +79,7 @@ class RepoManager:
       if RepoManager.nameCheck(name=name, identity=identity, ident_str=ident_str) is False:
         raise ValidationError(message="Name is in use", context="Repositories.create")
 
-      if ((published != 0) and (published != 1)) or published is None:
+      if ((int(published) != 0) and (int(published) != 1)) or published is None:
         published = 0
 
       if license not in RepoManager.licenses:
@@ -88,12 +88,17 @@ class RepoManager:
       new_repo = {}
       result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}, "
                       "published: {published}, license: {license}}) " +
-                      "RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, ID(n) AS repo_id",
+                      "RETURN n.url AS url, n.name AS name, n.readme AS readme, n.license AS license, n.published AS published, ID(n) AS repo_id",
                       {"url": url, "name": name, "readme": readme, "created_on": created_on,
                        "published": published, "license": license})
 
       for r in result:
-        new_repo = r
+        new_repo['id'] = r['repo_id']
+        new_repo['url'] = r['url']
+        new_repo['name'] = r['name']
+        new_repo['readme'] = r['readme']
+        new_repo['license'] = r['license']
+        new_repo['published'] = r['published']
 
       repo_created = False
       summary = result.consume()
@@ -123,11 +128,8 @@ class RepoManager:
     if readme is not None:
       update.append("n.readme = {readme}")
 
-    if ((published != 0) and (published != 1)) or published is None:
+    if ((int(published) != 0) and (int(published) != 1)) or published is None:
       published = 0
-
-    print RepoManager.licenses
-    print "l=" + str(license)
     if license not in RepoManager.licenses:
       license = ''
 
@@ -138,7 +140,7 @@ class RepoManager:
 
     if update_str:
       result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
-                      " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.published as published, ID(n) as id",
+                      " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.license AS license, n.published AS published, ID(n) AS id",
                       {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme, "published": published,
                        "license": license})
 
@@ -148,6 +150,7 @@ class RepoManager:
         updated_repo['name'] = r['name']
         updated_repo['url'] = r['url']
         updated_repo['readme'] = r['readme']
+        updated_repo['license'] = r['license']
         updated_repo['published'] = r['published']
 
       summary = result.consume()
