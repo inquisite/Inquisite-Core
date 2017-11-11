@@ -20,20 +20,24 @@ class DataManager:
     # Returns id of newly created node
     #
     @staticmethod
-    def add(repo_id, type_code, data):
+    def add(repo_id, type_code, data, import_uuid=None):
         # TODO: does user have access to this repo?
 
         data_proc, type_info = DataManager._validateData(repo_id, type_code, data)
 
         try:
-            q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) as id"
+            q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) AS id"
 
             data_proc["type_id"] = type_info["type_id"]     # add type_id to data before insert
             res = db.run(q, data_proc).peek()
+            data_id = res["id"]
 
-            return res["id"]
+            if import_uuid is not None:
+                db.run("MATCH (e:ImportEvent { uuid: {import_uuid}}), (n:Data) WHERE ID(n) = {data_id} CREATE (e)<-[x:IMPORTED_IN]-(n) RETURN ID(x) AS id", { "import_uuid": import_uuid, "data_id": data_id})
+
+            return data_id
         except Exception as e:
-            raise DbError(message="Could not create data (" + e.__class__.__name__ + ")", context="DataManager.add", dberror=e.message)
+            raise DbError(message="Could not create data (" + e.__class__.__name__ + ") " + e.message, context="DataManager.add", dberror=e.message)
 
     #
     #
@@ -94,7 +98,7 @@ class DataManager:
     #
     #
     @staticmethod
-    def update(node_id, data):
+    def update(node_id, data, import_uuid=None):
         # TODO: does user have access to this repo?
         try:
             id = int(node_id)
@@ -129,7 +133,7 @@ class DataManager:
     #
     #
     @staticmethod
-    def delete(node_id):
+    def delete(node_id, import_uuid=None):
         # TODO: does user have access to this repo?
         try:
             id = int(node_id)

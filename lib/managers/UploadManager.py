@@ -1,8 +1,7 @@
 import os
 import os.path
-import hashlib, glob
-import re
-
+import hashlib
+from lib.utils.Db import db
 from flask import Blueprint, request
 from lib.exceptions.UploadError import UploadError
 from lib.exceptions.ImportError import ImportError
@@ -10,6 +9,7 @@ from lib.utils.FileHelpers import getMimetypeForFile
 from lib.managers.DataManager import DataManager
 from lib.managers.SchemaManager import SchemaManager
 from lib.managers.DataReaderManager import DataReaderManager
+import time
 
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/../../uploads"
@@ -163,6 +163,8 @@ class UploadManager:
         errors = {}
         counts = {}
 
+        # TODO: record original file name, file size, file type
+        upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], filename)
         for line, r in enumerate(data["data"]):
             fields = {}
             for i, fid in enumerate(data_mapping):
@@ -172,7 +174,7 @@ class UploadManager:
                     continue
                 fields[fid] = r[data["headers"][i]]
             try:
-                DataManager.add(repo_id, type, fields)
+                DataManager.add(repo_id, type, fields, upload_uuid)
                 if type not in counts:
                     counts[typecode] = 1
                 else:
@@ -183,4 +185,36 @@ class UploadManager:
                 errors[line].append(e.message)
                 num_errors = num_errors + 1
 
-        return {"errors": errors, "error_count": num_errors, "mapping": data_mapping, "fields_created": fields_created, "counts": counts, "filename": filename}
+        UploadManager.closeImportEvent(upload_uuid)
+        return {"errors": errors, "error_count": num_errors, "mapping": data_mapping,
+                "fields_created": fields_created, "counts": counts, "filename": filename}
+
+    @staticmethod
+    def createImportEvent(repo_id, type, filename):
+        result = db.run(
+            "MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (e:ImportEvent { name: {name}, type: {type}, started_on: {time}, ended_on: null})-[:IMPORTED_INTO]->(r) RETURN ID(e) AS id",
+            {"repo_id": int(repo_id), "name": filename, "type": type, "time": time.time()})
+        if result is None:
+            return False
+        r = result.peek()
+
+        # We have to do a separate query because Neo4j doesn't make the uuid available on CREATE (argh)
+        result = db.run(
+            "MATCH (e:ImportEvent) WHERE ID(e) = {id} RETURN e.uuid AS uuid",
+            {"id": int(r['id'])})
+        if result is None:
+            return False
+
+        r = result.peek()
+        return r['uuid']
+
+    @staticmethod
+    def closeImportEvent(uuid):
+        result = db.run(
+            "MATCH (e:ImportEvent { uuid: {uuid}}) SET e.ended_on = {time} RETURN e.uuid as uuid",
+            {"uuid": uuid, "time": time.time()})
+        if result is None:
+            return False
+        r = result.peek()
+        print r
+        return r['uuid']
