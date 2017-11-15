@@ -6,6 +6,7 @@ import re
 class XLSDataReader(BaseDataReader):
   name = "XLS Data Reader"
   description = "Reads Excel (XLS and XLSX) formattted data"
+  type = "Excel"
 
   priority = 10
 

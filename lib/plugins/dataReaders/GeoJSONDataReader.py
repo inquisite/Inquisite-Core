@@ -6,6 +6,7 @@ import collections
 class GeoJSONDataReader(BaseDataReader):
   name = "GeoJSON Data Reader"
   description = "Reads GeoJSON formatted data"
+  type = "GeoJSON"
 
   priority = 20
 

@@ -10,6 +10,7 @@ from lib.managers.DataManager import DataManager
 from lib.managers.SchemaManager import SchemaManager
 from lib.managers.DataReaderManager import DataReaderManager
 import time
+import humanize
 
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/../../uploads"
@@ -94,7 +95,7 @@ class UploadManager:
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
                               context="UploadManager._generatePreview")
-        return {"headers": headers, "data": data, "type": preview_type}
+        return {"headers": headers, "data": data, "preview_type": preview_type, "type": reader.type}
 
     #
     #
@@ -107,9 +108,10 @@ class UploadManager:
     #
     #
     @staticmethod
-    def importData(repo_id, type, filename, data_mapping, start=0):
+    def importData(repo_id, type, filename, original_filename, data_mapping, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
-        data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=getMimetypeForFile(upload_filepath), rows=1000000, start=start)
+        mt = getMimetypeForFile(upload_filepath)
+        data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mt, rows=1000000, start=start)
         print("UPLOADED FILE: " + str(len(data["data"])) + " rows")
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
@@ -164,7 +166,7 @@ class UploadManager:
         counts = {}
 
         # TODO: record original file name, file size, file type
-        upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], filename)
+        upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], upload_filepath, original_filename, data["type"], len(data["data"]))
         for line, r in enumerate(data["data"]):
             fields = {}
             for i, fid in enumerate(data_mapping):
@@ -190,10 +192,10 @@ class UploadManager:
                 "fields_created": fields_created, "counts": counts, "filename": filename}
 
     @staticmethod
-    def createImportEvent(repo_id, type, filename):
+    def createImportEvent(repo_id, type, upload_filepath, original_filename, ftype, row_count):
         result = db.run(
-            "MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (e:ImportEvent { name: {name}, type: {type}, started_on: {time}, ended_on: null})-[:IMPORTED_INTO]->(r) RETURN ID(e) AS id",
-            {"repo_id": int(repo_id), "name": filename, "type": type, "time": time.time()})
+            "MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (e:ImportEvent { original_filename: {original_filename}, type: {type}, filetype: {filetype}, size: {size}, rows: {rows}, started_on: {time}, ended_on: null})-[:IMPORTED_INTO]->(r) RETURN ID(e) AS id",
+            {"repo_id": int(repo_id), "original_filename": original_filename, "type": type, "filetype": ftype, "size": os.path.getsize(upload_filepath), "rows": row_count, "time": time.time()})
         if result is None:
             return False
         r = result.peek()
@@ -216,5 +218,23 @@ class UploadManager:
         if result is None:
             return False
         r = result.peek()
-        print r
         return r['uuid']
+
+    @staticmethod
+    def getImportEventsForRepo(repo_id):
+        result = db.run(
+            "MATCH (r:Repository)--(e:ImportEvent) WHERE ID(r) = {repo_id} RETURN ID(e) AS id, properties(e) AS props ORDER BY e.started_on",
+            {"repo_id": int(repo_id)})
+        if result is None:
+            return False
+
+        events = []
+        for r in result:
+            print r
+            l = r['props']
+            l['id'] = r['id']
+            l['size_display'] = humanize.naturalsize(l['size'])
+            l['started_on'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(l['started_on']))
+            l['ended_on'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(l['ended_on']))
+            events.append(l)
+        return events

@@ -5,6 +5,7 @@ from lib.exceptions.FileError import FileError
 class JSONDataReader(BaseDataReader):
   name = "JSON Data Reader"
   description = "Reads JSON formatted data"
+  type = "JSON"
 
   priority = 30
 

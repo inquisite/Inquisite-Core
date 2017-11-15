@@ -6,6 +6,7 @@ from lib.exceptions.FileError import FileError
 class CSVDataReader(BaseDataReader):
     name = "CSV Data Reader"
     description = "Reads Comma-delimited data"
+    type = "CSV text"
 
     priority = 50
 

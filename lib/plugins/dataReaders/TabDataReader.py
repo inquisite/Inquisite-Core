@@ -5,6 +5,7 @@ from lib.exceptions.FileError import FileError
 class TabDataReader(BaseDataReader):
   name = "Tab Data Reader"
   description = "Reads tab-delimited data"
+  type = "Tab-delimited text"
 
   priority = 40
 
