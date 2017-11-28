@@ -79,7 +79,7 @@ class RepoManager:
       if RepoManager.nameCheck(name=name, identity=identity, ident_str=ident_str) is False:
         raise ValidationError(message="Name is in use", context="Repositories.create")
 
-      if ((int(published) != 0) and (int(published) != 1)) or published is None:
+      if published is None or ((int(published) != 0) and (int(published) != 1)):
         published = 0
 
       if license not in RepoManager.licenses:
