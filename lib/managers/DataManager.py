@@ -3,6 +3,7 @@ from lib.utils.Db import db
 from lib.utils.CypherHelpers import makeDataMapForCypher
 from lib.exceptions.SaveError import SaveError
 from lib.exceptions.FindError import FindError
+from lib.exceptions.LogError import LogError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.FieldValidationError import FieldValidationError
 from lib.exceptions.ParameterError import ParameterError
@@ -10,6 +11,7 @@ from lib.managers.SchemaManager import SchemaManager
 from lib.managers.RepoManager import RepoManager
 from timeit import default_timer as timer
 import json
+import time
 
 class DataManager:
     # For now all class methods are going to be static
@@ -35,6 +37,8 @@ class DataManager:
             if import_uuid is not None:
                 db.run("MATCH (e:ImportEvent { uuid: {import_uuid}}), (n:Data) WHERE ID(n) = {data_id} CREATE (e)<-[x:IMPORTED_IN]-(n) RETURN ID(x) AS id", { "import_uuid": import_uuid, "data_id": data_id})
 
+
+            #DataManager.logChange("I", data_proc)
             return data_id
         except Exception as e:
             raise DbError(message="Could not create data (" + e.__class__.__name__ + ") " + e.message, context="DataManager.add", dberror=e.message)
@@ -125,6 +129,7 @@ class DataManager:
                 db.run("MATCH (d:Data) WHERE d.uuid = {uuid} SET " + makeDataMapForCypher(data=data_proc, mode="U",
                                                                                             prefix="d."), data_proc)
 
+            #DataManager.logChange("U", data_proc)
             return True
         except Exception as e:
             raise DbError(message="Could not update data", context="DataManager.update", dberror=e.message)
@@ -297,3 +302,30 @@ class DataManager:
         except Exception as e:
             return {"data": [], "columns": [], "type_id": type_info["type_id"], "repo_id": repo_id, "start": start,
                     "limit": limit, "count": 0}
+
+    #
+    # Versioning
+    #
+    @staticmethod
+    def logChange(change_type, data, user_id=None):
+        # TODO: does user have access to this node?
+        data['_change_type'] = change_type
+        data['_datetime'] = time.time()
+        uuid = data['uuid']
+        del(data['uuid'])
+        try:
+            q = "MATCH (d:Data) WHERE d.uuid = {uuid} CREATE (v:DataLog " + makeDataMapForCypher(
+                data) + ")-[:LOG]->(d) RETURN ID(v) AS id"
+            data['uuid'] = uuid
+            data['user_id'] = user_id
+            result = db.run(q, data)
+            if result is not None:
+                for data in result:
+                    return {"log_id": data['id']}
+            raise LogError(message="Failed to return log_id")
+        except Exception as e:
+            raise LogError(message="Failed to create log entry")
+
+    @staticmethod
+    def getChangeLog():
+        pass
