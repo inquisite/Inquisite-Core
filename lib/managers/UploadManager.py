@@ -124,7 +124,9 @@ class UploadManager:
             if "type" in new_type:
                 type = new_type["type"]["code"]
 
+        SchemaManager.resetTypeInfoCache()
         type_info = SchemaManager.getInfoForType(repo_id, type)
+
         if type_info is None:
             raise ImportError(message="Invalid type", context="UploadManager.importData")
         typecode = type_info["code"]
@@ -155,6 +157,8 @@ class UploadManager:
                     # set mapping to use field code
                     data_mapping[i] = field_info["code"]
 
+        SchemaManager.resetTypeInfoCache()
+        type_info = SchemaManager.getInfoForType(repo_id, type)
         fieldmap = {}
         for v in type_info["fields"]:
             fieldmap[v["code"]] = v
@@ -230,7 +234,6 @@ class UploadManager:
 
         events = []
         for r in result:
-            print r
             l = r['props']
             l['id'] = r['id']
             l['size_display'] = humanize.naturalsize(l['size'])
