@@ -33,6 +33,8 @@ class DateRangeDataType(BaseDataType):
         }
     }
 
+    priority = 40
+
     settings = Settings(settings_spec)
 
     def __init__(self, value=None):
@@ -54,17 +56,20 @@ class DateRangeDataType(BaseDataType):
     #
     def validate(self, value):
         value = DateRangeDataType._preprocess(value)
+        d = None
         try:
             d = parse(value, allow_implicit=True)
         except ParseException as e:
             # fall back to dateutil parser
-            dx = dateutil.parser.parse(value)
-            if dx is not None:
-                d = [dx, None]
-            else:
+            try:
+                dx = dateutil.parser.parse(value)
+                if dx is not None:
+                    d = [dx, None]
+            except ValueError:
                 d = None
         if d is None:
-            return ["Invalid date"]
+            #return ["Invalid date"]
+            return False
         self.parsed_date = {"start": str(d[0]), "end": str(d[1])}
         if d[1] is None:
             self.parsed_date["end"] = self.parsed_date["start"]

@@ -12,6 +12,7 @@ class SchemaManager:
         searchpath=['lib/plugins/dataTypes'], identifier='inquisite')
 
     dataTypePlugins = {}
+    dataTypePluginsByPriority = []
     pluginsAreLoaded = False
 
     def __init__(self):
@@ -275,7 +276,7 @@ class SchemaManager:
 
         type_info = SchemaManager.getInfoForType(repo_id, typecode)
         SchemaManager.resetTypeInfoCache()
-        
+
         if type_info is None:
             raise ValidationError(message="Type code is invalid", context="Schema.addField")
         typecode = type_info["code"]    # always use code
@@ -361,7 +362,7 @@ class SchemaManager:
 
         # TODO: check that repository is owned by current user
         SchemaManager.resetTypeInfoCache()
-        
+
         result = db.run(
             "MATCH (f:SchemaField {code: {code}})--(t:SchemaType {code: {typecode}})--(r:Repository) WHERE ID(r) = {repo_id} AND ID(f) <> {field_id}  RETURN ID(f) as id, f.name as name",
             {"typecode": typecode, "code": code, "repo_id": int(repo_id), "field_id": int(field_id)}).peek()
@@ -419,12 +420,16 @@ class SchemaManager:
     #
     @classmethod
     def loadDataTypePlugins(cls):
+        byPriority = {}
         for n in cls.plugin_source.list_plugins():
             if re.match("Base", n):
                 continue
             c = getattr(cls.plugin_source.load_plugin(n), n)
             cls.dataTypePlugins[n] = c
+            byPriority[c.priority] = n
 
+        for x in sorted(byPriority.iteritems()):
+            cls.dataTypePluginsByPriority.append(x[1])
         cls.pluginsAreLoaded = True
         return True
 
@@ -436,7 +441,7 @@ class SchemaManager:
     def getDataTypes(cls):
         if cls.pluginsAreLoaded is False:
             cls.loadDataTypePlugins()
-        return cls.dataTypePlugins.keys()
+        return cls.dataTypePluginsByPriority
 
     #
     #

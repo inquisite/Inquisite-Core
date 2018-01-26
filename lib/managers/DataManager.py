@@ -24,9 +24,10 @@ class DataManager:
     @staticmethod
     def add(repo_id, type_code, data, import_uuid=None):
         # TODO: does user have access to this repo?
-
+        print data
+        print type_code
         data_proc, type_info = DataManager._validateData(repo_id, type_code, data)
-
+        print data_proc
         try:
             q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) AS id"
 
@@ -49,7 +50,7 @@ class DataManager:
     @staticmethod
     def _validateData(repo_id, type_code, data):
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
-
+        print type_info
         if type_info is None:
             raise FindError("Could not load type info")
 

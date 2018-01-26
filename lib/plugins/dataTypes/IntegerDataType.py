@@ -29,10 +29,23 @@ class IntegerDataType(BaseDataType):
         }
     }
 
+    priority = 10
+
     settings = Settings(settings_spec)
 
     def __init__(self, value=None):
         super(IntegerDataType, self).__init__(value)
+
+    #
+    # Validate a value for the data type subject to settings. Return True on success, list of errors on failure.
+    #
+    def validate(self, value):
+        try:
+            integer = int(value)
+        except ValueError:
+            return False
+
+        return True
 
 
     #

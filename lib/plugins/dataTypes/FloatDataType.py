@@ -29,11 +29,23 @@ class FloatDataType(BaseDataType):
         }
     }
 
+    priority = 20
+
     settings = Settings(settings_spec)
 
     def __init__(self, value=None):
         super(FloatDataType, self).__init__(value)
 
+    #
+    # Validate a value for the data type subject to settings. Return True on success, list of errors on failure.
+    #
+    def validate(self, value):
+        try:
+            floater = float(value)
+        except ValueError:
+            return False
+
+        return True
 
     #
     # Float-specific settings validation

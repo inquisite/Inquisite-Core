@@ -9,6 +9,7 @@ from lib.utils.FileHelpers import getMimetypeForFile
 from lib.managers.DataManager import DataManager
 from lib.managers.SchemaManager import SchemaManager
 from lib.managers.DataReaderManager import DataReaderManager
+from lib.managers.AnalyzerManager import AnalyzerManager
 import time
 import humanize
 
@@ -56,12 +57,16 @@ class UploadManager:
                                   context="UploadManager.processUpload")
 
             preview = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mimetype)
+            rowCount, columnCount, columns, stats = UploadManager._generateAnalysis(filepath=upload_filepath, mimetype=mimetype)
             return {
                 "filesize": os.path.getsize(upload_filepath),
                 "filename": filename,
                 "original_filename": original_filename,
                 "mimetype": mimetype,
-                "preview": preview
+                "preview": preview,
+                "total_columns": columnCount,
+                "total_rows": rowCount,
+                "column_stats": stats
             }
 
 
@@ -96,6 +101,22 @@ class UploadManager:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
                               context="UploadManager._generatePreview")
         return {"headers": headers, "data": data, "preview_type": preview_type, "type": reader.type}
+
+    @staticmethod
+    def _generateAnalysis(filepath, mimetype):
+        data = []
+        headers = []
+
+        reader = DataReaderManager.identify(filepath)
+        if reader is not None:
+            reader.read(filepath)
+            data = reader.getRows()
+            rowCount = len(data)
+            columnCount, columns, stats = AnalyzerManager.createAnalysis(data)
+            return rowCount, columnCount, columns, stats
+        else:
+            raise UploadError(message="Cannot analyze data from unsupported file type" + mimetype, context="UploadManager._generatePreview")
+
 
     #
     #
@@ -176,7 +197,10 @@ class UploadManager:
             for i, fid in enumerate(data_mapping):
                 if fid not in fieldmap:
                     continue
-                if data["headers"][i] not in r:
+                if data["headers"][i] in r:
+                    continue
+                if isinstance(r, list):
+                    fields[fid] = r[i]
                     continue
                 fields[fid] = r[data["headers"][i]]
             try:
@@ -219,6 +243,7 @@ class UploadManager:
         result = db.run(
             "MATCH (e:ImportEvent { uuid: {uuid}}) SET e.ended_on = {time} RETURN e.uuid as uuid",
             {"uuid": uuid, "time": time.time()})
+        print result
         if result is None:
             return False
         r = result.peek()

@@ -31,6 +31,8 @@ class GeorefDataType(BaseDataType):
         }
     }
 
+    priority = 30
+
     settings = Settings(settings_spec)
 
     def __init__(self, value=None):
@@ -71,9 +73,8 @@ class GeorefDataType(BaseDataType):
             else:
                 return False
 
-        if json_data is not None:
-            # ...
-            pass
+        if json_data is None:
+            return False
 
         #print json.dumps(json_data, indent=4, sort_keys=True)
 

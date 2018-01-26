@@ -29,6 +29,8 @@ class TextDataType(BaseDataType):
         }
     }
 
+    priority = 50
+
     settings = Settings(settings_spec)
 
     def __init__(self, value=None):
@@ -69,5 +71,3 @@ class TextDataType(BaseDataType):
         if len(errs) > 0:
             return errs
         return True
-
-
