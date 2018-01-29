@@ -50,7 +50,6 @@ class DataManager:
     @staticmethod
     def _validateData(repo_id, type_code, data):
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
-        print type_info
         if type_info is None:
             raise FindError("Could not load type info")
 

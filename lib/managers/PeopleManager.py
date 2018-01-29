@@ -46,7 +46,7 @@ class PeopleManager:
 
     person = {}
     result = db.run("MATCH (p:Person) WHERE " + ident_str + " RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.email AS email, " +
-      "p.url AS url, p.location AS location, p.tagline AS tagline", {"identity": identity})
+      "p.url AS url, p.location AS location, p.tagline AS tagline, p.is_admin AS is_admin", {"identity": identity})
 
     for p in result:
       person['id'] = p['id']
@@ -57,6 +57,7 @@ class PeopleManager:
       person['url'] = p['url']
       person['location'] = p['location']
       person['tagline'] = p['tagline']
+      person['is_admin'] = p['is_admin']
     
     return person
 

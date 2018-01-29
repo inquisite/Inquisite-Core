@@ -296,7 +296,7 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     users = []
-    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, p.email as email, rel.access AS access, ID(p) AS id",
+    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, p.email as email, rel.access AS access, p.is_admin AS is_admin, ID(p) AS id",
       {"repo_id": repo_id})
 
     for p in result:
@@ -311,7 +311,8 @@ class RepoManager:
         "name": p['name'],
         "email": p['email'],
         "access": p['access'],
-        "role": user_role
+        "role": user_role,
+        "is_admin": p['is_admin']   # global admin privilege
       })
     return users
 
