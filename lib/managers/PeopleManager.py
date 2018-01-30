@@ -21,7 +21,7 @@ class PeopleManager:
   def getAll():
 
     persons = []
-    result = db.run("Match (p:Person) RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline")
+    result = db.run("Match (p:Person) RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline ORDER BY p.surname, p.forname")
 
     for p in result:
       persons.append({
