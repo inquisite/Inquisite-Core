@@ -18,6 +18,11 @@ from api.search import search_blueprint
 from api.upload import upload_blueprint
 import simplekv.memory
 
+import sys
+# if sys.version_info < (3, 0):
+#     sys.stdout.write("Sorry, requires Python 3.x, not Python 2.x\n")
+#     sys.exit(1)
+
 config = json.load(open('./config.json'));
 
 # Init
@@ -30,7 +35,7 @@ app.config['SECRET_KEY'] = config['auth_secret']
 app.config['JWT_BLACKLIST_ENABLED'] = False
 app.config['JWT_BLACKLIST_STORE'] = simplekv.memory.DictStore()
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = 'all'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=20)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=15)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 driver = GraphDatabase.driver(config['database_url'], auth=basic_auth(config['database_user'],config['database_pass']))
@@ -53,13 +58,25 @@ app.register_blueprint(upload_blueprint)
 
 @jwt.expired_token_loader
 @crossdomain(origin='*', attatch_to_all=True, headers=['Content-Type', 'Authorization'])
-def my_expired_token_callback():
-    return jsonify({
+def expired_token_callback():
+    resp = {
         'status': 401,
         'msg': 'The token has expired'
-    }), 200
+    }
+    return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+
+@app.errorhandler(401)
+@crossdomain(origin='*', attatch_to_all=True, headers=['Content-Type', 'Authorization'])
+def auth_failed(e):
+
+  resp = (("status", "err"),
+          ("msg", "The request could not be completed"))
+
+  resp = collections.OrderedDict(resp)
+  return Response(response=json.dumps(resp), status=401, mimetype="application/json")
 
 @app.errorhandler(404)
+@crossdomain(origin='*', attatch_to_all=True, headers=['Content-Type', 'Authorization'])
 def page_not_found(e):
 
   resp = (("status", "err"),
