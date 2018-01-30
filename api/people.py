@@ -60,6 +60,7 @@ def getPerson():
 # Add Person
 @people_blueprint.route('/people/add', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
 def addPerson():
     surname = request.form.get('surname')
     forename = request.form.get('forename')
