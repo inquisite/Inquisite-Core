@@ -24,7 +24,7 @@ class AnalyzerManager:
     # Manage the analysis process
     #
     @staticmethod
-    def createAnalysis(data):
+    def createAnalysis(data, rowCount):
         # TODO Analysis Steps
         # 1) Get Basic Column Info
         # 2) Check if column names already exist in a schema related to this repo
@@ -33,7 +33,7 @@ class AnalyzerManager:
         # 5) Format stats in a way that can be visualized
         frame = pd.DataFrame(data)
         columnCount, columns = AnalyzerManager.getColumns(frame)
-        statistics = AnalyzerManager.getColumnStats(columns, frame)
+        statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount)
         statistics = AnalyzerManager.getColumnTypes(columns, frame, statistics)
         return columnCount, columns, statistics
 
@@ -50,17 +50,21 @@ class AnalyzerManager:
     # Generate basic statistics for each column
     #
     @staticmethod
-    def getColumnStats(columns, frame):
+    def getColumnStats(columns, frame, rowCount):
         statistics = {}
         for column in columns:
             col = frame[column].replace('', np.nan) # Gets rid of empty strings so that pandas doesn't analyze them
             stats = col.describe().to_dict() # Cast the returned panda Series to a dict
+            valueFrequency = col.value_counts()
+            highFreqValues = valueFrequency.iloc[0:3].to_dict()
+            sortedValues = sorted(highFreqValues.items(), key=operator.itemgetter(1), reverse=True)
             statistics[column] = {
-                "total_values": stats['count'],
-                "unique_values": stats['unique'],
-                "top_value": stats['top'],
-                "top_frequency": stats['freq'],
-                "type": None
+                "Total Values": stats['count'],
+                "Unique Values": stats['unique'],
+                "Null Values": rowCount - stats['count'],
+                "frequent_values": sortedValues,
+                "type": None,
+                "value_array": valueFrequency.to_json()
             }
         return statistics
 
@@ -91,7 +95,6 @@ class AnalyzerManager:
                 tmpPlugin = plugin
 
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
-            print sortedTypes
             if sortedTypes[0][1] > (sortedTypes[1][1] * 9):
                 dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType

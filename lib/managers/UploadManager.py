@@ -112,7 +112,7 @@ class UploadManager:
             reader.read(filepath)
             data = reader.getRows()
             rowCount = len(data)
-            columnCount, columns, stats = AnalyzerManager.createAnalysis(data)
+            columnCount, columns, stats = AnalyzerManager.createAnalysis(data, rowCount)
             return rowCount, columnCount, columns, stats
         else:
             raise UploadError(message="Cannot analyze data from unsupported file type" + mimetype, context="UploadManager._generatePreview")
