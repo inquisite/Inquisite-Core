@@ -53,7 +53,8 @@ class AnalyzerManager:
     def getColumnStats(columns, frame, rowCount):
         statistics = {}
         for column in columns:
-            col = frame[column].replace('', np.nan) # Gets rid of empty strings so that pandas doesn't analyze them
+            # Gets rid of empty strings so that pandas doesn't analyze them
+            col = frame[column].apply(lambda x: np.nan if isinstance(x, basestring) and (x.isspace() or x == "") else x)
             stats = col.describe().to_dict() # Cast the returned panda Series to a dict
             valueFrequency = col.value_counts()
             highFreqValues = valueFrequency.iloc[0:3].to_dict()
