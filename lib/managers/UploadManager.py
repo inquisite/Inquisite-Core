@@ -131,7 +131,7 @@ class UploadManager:
     #
     #
     @staticmethod
-    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, start=0):
+    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         mt = getMimetypeForFile(upload_filepath)
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mt, rows=1000000, start=start)
@@ -142,8 +142,7 @@ class UploadManager:
         if str(type) == "-1":
             # create type
             if schema_name:
-                schema_type = re.sub(r'/[^A-Za-z0-9_\-]+/', '', schema_name)
-                schema_type = schema_type.replace(' ', '_').lower()
+                schema_type = re.sub(r'[^A-Za-z0-9_\-]+', '_', schema_name).lower()
             else:
                 schema_name = 'new type'
                 schema_type = 'new_type'
@@ -153,9 +152,9 @@ class UploadManager:
             if existing_type:
                 i = 1
                 while True:
-                    schema_name += '_'+str(i)
-                    schema_type += '_'+str(i)
-                    existing_type = SchemaManager.getInforForType(repo_id, schema_type)
+                    schema_name = '_'+str(i)
+                    schema_type = '_'+str(i)
+                    existing_type = SchemaManager.getInfoForType(repo_id, schema_type)
                     if not existing_type:
                         break
                     i += 1
@@ -176,6 +175,7 @@ class UploadManager:
         print data_mapping
         print field_names
         for i, m in enumerate(data_mapping):
+            print m
             try:
                 fid = int(m)
                 field_info = SchemaManager.getInfoForField(repo_id, type, fid)
@@ -185,14 +185,19 @@ class UploadManager:
                     data_mapping[i] = field_info["code"]
             except Exception as e:
                 # is not id... does field with this code exist?
-                if field_names[i]:
+                if field_names[i] != data_mapping[i]:
                     m = field_names[i]
+                mCode = re.sub(r'[^A-Za-z0-9_\-]+', '_', m).lower()
+                data_mapping[i] = mCode
                 field_info = SchemaManager.getInfoForField(repo_id, type, m)
                 if field_info is None:
                     # create new field
-                    # TODO: support field types other than text
-                    new_field = SchemaManager.addField(repo_id, type, m, m, data_types[i],'',{})
+                    mField = ''
+                    if field_descriptions[i]:
+                        mField = field_descriptions[i]
+                    new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField,{})
                     if new_field is not None:
+                        print new_field
                         data_mapping[i] = new_field["code"]
                         fields_created[typecode] = new_field
                     else:
@@ -216,13 +221,14 @@ class UploadManager:
         upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], upload_filepath, original_filename, data["type"], len(data["data"]))
         for line, r in enumerate(data["data"]):
             fields = {}
+            print r
             for i, fid in enumerate(data_mapping):
                 if fid not in fieldmap:
                     continue
-                if data["headers"][i] not in r:
-                    continue
                 if isinstance(r, list):
                     fields[fid] = r[i]
+                    continue
+                if data["headers"][i] not in r:
                     continue
                 fields[fid] = r[data["headers"][i]]
             try:

@@ -100,7 +100,6 @@ class AnalyzerManager:
             if sortedTypes[0][1] > (sortedTypes[1][1] * 9):
                 dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
-
         return stats
 
     #

@@ -32,9 +32,10 @@ def importData():
     ignore_first = request.form.get('ignore_first')
     schema_name = request.form.get('schema_name')
     data_types = request.form.get('column_types').split("|")
+    field_descriptions = request.form.get('field_descriptions').split("|")
 
     try:
-        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types), message="File imported")
+        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions), message="File imported")
     except UploadError as e:
         return makeResponse(error=e)
 
