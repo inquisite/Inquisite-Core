@@ -94,6 +94,8 @@ def editPerson():
     email = request.form.get('email')
     url = request.form.get('url')
     tagline = request.form.get('tagline')
+    is_disabled = request.form.get('is_disabled')
+    nyunetid = request.form.get('nyunetid')
 
 
     # Get person by auth token 
@@ -101,9 +103,13 @@ def editPerson():
     jti = current_token['jti']
 
     # email address
-    identity = current_token['identity']
+    if request.form.get('person_id') is None:
+        identity = current_token['identity']
+    else:
+        identity = request.form.get('person_id')
+
     try:
-        return makeResponse(payload=PeopleManager.editPerson(identity, forename, surname, location, email, url, tagline), message="")
+        return makeResponse(payload=PeopleManager.editPerson(identity, forename, surname, location, email, url, tagline, is_disabled, nyunetid), message="")
     except FindError as e:
         return makeResponse(error=e)
     except ValidationError as e:
