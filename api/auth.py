@@ -68,6 +68,21 @@ def logout():
 #
 # Reset user password
 #
+@auth_blueprint.route('/people/<email_address>/reset_password', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+def sendPasswordReset(email_address):
+    try:
+        if AuthManager.sendPasswordReset(email_address):
+            msg = "Password reset"
+        else:
+            msg = "Password not changed"
+        return makeResponse(message=msg, payload={})
+    except AuthError as e:
+        return makeResponse(error=e)
+
+#
+# Reset user password
+#
 @auth_blueprint.route('/people/<person_id>/set_password', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required

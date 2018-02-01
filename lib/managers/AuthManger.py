@@ -1,11 +1,15 @@
-import re
-from lib.utils.Db import db
-from lib.utils.CypherHelpers import makeDataMapForCypher
+from api.config import app_config
 from passlib.hash import sha256_crypt
 from lib.exceptions.AuthError import AuthError
 from lib.exceptions.FindError import FindError
 from lib.utils.Db import db
 from flask_jwt_extended import JWTManager, jwt_required, jwt_refresh_token_required, create_access_token, create_refresh_token, get_jwt_identity, get_raw_jwt, revoke_token
+import smtplib
+from lib.utils.MailHelpers import email_template
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+
 
 class AuthManager:
     # For now all class methods are going to be static
@@ -28,6 +32,41 @@ class AuthManager:
             raise AuthError("Username and Password are required")
 
         raise AuthError("Authentication failed")
+
+    @staticmethod
+    def sendPasswordReset(email_address):
+        result = db.run("MATCH (p:Person) WHERE p.email={email} AND (p.is_disabled = NULL OR p.is_disabled = 0) RETURN ID(p) AS id, p.email AS email",
+                        {"email": email_address})
+        for p in result:
+            try:
+                server = smtplib.SMTP(app_config["smtp_server"], app_config["smtp_port"])
+                server.ehlo()
+                # secure our email with tls encryption
+                server.starttls()
+                # re-identify ourselves as an encrypted connection
+                server.ehlo()
+                server.login(app_config["smtp_user"], app_config["smtp_password"])
+
+                msg = MIMEMultipart()  # create a message
+                message_html = email_template("reset_password", "html", {"email": email_address})
+
+                # setup the parameters of the message
+                msg['From'] = app_config["email_from_address"]
+                msg['To'] = email_address
+                msg['Subject'] = "[Inquisite] Password reset request for " + email_address
+
+                # add in the message body
+                msg.attach(MIMEText(message_html, 'html'))
+
+                server.sendmail(app_config["email_from_address"], email_address, msg.as_string())
+                server.quit()
+                return {"recipient": email_address, "person_id": p['id']}
+            except Exception as e:
+                # SMTP error
+                raise AuthError("Could not send email: " + e.message)
+            break
+        # Email address isn't available for user
+        raise AuthError("Could not send email")
 
     @staticmethod
     def setPassword(person_id, password, new_password):
