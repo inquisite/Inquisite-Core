@@ -21,9 +21,10 @@ class PeopleManager:
   def getAll():
 
     persons = []
-    result = db.run("Match (p:Person) RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline ORDER BY p.surname, p.forname")
+    result = db.run("MATCH (p:Person) OPTIONAL MATCH (p)--(r:Repository) RETURN COUNT(r) AS repo_count, ID(p) AS id, p.surname AS surname, p.forename as forename, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline, p.is_admin as is_admin, p.is_disabled as is_disabled, p.nyunetid AS nyunetid ORDER BY p.surname, p.forename")
 
     for p in result:
+
       persons.append({
         "id": p['id'],
         "name": str(p['forename']) + " " + str(p['surname']),
@@ -32,7 +33,11 @@ class PeopleManager:
         "location": p['location'],
         "email": p['email'],
         "url": p['url'],
-        "tagline": p['tagline']
+        "tagline": p['tagline'],
+        "is_admin": p['is_admin'],
+        "is_disabled": p['is_disabled'],
+        "nyunetid": p['nyunetid'],
+        "repo_count": p['repo_count']
       })
 
     return persons
@@ -46,9 +51,14 @@ class PeopleManager:
 
     person = {}
     result = db.run("MATCH (p:Person) WHERE " + ident_str + " RETURN ID(p) AS id, p.surname AS surname, p.forename as forename, p.email AS email, " +
-      "p.url AS url, p.location AS location, p.tagline AS tagline, p.is_admin AS is_admin", {"identity": identity})
+      "p.url AS url, p.location AS location, p.tagline AS tagline, p.is_admin AS is_admin, p.is_disabled AS is_disabled, p.nyunetid AS nyunetid", {"identity": identity})
 
     for p in result:
+      repo_count = 0
+      repos = db.run("MATCH (r:Repository)--(p:Person) WHERE " + ident_str + " RETURN COUNT(r) AS repo_count", {"identity": identity})
+      for r in repos:
+        repo_count = r["repo_count"]
+
       person['id'] = p['id']
       person['name'] = str(p['forename']) + " " + str(p['surname'])
       person['surname'] = p['surname']
@@ -58,6 +68,9 @@ class PeopleManager:
       person['location'] = p['location']
       person['tagline'] = p['tagline']
       person['is_admin'] = p['is_admin']
+      person['is_disabled'] = p['is_disabled']
+      person['nyunetid'] = p['nyunetid']
+      person['repo_count'] = repo_count
     
     return person
 
@@ -174,7 +187,7 @@ class PeopleManager:
       else:
         try:
           result = db.run(
-            "CREATE (n:Person {url: {url}, surname: {surname}, forename: {forename}, email: {email}, location: {location}, tagline: {tagline}, nyunetid: {nyunetid}, " +
+            "CREATE (n:Person {url: {url}, surname: {surname}, forename: {forename}, email: {email}, location: {location}, tagline: {tagline}, nyunetid: {nyunetid}, is_disabled: 0, is_admin: 0," +
             "password: {password_hash}, created_on: {created_on}, prefs: ''})" +
             " RETURN n.forename AS forename, n.surname AS surname, n.location AS location, n.email AS email, n.url AS url, n.tagline AS tagline, n.nyunetid as nyunetid, ID(n) AS user_id",
             {"url": url, "surname": surname, "forename" : forename, "email": email, "location": location, "tagline": tagline, "nyunetid": nyunetid,
@@ -202,7 +215,13 @@ class PeopleManager:
     raise SaveError(message="Password must be at least six characters in length", context="People.addPerson")
 
   @staticmethod
-  def editPerson(identity, forename, surname, location, email, url, tagline):
+  def editPerson(identity, forename, surname, location, email, url, tagline, is_disabled, nyunetid):
+    if is_number(identity):
+      ident_str = "ID(p)={identity}"
+      identity = int(identity)
+    else:
+      ident_str = "p.email={identity}"
+
     update = []
     if forename is not None:
         update.append("p.forename = {forename}")
@@ -222,18 +241,26 @@ class PeopleManager:
     if tagline is not None:
         update.append("p.tagline = {tagline}")
 
-    #if prefs is not None:
-    #    prefs = json.dumps(prefs)
-    #    update.append("p.prefs = {prefs}")
+    if nyunetid is not None:
+        update.append("p.nyunetid = {nyunetid}")
+
+    if is_disabled is not None:
+        print is_disabled
+        try:
+          is_disabled = int(is_disabled)
+          if is_disabled <> 0:
+              is_disabled = 1
+          update.append("p.is_disabled = {is_disabled}")
+        except:
+          pass
 
     update_str = "%s" % ", ".join(map(str, update))
 
 
     if update_str != '' and update_str is not None:
-        updated_person = None
-        result = db.run("MATCH (p:Person) WHERE p.email={identity} SET " + update_str +
-          " RETURN p.forename AS forename, p.surname AS surname, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline",
-          {"identity": identity, "forename": forename, "surname": surname, "location": location, "email": email, "url": url, "tagline": tagline}) # "prefs": prefs})
+        result = db.run("MATCH (p:Person) WHERE " + ident_str + " SET " + update_str +
+          " RETURN p.forename AS forename, p.surname AS surname, p.location AS location, p.email AS email, p.url AS url, p.tagline AS tagline, p.is_disabled AS is_disabled, p.nyunetid AS nyunetid",
+          {"identity": identity, "forename": forename, "surname": surname, "location": location, "email": email, "url": url, "tagline": tagline, "is_disabled": is_disabled, "nyunetid": nyunetid})
 
         if result:
             updated_person = {}
@@ -245,6 +272,8 @@ class PeopleManager:
                 updated_person['email'] = p['email']
                 updated_person['url'] = p['url']
                 updated_person['tagline'] = p['tagline']
+                updated_person['is_disabled'] = p['is_disabled']
+                updated_person['nyunetid'] = p['nyunetid']
 
             if updated_person is not None:
                 return updated_person
