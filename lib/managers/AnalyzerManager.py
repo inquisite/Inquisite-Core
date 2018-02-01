@@ -24,7 +24,7 @@ class AnalyzerManager:
     # Manage the analysis process
     #
     @staticmethod
-    def createAnalysis(data, rowCount):
+    def createAnalysis(repoID, data, rowCount):
         # TODO Analysis Steps
         # 1) Get Basic Column Info
         # 2) Check if column names already exist in a schema related to this repo
@@ -35,6 +35,7 @@ class AnalyzerManager:
         columnCount, columns = AnalyzerManager.getColumns(frame)
         statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount)
         statistics = AnalyzerManager.getColumnTypes(columns, frame, statistics)
+        bestSchema = AnalyzerManager.getBestSchema(repoID, columns, frame, statistics)
         return columnCount, columns, statistics
 
     #
@@ -101,3 +102,27 @@ class AnalyzerManager:
             stats[column]['type'] = dataType
 
         return stats
+
+    #
+    #  Find Best Schema Match
+    # Or Recommend to create new schema if none match
+    #
+    @staticmethod
+    def getBestSchema(repoID, columns, frame, stats):
+        columns = columns.tolist()
+        print columns
+        colCount = len(columns)
+        fieldMatches = 0
+        for schema in SchemaManager.getTypes(repoID):
+            schemaInfo = SchemaManager.getInfoForType(repoID, schema['id'])
+            schemaFields = schemaInfo['fields']
+            for field in schemaFields:
+                print field['code']
+                if field['code'] in columns:
+                    print "Found Match"
+                    fieldMatches += 1
+            if fieldMatches == colCount:
+                print "Found Matching Schema"
+                return schema['id']
+
+        return False

@@ -57,7 +57,7 @@ class UploadManager:
                                   context="UploadManager.processUpload")
 
             preview = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mimetype)
-            rowCount, columnCount, columns, stats = UploadManager._generateAnalysis(filepath=upload_filepath, mimetype=mimetype)
+            rowCount, columnCount, columns, stats = UploadManager._generateAnalysis(repo_id=repo_id, filepath=upload_filepath, mimetype=mimetype)
             return {
                 "filesize": os.path.getsize(upload_filepath),
                 "filename": filename,
@@ -103,7 +103,7 @@ class UploadManager:
         return {"headers": headers, "data": data, "preview_type": preview_type, "type": reader.type}
 
     @staticmethod
-    def _generateAnalysis(filepath, mimetype):
+    def _generateAnalysis(repo_id, filepath, mimetype):
         data = []
         headers = []
 
@@ -112,7 +112,7 @@ class UploadManager:
             reader.read(filepath)
             data = reader.getRows()
             rowCount = len(data)
-            columnCount, columns, stats = AnalyzerManager.createAnalysis(data, rowCount)
+            columnCount, columns, stats = AnalyzerManager.createAnalysis(repo_id, data, rowCount)
             return rowCount, columnCount, columns, stats
         else:
             raise UploadError(message="Cannot analyze data from unsupported file type" + mimetype, context="UploadManager._generatePreview")
@@ -185,7 +185,6 @@ class UploadManager:
             fieldmap[v["code"]] = v
 
         data_mapping = map(lambda x: str(x), data_mapping)
-
         num_errors = 0
         errors = {}
         counts = {}
@@ -197,7 +196,7 @@ class UploadManager:
             for i, fid in enumerate(data_mapping):
                 if fid not in fieldmap:
                     continue
-                if data["headers"][i] in r:
+                if data["headers"][i] not in r:
                     continue
                 if isinstance(r, list):
                     fields[fid] = r[i]
