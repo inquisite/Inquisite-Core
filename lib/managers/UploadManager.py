@@ -12,6 +12,7 @@ from lib.managers.DataReaderManager import DataReaderManager
 from lib.managers.AnalyzerManager import AnalyzerManager
 import time
 import humanize
+import re
 
 
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/../../uploads"
@@ -57,7 +58,7 @@ class UploadManager:
                                   context="UploadManager.processUpload")
 
             preview = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mimetype)
-            rowCount, columnCount, columns, stats = UploadManager._generateAnalysis(repo_id=repo_id, filepath=upload_filepath, mimetype=mimetype)
+            rowCount, columnCount, columns, stats, recommendedSchema = UploadManager._generateAnalysis(repo_id=repo_id, filepath=upload_filepath, mimetype=mimetype)
             return {
                 "filesize": os.path.getsize(upload_filepath),
                 "filename": filename,
@@ -66,7 +67,8 @@ class UploadManager:
                 "preview": preview,
                 "total_columns": columnCount,
                 "total_rows": rowCount,
-                "column_stats": stats
+                "column_stats": stats,
+                "recommended_schema": recommendedSchema
             }
 
 
@@ -112,8 +114,8 @@ class UploadManager:
             reader.read(filepath)
             data = reader.getRows()
             rowCount = len(data)
-            columnCount, columns, stats = AnalyzerManager.createAnalysis(repo_id, data, rowCount)
-            return rowCount, columnCount, columns, stats
+            columnCount, columns, stats, recommendedSchema = AnalyzerManager.createAnalysis(repo_id, data, rowCount)
+            return rowCount, columnCount, columns, stats, recommendedSchema
         else:
             raise UploadError(message="Cannot analyze data from unsupported file type" + mimetype, context="UploadManager._generatePreview")
 
@@ -129,7 +131,7 @@ class UploadManager:
     #
     #
     @staticmethod
-    def importData(repo_id, type, filename, original_filename, data_mapping, start=0):
+    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         mt = getMimetypeForFile(upload_filepath)
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mt, rows=1000000, start=start)
@@ -139,9 +141,26 @@ class UploadManager:
 
         if str(type) == "-1":
             # create type
-            # TODO: make sure "new type" name is unique
-            new_type = SchemaManager.addType(repo_id, "New type", "new_type", "Type created by import", {})
+            if schema_name:
+                schema_type = re.sub(r'/[^A-Za-z0-9_\-]+/', '', schema_name)
+                schema_type = schema_type.replace(' ', '_').lower()
+            else:
+                schema_name = 'new type'
+                schema_type = 'new_type'
 
+            # Check for exisiting type and iterate over _n suffixes until we find one that doesn't exist
+            existing_type = SchemaManager.getInfoForType(repo_id, schema_type)
+            if existing_type:
+                i = 1
+                while True:
+                    schema_name += '_'+str(i)
+                    schema_type += '_'+str(i)
+                    existing_type = SchemaManager.getInforForType(repo_id, schema_type)
+                    if not existing_type:
+                        break
+                    i += 1
+            new_type = SchemaManager.addType(repo_id, schema_name, schema_type, "Type created by import", {})
+            print new_type
             if "type" in new_type:
                 type = new_type["type"]["code"]
 
@@ -154,6 +173,8 @@ class UploadManager:
 
         fields_created = {}
         # create new fields
+        print data_mapping
+        print field_names
         for i, m in enumerate(data_mapping):
             try:
                 fid = int(m)
@@ -164,11 +185,13 @@ class UploadManager:
                     data_mapping[i] = field_info["code"]
             except Exception as e:
                 # is not id... does field with this code exist?
+                if field_names[i]:
+                    m = field_names[i]
                 field_info = SchemaManager.getInfoForField(repo_id, type, m)
                 if field_info is None:
                     # create new field
                     # TODO: support field types other than text
-                    new_field = SchemaManager.addField(repo_id, type, m, m, 'TextDataType','',{})
+                    new_field = SchemaManager.addField(repo_id, type, m, m, data_types[i],'',{})
                     if new_field is not None:
                         data_mapping[i] = new_field["code"]
                         fields_created[typecode] = new_field

@@ -35,8 +35,8 @@ class AnalyzerManager:
         columnCount, columns = AnalyzerManager.getColumns(frame)
         statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount)
         statistics = AnalyzerManager.getColumnTypes(columns, frame, statistics)
-        bestSchema = AnalyzerManager.getBestSchema(repoID, columns, frame, statistics)
-        return columnCount, columns, statistics
+        bestSchemaID = AnalyzerManager.getBestSchema(repoID, columns, frame, statistics)
+        return columnCount, columns, statistics, bestSchemaID
 
     #
     # Get columns from DataFrame
@@ -104,7 +104,7 @@ class AnalyzerManager:
         return stats
 
     #
-    #  Find Best Schema Match
+    # Find Best Schema Match
     # Or Recommend to create new schema if none match
     #
     @staticmethod
@@ -117,12 +117,8 @@ class AnalyzerManager:
             schemaInfo = SchemaManager.getInfoForType(repoID, schema['id'])
             schemaFields = schemaInfo['fields']
             for field in schemaFields:
-                print field['code']
                 if field['code'] in columns:
-                    print "Found Match"
                     fieldMatches += 1
-            if fieldMatches == colCount:
-                print "Found Matching Schema"
-                return schema['id']
-
+            if fieldMatches >= int(colCount * 0.9):
+                return {"id": schema['id'], "name": schema["name"]}
         return False
