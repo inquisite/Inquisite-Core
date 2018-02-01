@@ -7,5 +7,12 @@
   "unit_test_user": "steve@bionic.org",
   "unit_test_pass": "bionicman",
 	
-  "registration_email_domains": ["nyu.edu", "whirl-i-gig.com"]
+  "registration_email_domains": ["nyu.edu", "whirl-i-gig.com"],
+
+  "smtp_server": "smtp.email.com",
+  "smtp_port": 587,
+  "smtp_user": "my_username",
+  "smtp_password": "my_password",
+
+  "email_from_address": "admin@inquisite.org"
 }
