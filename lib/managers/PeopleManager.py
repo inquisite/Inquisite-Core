@@ -12,6 +12,7 @@ import time
 import datetime
 from validate_email import validate_email
 from lib.utils.UtilityHelpers import email_domain_is_allowed
+from lib.utils.MailHelpers import send_mail
 
 
 class PeopleManager:
@@ -207,6 +208,10 @@ class PeopleManager:
             person['url'] = p['url']
             person['tagline'] = p['tagline']
             person['user_id'] = p['user_id']
+
+            send_mail(p['email'], None, "Registration notification", "registration",
+                      {"email": p['email'],
+                       "login_url": app_config["base_url"]})
             return person
 
         else:

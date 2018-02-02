@@ -14,5 +14,7 @@
   "smtp_user": "my_username",
   "smtp_password": "my_password",
 
-  "email_from_address": "admin@inquisite.org"
+  "email_from_address": "admin@inquisite.org",
+
+  "base_url": "http://localhost:8080"
 }

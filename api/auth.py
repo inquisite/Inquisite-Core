@@ -14,6 +14,7 @@ from lib.basicAuth import check_auth, requires_auth
 from lib.utils.Db import db
 
 from lib.exceptions.AuthError import AuthError
+from lib.exceptions.FindError import FindError
 from lib.utils.RequestHelpers import makeResponse
 from lib.managers.AuthManger import AuthManager
 
@@ -83,17 +84,15 @@ def sendPasswordReset(email_address):
 #
 # Reset user password
 #
-@auth_blueprint.route('/people/<person_id>/set_password', methods=['POST'])
+@auth_blueprint.route('/people/<person_id>/set_password', methods=['GET', 'POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
-@jwt_required
 def setPassword(person_id):
-    #TODO: user may only set their own password
+    #TODO: user may only set their own password by id; non-auth user can reset password with valid key
 
     password = request.form.get('password')
-    new_password = request.form.get('new_password')
 
     try:
-        if AuthManager.setPassword(person_id, password, new_password):
+        if AuthManager.setPassword(person_id, password):
             msg = "Password changed"
         else:
             msg = "Password not changed"
