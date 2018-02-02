@@ -29,7 +29,7 @@ class IntegerDataType(BaseDataType):
         }
     }
 
-    priority = 10
+    priority = 20
 
     settings = Settings(settings_spec)
 
