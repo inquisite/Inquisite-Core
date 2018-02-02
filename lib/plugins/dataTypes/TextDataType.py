@@ -53,6 +53,13 @@ class TextDataType(BaseDataType):
 
         if (len(errors) > 0):
             return errors
+
+        try:
+            floater = float(value)
+            return False
+        except ValueError:
+            pass
+
         return True
 
     #

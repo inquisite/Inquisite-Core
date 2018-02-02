@@ -85,7 +85,10 @@ class AnalyzerManager:
             colTypes = {'Integer': 0, 'Float': 0, 'Text': 0, 'Date range': 0, 'Georeference': 0}
             colList = frame[column].tolist()
             tmpPlugin = None
+            print colList
             for cell in colList:
+                if cell is None:
+                    continue
                 if tmpPlugin:
                     if tmpPlugin.validate(cell):
                         colTypes[tmpPlugin.name] += 1
@@ -95,10 +98,10 @@ class AnalyzerManager:
                         colTypes[plugin.name] += 1
                         break
                 tmpPlugin = plugin
-
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
-            if sortedTypes[0][1] > (sortedTypes[1][1] * 9):
-                dataType = sortedTypes[0][0]
+            print column
+            print sortedTypes
+            dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
         return stats
 
