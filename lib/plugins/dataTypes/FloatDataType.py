@@ -57,7 +57,7 @@ class FloatDataType(BaseDataType):
 
         errs = []
 
-        if (float(settingsValues['min_value']) > float(settingsValues['max_value'])):
+        if ('min_value' in settingsValues) and ('max_value' in settingsValues) and (float(settingsValues['min_value']) > float(settingsValues['max_value'])):
             errs.append("Minimum value must be less than maximum value")
 
         if len(errs) > 0:

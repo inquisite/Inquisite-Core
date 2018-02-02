@@ -58,7 +58,7 @@ class IntegerDataType(BaseDataType):
 
         errs = []
         if(settingsValues):
-            if (int(settingsValues['min_value']) > int(settingsValues['max_value'])):
+            if ('min_value' in settingsValues) and ('max_value' in settingsValues) and (int(settingsValues['min_value']) > int(settingsValues['max_value'])):
                 errs.append("Minimum value must be less than maximum value")
 
         if len(errs) > 0:

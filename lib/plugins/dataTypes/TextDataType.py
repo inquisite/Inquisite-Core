@@ -65,7 +65,7 @@ class TextDataType(BaseDataType):
 
         errs = []
 
-        if (int(settingsValues.get('min_length', self.settings.getValue("min_length"))) > int(settingsValues.get('max_length', self.settings.getValue("max_length")))):
+        if ('min_length' in settingsValues) and ('max_length' in settingsValues) and (int(settingsValues.get('min_length', self.settings.getValue("min_length"))) > int(settingsValues.get('max_length', self.settings.getValue("max_length")))):
             errs.append("Minimum length must be less than maximum length")
 
         if len(errs) > 0:
