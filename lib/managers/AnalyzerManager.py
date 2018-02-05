@@ -24,18 +24,19 @@ class AnalyzerManager:
     # Manage the analysis process
     #
     @staticmethod
-    def createAnalysis(repoID, data, rowCount):
+    def createAnalysis(repoID, data, rowCount, headers):
         # TODO Analysis Steps
         # 1) Get Basic Column Info
         # 2) Check if column names already exist in a schema related to this repo
         # 3) Analyze data in a column and get type guess
         # 4) Return statistics about each column depending on type
         # 5) Format stats in a way that can be visualized
+        print data
         frame = pd.DataFrame(data)
         columnCount, columns = AnalyzerManager.getColumns(frame)
         statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount)
         statistics = AnalyzerManager.getColumnTypes(columns, frame, statistics)
-        bestSchemaID = AnalyzerManager.getBestSchema(repoID, columns, frame, statistics)
+        bestSchemaID = AnalyzerManager.getBestSchema(repoID, columns, frame, statistics, headers)
         return columnCount, columns, statistics, bestSchemaID
 
     #
@@ -85,7 +86,6 @@ class AnalyzerManager:
             colTypes = {'Integer': 0, 'Float': 0, 'Text': 0, 'Date range': 0, 'Georeference': 0}
             colList = frame[column].tolist()
             tmpPlugin = None
-            print colList
             for cell in colList:
                 if cell is None:
                     continue
@@ -99,8 +99,6 @@ class AnalyzerManager:
                         break
                 tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
-            print column
-            print sortedTypes
             dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
         return stats
@@ -110,16 +108,16 @@ class AnalyzerManager:
     # Or Recommend to create new schema if none match
     #
     @staticmethod
-    def getBestSchema(repoID, columns, frame, stats):
-        columns = [col.lower() for col in columns]
-        print columns
-        colCount = len(columns)
+    def getBestSchema(repoID, columns, frame, stats, headers):
+        colCount = len(headers)
+        headers = [head.replace(' ', '_').lower() for head in headers]
         fieldMatches = 0
         for schema in SchemaManager.getTypes(repoID):
             schemaInfo = SchemaManager.getInfoForType(repoID, schema['id'])
             schemaFields = schemaInfo['fields']
             for field in schemaFields:
-                if field['code'] in columns:
+                print field
+                if field['code'] in headers:
                     fieldMatches += 1
             if fieldMatches >= int(colCount * 0.9):
                 return {"id": schema['id'], "name": schema["name"]}

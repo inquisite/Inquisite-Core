@@ -113,8 +113,9 @@ class UploadManager:
         if reader is not None:
             reader.read(filepath)
             data = reader.getRows()
+            headers = reader.getHeaders()
             rowCount = len(data)
-            columnCount, columns, stats, recommendedSchema = AnalyzerManager.createAnalysis(repo_id, data, rowCount)
+            columnCount, columns, stats, recommendedSchema = AnalyzerManager.createAnalysis(repo_id, data, rowCount, headers)
             return rowCount, columnCount, columns, stats, recommendedSchema
         else:
             raise UploadError(message="Cannot analyze data from unsupported file type" + mimetype, context="UploadManager._generatePreview")
@@ -197,7 +198,6 @@ class UploadManager:
                         mField = field_descriptions[i]
                     new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField,{})
                     if new_field is not None:
-                        print new_field
                         data_mapping[i] = new_field["code"]
                         fields_created[typecode] = new_field
                     else:
@@ -215,7 +215,7 @@ class UploadManager:
         data_mapping = map(lambda x: str(x), data_mapping)
         num_errors = 0
         errors = {}
-        counts = {}
+        count = {'type': typecode, 'total': 0}
 
         # TODO: record original file name, file size, file type
         upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], upload_filepath, original_filename, data["type"], len(data["data"]))
@@ -233,10 +233,7 @@ class UploadManager:
                 fields[fid] = r[data["headers"][i]]
             try:
                 DataManager.add(repo_id, type, fields, upload_uuid)
-                if type not in counts:
-                    counts[typecode] = 1
-                else:
-                    counts[typecode] = counts[typecode] + 1
+                count['total'] = count['total'] + 1
             except Exception as e:
                 if line not in errors:
                     errors[line] = []
@@ -245,7 +242,7 @@ class UploadManager:
 
         UploadManager.closeImportEvent(upload_uuid)
         return {"errors": errors, "error_count": num_errors, "mapping": data_mapping,
-                "fields_created": fields_created, "counts": counts, "filename": filename}
+                "fields_created": fields_created, "count": count, "filename": filename}
 
     @staticmethod
     def createImportEvent(repo_id, type, upload_filepath, original_filename, ftype, row_count):
