@@ -111,7 +111,7 @@ class AnalyzerManager:
     #
     @staticmethod
     def getBestSchema(repoID, columns, frame, stats):
-        columns = columns.tolist()
+        columns = [col.lower() for col in columns]
         print columns
         colCount = len(columns)
         fieldMatches = 0
