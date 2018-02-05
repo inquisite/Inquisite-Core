@@ -32,7 +32,7 @@ class CSVDataReader(BaseDataReader):
 
 
         try:
-            self.input_file = open(filepath, 'rb')
+            self.input_file = open(filepath, 'rU')
         except:
             return False
 
