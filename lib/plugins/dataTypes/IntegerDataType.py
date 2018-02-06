@@ -41,10 +41,9 @@ class IntegerDataType(BaseDataType):
     #
     def validate(self, value):
         try:
-            integer = int(value)
+            integer = int(float(value))
         except ValueError:
             return False
-
         return True
 
 

@@ -31,7 +31,6 @@ class AnalyzerManager:
         # 3) Analyze data in a column and get type guess
         # 4) Return statistics about each column depending on type
         # 5) Format stats in a way that can be visualized
-        print data
         frame = pd.DataFrame(data)
         columnCount, columns = AnalyzerManager.getColumns(frame)
         statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount)

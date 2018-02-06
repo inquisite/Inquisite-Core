@@ -73,7 +73,6 @@ class DataManager:
 
             if v is not None:
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
-
                 dtv = dt.validate(v)
 
                 if dtv is not True:

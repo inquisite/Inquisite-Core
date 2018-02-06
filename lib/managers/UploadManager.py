@@ -98,6 +98,7 @@ class UploadManager:
             # TODO: error checking
             reader.read(filepath)
             data = reader.getRows(rows=rows, start=start)
+            print data
             headers = reader.getHeaders()
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
@@ -213,15 +214,15 @@ class UploadManager:
             fieldmap[v["code"]] = v
 
         data_mapping = map(lambda x: str(x), data_mapping)
+        import_rows = len(data["data"])
         num_errors = 0
         errors = {}
-        count = {'type': typecode, 'total': 0}
+        counts = {'type': typecode, 'total': 0, 'source_total': import_rows}
 
         # TODO: record original file name, file size, file type
-        upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], upload_filepath, original_filename, data["type"], len(data["data"]))
+        upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], upload_filepath, original_filename, data["type"], import_rows)
         for line, r in enumerate(data["data"]):
             fields = {}
-            print r
             for i, fid in enumerate(data_mapping):
                 if fid not in fieldmap:
                     continue
@@ -233,7 +234,7 @@ class UploadManager:
                 fields[fid] = r[data["headers"][i]]
             try:
                 DataManager.add(repo_id, type, fields, upload_uuid)
-                count['total'] = count['total'] + 1
+                counts['total'] = counts['total'] + 1
             except Exception as e:
                 if line not in errors:
                     errors[line] = []
@@ -242,7 +243,7 @@ class UploadManager:
 
         UploadManager.closeImportEvent(upload_uuid)
         return {"errors": errors, "error_count": num_errors, "mapping": data_mapping,
-                "fields_created": fields_created, "count": count, "filename": filename}
+                "fields_created": fields_created, "counts": counts, "filename": filename}
 
     @staticmethod
     def createImportEvent(repo_id, type, upload_filepath, original_filename, ftype, row_count):

@@ -38,7 +38,7 @@ def addRepo():
     license = request.form.get('license')
     published = request.form.get('published')
 
-    # Get person by auth token 
+    # Get person by auth token
     current_token = get_raw_jwt()
     jti = current_token['jti']
 
@@ -86,7 +86,7 @@ def deleteRepo():
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def setRepoOwner(repo_id):
-    # Get person by auth token 
+    # Get person by auth token
     current_token = get_raw_jwt()
     jti = current_token['jti']
 
@@ -240,6 +240,19 @@ def getRepoData():
 
   try:
       return makeResponse(payload=RepoManager.getData(repo_id))
+  except FindError as e:
+      return makeResponse(error=e)
+  except DbError as e:
+      return makeResponse(error=e)
+
+@repositories_blueprint.route('/repositories/dataCounts', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def getRepoDataCounts():
+  repo_id = int(request.form.get('repo_id'))
+
+  try:
+      return makeResponse(payload=RepoManager.getDataCounts(repo_id))
   except FindError as e:
       return makeResponse(error=e)
   except DbError as e:

@@ -3,6 +3,7 @@ import datetime
 from lib.utils.Db import db
 import datetime
 import time
+import json
 
 from lib.utils.Db import db
 from lib.exceptions.ValidationError import ValidationError
@@ -20,7 +21,7 @@ class RepoManager:
 
     repos = []
     result = db.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
-   
+
     for r in result:
       repos.append({
         "name": r['name'],
@@ -66,7 +67,7 @@ class RepoManager:
     if len(list(res)) > 0:
       return False
     else:
-      return True    
+      return True
 
   @staticmethod
   def create(url, name, readme, license, published, identity, ident_str):
@@ -108,7 +109,7 @@ class RepoManager:
       if repo_created:  # Set Owner
         owner_set = RepoManager.setOwner(new_repo['id'], identity, ident_str)
 
-      return new_repo   
+      return new_repo
 
   @staticmethod
   def edit(repo_id, name, url, readme, license, published):
@@ -165,11 +166,25 @@ class RepoManager:
 
     nodes = []
     result = db.run("MATCH (r:Repository)--(f:SchemaType)--(n:Data) WHERE ID(r)={repo_id} RETURN n LIMIT 20", {"repo_id": int(repo_id)})
-    
+
     for data in result:
       nodes.append(data.items()[0][1].properties)
 
-    return nodes 
+    return nodes
+
+  @staticmethod
+  def getDataCounts(repo_id):
+    RepoManager.validate_repo_id(repo_id)
+    counts = {}
+    schema_result = db.run("MATCH (r:Repository)--(f:SchemaType) WHERE ID(r)={repo_id} RETURN ID(f), f.name", {"repo_id": int(repo_id)})
+    for schema in schema_result:
+        schema_id = schema[0]
+        dataCount = db.run("MATCH (f:SchemaType)--(n:Data) WHERE ID(f)={schema_id} RETURN COUNT(n) AS count", {"schema_id":
+        int(schema_id)})
+        schemaCount = dataCount.single()['count']
+        counts[schema[1]] = schemaCount
+    print counts
+    return {"data": counts}
 
   @staticmethod
   def getInfo(repo_id):
@@ -228,7 +243,7 @@ class RepoManager:
       owner['email'] = r['email']
       owner['url'] = r['url']
       owner['tagline'] = r['tagline']
- 
+
     return owner
 
   @staticmethod
