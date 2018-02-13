@@ -40,7 +40,6 @@ class UploadManager:
             filename = "repo_" + str(repo_id) + "_" + hash_object.hexdigest()
 
             upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
-
             try:
                 input_file.save(upload_filepath)
             except Exception as e:
@@ -90,7 +89,6 @@ class UploadManager:
 
 
         reader = DataReaderManager.identify(filepath)
-
         if reader is not None:
             # TODO: set preview type from reader
             preview_type = "table"
@@ -154,8 +152,8 @@ class UploadManager:
             if existing_type:
                 i = 1
                 while True:
-                    schema_name = '_'+str(i)
-                    schema_type = '_'+str(i)
+                    schema_name = schema_name + '_'+str(i)
+                    schema_type = schema_type + '_'+str(i)
                     existing_type = SchemaManager.getInfoForType(repo_id, schema_type)
                     if not existing_type:
                         break

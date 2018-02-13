@@ -42,6 +42,13 @@ class TextDataType(BaseDataType):
     def validate(self, value):
         min_length = self.settings.getValue("min_length")
         max_length = self.settings.getValue("max_length")
+
+        try:
+            floater = float(value)
+            return False
+        except ValueError:
+            pass
+
         try:
             l = len(unicode(value, errors='replace'))
         except:
@@ -56,12 +63,6 @@ class TextDataType(BaseDataType):
 
         if (len(errors) > 0):
             return errors
-
-        try:
-            floater = float(value)
-            return False
-        except ValueError:
-            pass
 
         return True
 

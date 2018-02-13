@@ -18,7 +18,7 @@ class CSVDataReader(BaseDataReader):
     def identify(cls, filepath):
       try:
         input_file = open(filepath, 'rb')
-        dialect = csv.Sniffer().sniff(input_file.read(1024), ",")
+        dialect = csv.Sniffer().sniff(input_file.readline(), ",")
         input_file.close()
         if dialect.delimiter == ',':
           return True

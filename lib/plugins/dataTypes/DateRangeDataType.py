@@ -33,7 +33,7 @@ class DateRangeDataType(BaseDataType):
         }
     }
 
-    priority = 10
+    priority = 40
 
     settings = Settings(settings_spec)
 
@@ -47,7 +47,13 @@ class DateRangeDataType(BaseDataType):
     #
     @staticmethod
     def _preprocess(value):
-        value = re.sub(r'([\d]+)/([\d]+)/([\d]+)', r"\3-\1-\2", unicode(value))
+        if re.match(r'[\d]+(?:/|\.|-|_)[\d]+(?:/|\.|-|_)[\d]+', value):
+            date_components = re.findall(r'[\d]+', value)
+            if len(date_components[2]) == 4:
+                value = date_components[0] + "-" + date_components[1] + "-" + date_components[2]
+            elif len(date_components[0]) == 4:
+                value = date_components[1] + "-" + date_components[2] + "-" + date_components[0]
+        #value = re.sub(r'([\d]+)/([\d]+)/([\d]+)', r"\3-\1-\2", unicode(value))
         return value
 
 
@@ -56,7 +62,7 @@ class DateRangeDataType(BaseDataType):
     #
     #
     def validate(self, value):
-        if(type(value) is not unicode):
+        if(isinstance(value, basestring) is False):
             return False
         value = DateRangeDataType._preprocess(value)
         d = None
