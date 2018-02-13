@@ -47,7 +47,7 @@ class DateRangeDataType(BaseDataType):
     #
     @staticmethod
     def _preprocess(value):
-        value = re.sub(r'([\d]+)/([\d]+)/([\d]+)', r"\3-\1-\2", value)
+        value = re.sub(r'([\d]+)/([\d]+)/([\d]+)', r"\3-\1-\2", unicode(value))
         return value
 
 

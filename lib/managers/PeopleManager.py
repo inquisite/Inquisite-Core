@@ -13,6 +13,7 @@ import datetime
 from validate_email import validate_email
 from lib.utils.UtilityHelpers import email_domain_is_allowed
 from lib.utils.MailHelpers import send_mail
+from api.config import app_config
 
 
 class PeopleManager:
