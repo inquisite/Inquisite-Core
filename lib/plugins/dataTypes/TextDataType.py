@@ -42,7 +42,10 @@ class TextDataType(BaseDataType):
     def validate(self, value):
         min_length = self.settings.getValue("min_length")
         max_length = self.settings.getValue("max_length")
-        l = len(unicode(value, errors='replace'))
+        try:
+            l = len(unicode(value, errors='replace'))
+        except:
+            l = len(value)
 
         errors = []
 
