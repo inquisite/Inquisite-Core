@@ -24,10 +24,7 @@ class DataManager:
     @staticmethod
     def add(repo_id, type_code, data, import_uuid=None):
         # TODO: does user have access to this repo?
-        print data
-        print type_code
         data_proc, type_info = DataManager._validateData(repo_id, type_code, data)
-        print data_proc
         try:
             q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) AS id"
 
@@ -72,7 +69,7 @@ class DataManager:
                     v = str(v)
                 v = unicode(v, errors='replace')
 
-            if v is not None:
+            if v is not None and v != '':
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
                 dtv = dt.validate(v)
 
@@ -95,6 +92,8 @@ class DataManager:
                 else:
                     # simple scalar value is assigned direct
                     data_proc[f['code']] = v
+            else:
+                data_proc[f['code']] = v
             if len(row_errors) > 0:
                 raise FieldValidationError(message="Data is invalid for " + ", ".join(row_errors), errors=dtv,
                                            type=type_info['code'], field=f['code'], value=v,

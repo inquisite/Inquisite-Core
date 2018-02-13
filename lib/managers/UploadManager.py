@@ -152,12 +152,14 @@ class UploadManager:
             if existing_type:
                 i = 1
                 while True:
-                    schema_name = schema_name + '_'+str(i)
-                    schema_type = schema_type + '_'+str(i)
+                    tmp_schema_name = schema_name + '_'+str(i)
+                    tmp_schema_type = schema_type + '_'+str(i)
                     existing_type = SchemaManager.getInfoForType(repo_id, schema_type)
                     if not existing_type:
                         break
                     i += 1
+                schema_name = tmp_schema_name
+                schema_type = tmp_schema_type
             new_type = SchemaManager.addType(repo_id, schema_name, schema_type, "Type created by import", {})
             print new_type
             if "type" in new_type:
