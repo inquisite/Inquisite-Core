@@ -57,7 +57,6 @@ class DateRangeDataType(BaseDataType):
     #
     def validate(self, value):
         if(type(value) is not unicode):
-            print type(value)
             return False
         value = DateRangeDataType._preprocess(value)
         d = None

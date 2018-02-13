@@ -55,6 +55,7 @@ class DataManager:
 
         # gather data
         data_proc = {}
+        row_errors = []
         for f in type_info["fields"]:
             v = None
             if f['code'] in data:
@@ -76,9 +77,8 @@ class DataManager:
                 dtv = dt.validate(v)
 
                 if dtv is not True:
-                    raise FieldValidationError(message="Data is invalid for " + f['code'], errors=dtv,
-                                               type=type_info['code'], field=f['code'], value=v,
-                                               context="DataManager.add")
+                    row_errors.append(f['code'])
+                    continue
 
                 # Parse the data using the relevant datatype plugin
                 # NOTE: If the datatype parser returns a dict we serialize to Neo4j with properties for each key
@@ -95,6 +95,10 @@ class DataManager:
                 else:
                     # simple scalar value is assigned direct
                     data_proc[f['code']] = v
+            if len(row_errors) > 0:
+                raise FieldValidationError(message="Data is invalid for " + ", ".join(row_errors), errors=dtv,
+                                           type=type_info['code'], field=f['code'], value=v,
+                                           context="DataManager.add")
         return [data_proc, type_info]
 
     #

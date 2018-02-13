@@ -29,7 +29,7 @@ class IntegerDataType(BaseDataType):
         }
     }
 
-    priority = 40
+    priority = 30
 
     settings = Settings(settings_spec)
 
@@ -41,7 +41,10 @@ class IntegerDataType(BaseDataType):
     #
     def validate(self, value):
         try:
-            integer = int(float(value))
+            raw_value = float(value)
+            if raw_value.is_integer() is not True:
+                return False
+            integer = int(raw_value)
         except ValueError:
             return False
         return True

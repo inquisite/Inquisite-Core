@@ -63,16 +63,20 @@ class GeorefDataType(BaseDataType):
                         or ((len(json_data["coordinates"]) == 0) or (GeorefDataType.isCoordinateList(json_data["coordinates"][0]) is False)):
                     return False
             except Exception as e:
+                errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
                 pass
 
         # Is it a GeoJSON geometry object
         if isinstance(value, dict):
-            if ("coordinates" in value) and ("type" in value) and (value["type"] in ["point", "polygon"]) \
-                    and ((len(json_data["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"][0])):
-                json_data = value
-            else:
-                return False
-
+            try:
+                if ("coordinates" in value) and ("type" in value) and (value["type"] in ["point", "polygon"]) \
+                        and ((len(json_data["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"][0])):
+                    json_data = value
+                else:
+                    return False
+            except Exception as e:
+                errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
+                pass
         if json_data is None:
             return False
 
@@ -96,7 +100,6 @@ class GeorefDataType(BaseDataType):
         #     errors.append("Value must be shorter than " + str(max_length) + " characters")
 
         self.parsed_value = json_data
-
         if (len(errors) > 0):
             return errors
         return True

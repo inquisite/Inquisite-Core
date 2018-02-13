@@ -29,7 +29,7 @@ class FloatDataType(BaseDataType):
         }
     }
 
-    priority = 30
+    priority = 40
 
     settings = Settings(settings_spec)
 
@@ -43,8 +43,6 @@ class FloatDataType(BaseDataType):
         try:
             floater = float(value)
         except ValueError:
-            return False
-        if floater.is_integer():
             return False
         return True
 

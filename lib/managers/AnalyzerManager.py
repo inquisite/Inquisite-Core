@@ -89,15 +89,16 @@ class AnalyzerManager:
                 if cell is None:
                     continue
                 if tmpPlugin:
-                    if tmpPlugin.validate(cell):
+                    if tmpPlugin.validate(cell) is True:
                         colTypes[tmpPlugin.name] += 1
                         continue
                 for plugin in dataTypePlugins:
-                    if plugin.validate(cell):
+                    if plugin.validate(cell) is True:
                         colTypes[plugin.name] += 1
                         break
                 tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
+            print sortedTypes
             dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
         return stats
