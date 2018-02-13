@@ -144,7 +144,7 @@ class UploadManager:
         if str(type) == "-1":
             # create type
             if schema_name:
-                schema_type = re.sub(r'[^A-Za-z0-9_\-]+', '_', schema_name).lower()
+                schema_type = re.sub(r'[^A-Za-z0-9_]+', '_', schema_name).lower()
             else:
                 schema_name = 'new type'
                 schema_type = 'new_type'
@@ -189,7 +189,7 @@ class UploadManager:
                 # is not id... does field with this code exist?
                 if field_names[i] != data_mapping[i]:
                     m = field_names[i]
-                mCode = re.sub(r'[^A-Za-z0-9_\-]+', '_', m).lower()
+                mCode = re.sub(r'[^A-Za-z0-9_]+', '_', m).lower()
                 data_mapping[i] = mCode
                 field_info = SchemaManager.getInfoForField(repo_id, type, m)
                 if field_info is None:

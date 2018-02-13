@@ -115,7 +115,7 @@ class SchemaManager:
         try:
             field_id = int(field)
         except:
-            field_id = str(field)
+            field_id = field.encode('utf-8')
 
         type_info = SchemaManager.getInfoForType(repo_id, type_id)
         if type_info is None:

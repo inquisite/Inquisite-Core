@@ -173,7 +173,7 @@ class DataManager:
             if all(isinstance(c, (int)) for c in type_codes):
                 type_str = " AND ID(t) IN [" + ",".join(type_codes) + "] "
             else:
-                type_codes = map(lambda x: '"' + re.sub(r'[^A-Za-z0-9_\-]+', '_', x) + '"', type_codes)
+                type_codes = map(lambda x: '"' + re.sub(r'[^A-Za-z0-9_]+', '_', x) + '"', type_codes)
                 type_str = " AND t.code IN [" + ",".join(type_codes) + "] "
         try:
             db.run("MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE ID(r) = {repo_id} " + type_str + " DETACH DELETE d", {"repo_id": repo_id})
@@ -188,7 +188,7 @@ class DataManager:
     def addRelationship(start_node, end_node, type_id="RELATED", data=None):
         # TODO: does user have access to these nodes?
         try:
-            type_id = re.sub(r'[^A-Za-z0-9_\-]+', '_', type_id)
+            type_id = re.sub(r'[^A-Za-z0-9_]+', '_', type_id)
             # NOTE: type_id is substituted directly into the string as the Bolt Neo4j driver doesn't allow placeholders for relationship types (yet)
             res = db.run("MATCH (d1:Data), (d2:Data) WHERE ID(d1) = {start_node} AND ID(d2) = {end_node} CREATE(d1)-[r:" + type_id + "]->(d2) RETURN ID(r) AS id", {"start_node": start_node, "end_node": end_node, "type_id": type_id}).peek()
             return res["id"]
@@ -224,7 +224,7 @@ class DataManager:
         # TODO: does user have access to relationship?
         try:
             if type_id is not None:
-                type_str = "r:" + re.sub(r'[^A-Za-z0-9_\-]+', '_', type_id)
+                type_str = "r:" + re.sub(r'[^A-Za-z0-9_]+', '_', type_id)
             else:
                 type_str = "r"
 

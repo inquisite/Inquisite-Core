@@ -39,7 +39,7 @@ def read_file(input_file):
     for rx in range(nrows):
         row = {}
         for cx in range(ncols):
-            row[re.sub(r'[^A-Za-z0-9_\-]+', '_', field_names[cx]).lower()] = sh.cell_value(rowx=rx, colx=cx)
+            row[re.sub(r'[^A-Za-z0-9_]+', '_', field_names[cx]).lower()] = sh.cell_value(rowx=rx, colx=cx)
 
         data.append(row)
     #print "Fields Names found: "
