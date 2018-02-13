@@ -33,7 +33,7 @@ class DateRangeDataType(BaseDataType):
         }
     }
 
-    priority = 40
+    priority = 10
 
     settings = Settings(settings_spec)
 
@@ -51,10 +51,14 @@ class DateRangeDataType(BaseDataType):
         return value
 
 
+
     #
     #
     #
     def validate(self, value):
+        if(type(value) is not unicode):
+            print type(value)
+            return False
         value = DateRangeDataType._preprocess(value)
         d = None
         try:

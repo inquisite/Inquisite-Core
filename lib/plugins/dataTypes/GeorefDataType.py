@@ -31,7 +31,7 @@ class GeorefDataType(BaseDataType):
         }
     }
 
-    priority = 30
+    priority = 20
 
     settings = Settings(settings_spec)
 
