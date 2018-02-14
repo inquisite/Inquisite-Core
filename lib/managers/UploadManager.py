@@ -154,7 +154,7 @@ class UploadManager:
                 while True:
                     tmp_schema_name = schema_name + '_'+str(i)
                     tmp_schema_type = schema_type + '_'+str(i)
-                    existing_type = SchemaManager.getInfoForType(repo_id, schema_type)
+                    existing_type = SchemaManager.getInfoForType(repo_id, tmp_schema_type)
                     if not existing_type:
                         break
                     i += 1
@@ -166,7 +166,6 @@ class UploadManager:
 
         SchemaManager.resetTypeInfoCache()
         type_info = SchemaManager.getInfoForType(repo_id, type)
-
         if type_info is None:
             raise ImportError(message="Invalid type", context="UploadManager.importData")
         typecode = type_info["code"]
@@ -183,7 +182,7 @@ class UploadManager:
                     data_mapping[i] = field_info["code"]
             except Exception as e:
                 # is not id... does field with this code exist?
-                if field_names[i] != data_mapping[i]:
+                if field_names[i] != data_mapping[i] and field_names[i] != '' and field_names[i] is not None:
                     m = field_names[i]
                 mCode = re.sub(r'[^A-Za-z0-9_]+', '_', m).lower()
                 data_mapping[i] = mCode
