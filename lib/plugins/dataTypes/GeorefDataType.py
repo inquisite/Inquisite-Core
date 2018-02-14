@@ -2,6 +2,7 @@ from lib.plugins.dataTypes.BaseDataType import BaseDataType
 from lib.utils.Settings import Settings
 import json
 import numbers
+import re
 
 class GeorefDataType(BaseDataType):
     name = "Georeference"
@@ -56,30 +57,34 @@ class GeorefDataType(BaseDataType):
         # Is it a GeoJSON geometry object as text?
         json_data = None
         if isinstance(value, basestring):
-            try:
-                json_data = json.loads(value)
-                if ("coordinates" not in json_data) or ("type" not in json_data) \
-                        or (json_data["type"] not in ["Point", "Polygon"]) \
-                        or ((len(json_data["coordinates"]) == 0) or (GeorefDataType.isCoordinateList(json_data["coordinates"][0]) is False)):
-                    return False
-            except Exception as e:
-                errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
-                pass
+            str_coords = re.search(r'^(?:\(|\[|\{)([\d\.-]+)(?:, |,)([\d\.-]+)(?:\)|\]|\})$', value)
+            if str_coords:
+                json_data = {"type": "point", "coordinates": [float(str_coords.group(2)), float(str_coords.group(1))]}
+                print json_data
+            else:
+                try:
+                    json_data = json.loads(value.lower())
+                    if ("coordinates" not in json_data) or ("type" not in json_data) \
+                            or (json_data["type"] not in ["point", "polygon"]) \
+                            or ((len(json_data["coordinates"]) == 0) or (GeorefDataType.isCoordinateList(json_data["coordinates"], json_data["type"]) is False)):
+                        return False
+                except Exception as e:
+                    errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
+                    pass
 
         # Is it a GeoJSON geometry object
         if isinstance(value, dict):
+            value = {k.lower(): v for k, v in value.items()}
             try:
-                if ("coordinates" in value) and ("type" in value) and (value["type"] in ["point", "polygon"]) \
-                        and ((len(json_data["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"][0])):
+                if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon"]) \
+                        and ((len(value["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"], value["type"].lower())):
                     json_data = value
                 else:
                     return False
             except Exception as e:
                 errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
-                pass
         if json_data is None:
             return False
-
         #print json.dumps(json_data, indent=4, sort_keys=True)
 
         # Is the value a single coordinate?
@@ -137,12 +142,17 @@ class GeorefDataType(BaseDataType):
     # Utilities
     #
     @classmethod
-    def isCoordinateList(cls, l):
-        if (type(l) is list) and (len(l) > 0):
-            coords = [v for v in l if ((type(v) is list) or (type(v) is tuple)) and ((len(v) == 2) or (len(v) == 3))
-                 and isinstance(v[0], numbers.Number) and isinstance(v[1], numbers.Number)]
+    def isCoordinateList(cls, l, geoType):
+        if geoType == 'polygon':
+            l = l[0]
+            if (type(l) is list) and (len(l) > 0):
+                coords = [v for v in l if ((type(v) is list) or (type(v) is tuple)) and ((len(v) == 2) or (len(v) == 3))
+                     and isinstance(v[0], numbers.Number) and isinstance(v[1], numbers.Number)]
+        else:
+            if(type(l) is list) and (len(l) == 2):
+                coords = [v for v in l if isinstance(v, numbers.Number)]
 
-            if len(coords) > 0:
-                return True
+        if len(coords) > 0:
+            return True
 
         return False

@@ -47,6 +47,8 @@ class IntegerDataType(BaseDataType):
             integer = int(raw_value)
         except ValueError:
             return False
+        except TypeError:
+            return False
         return True
 
 

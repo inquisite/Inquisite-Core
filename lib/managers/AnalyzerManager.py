@@ -24,13 +24,15 @@ class AnalyzerManager:
     # Manage the analysis process
     #
     @staticmethod
-    def createAnalysis(repoID, data, rowCount, headers):
+    def createAnalysis(repoID, data, rowCount, headers, reader):
         # TODO Analysis Steps
         # 1) Get Basic Column Info
         # 2) Check if column names already exist in a schema related to this repo
         # 3) Analyze data in a column and get type guess
         # 4) Return statistics about each column depending on type
         # 5) Format stats in a way that can be visualized
+        #if 'JSON' in reader:
+        #    return 0, 0, 0, -1
         frame = pd.DataFrame(data)
         columnCount, columns = AnalyzerManager.getColumns(frame)
         statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount)
@@ -56,8 +58,12 @@ class AnalyzerManager:
         for column in columns:
             # Gets rid of empty strings so that pandas doesn't analyze them
             col = frame[column].apply(lambda x: np.nan if isinstance(x, basestring) and (x.isspace() or x == "") else x)
-            stats = col.describe().to_dict() # Cast the returned panda Series to a dict
-            valueFrequency = col.value_counts()
+            #try:
+            #    stats = col.describe().to_dict() # Cast the returned panda Series to a dict
+            #    valueFrequency = col.value_counts()
+            #except TypeError:
+            stats = col.astype(str).describe().to_dict()
+            valueFrequency = col.astype(str).value_counts()
             highFreqValues = valueFrequency.iloc[0:3].to_dict()
             sortedValues = sorted(highFreqValues.items(), key=operator.itemgetter(1), reverse=True)
             statistics[column] = {
@@ -86,7 +92,7 @@ class AnalyzerManager:
             colList = frame[column].tolist()
             tmpPlugin = None
             for cell in colList:
-                if cell is None:
+                if cell is None or cell == '':
                     continue
                 if tmpPlugin:
                     if tmpPlugin.validate(cell) is True:
@@ -98,7 +104,6 @@ class AnalyzerManager:
                         break
                 tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
-            print sortedTypes
             dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
         return stats
@@ -116,7 +121,6 @@ class AnalyzerManager:
             schemaInfo = SchemaManager.getInfoForType(repoID, schema['id'])
             schemaFields = schemaInfo['fields']
             for field in schemaFields:
-                print field
                 if field['code'] in headers:
                     fieldMatches += 1
             if fieldMatches >= int(colCount * 0.9):

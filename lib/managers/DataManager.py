@@ -91,7 +91,7 @@ class DataManager:
                         data_proc[f['code'] + "_" + k] = v
                 else:
                     # simple scalar value is assigned direct
-                    data_proc[f['code']] = v
+                    data_proc[f['code']] = parsed_value
             else:
                 data_proc[f['code']] = v
             if len(row_errors) > 0:

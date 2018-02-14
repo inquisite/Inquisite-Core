@@ -42,7 +42,7 @@ class FloatDataType(BaseDataType):
     def validate(self, value):
         try:
             floater = float(value)
-        except ValueError:
+        except (ValueError, TypeError) as e:
             return False
         return True
 

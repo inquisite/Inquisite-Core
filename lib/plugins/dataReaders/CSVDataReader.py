@@ -36,7 +36,7 @@ class CSVDataReader(BaseDataReader):
         except:
             return False
 
-        if csv.Sniffer().has_header(self.input_file.read(8192)):
+        if csv.Sniffer().has_header(self.input_file.readline()):
           self.input_file.seek(0)
           hr = self.headers = csv.reader(self.input_file)
           for h in hr:

@@ -96,7 +96,6 @@ class UploadManager:
             # TODO: error checking
             reader.read(filepath)
             data = reader.getRows(rows=rows, start=start)
-            print data
             headers = reader.getHeaders()
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
@@ -114,7 +113,8 @@ class UploadManager:
             data = reader.getRows()
             headers = reader.getHeaders()
             rowCount = len(data)
-            columnCount, columns, stats, recommendedSchema = AnalyzerManager.createAnalysis(repo_id, data, rowCount, headers)
+            readerName = reader.getPluginName()
+            columnCount, columns, stats, recommendedSchema = AnalyzerManager.createAnalysis(repo_id, data, rowCount, headers, readerName)
             return rowCount, columnCount, columns, stats, recommendedSchema
         else:
             raise UploadError(message="Cannot analyze data from unsupported file type" + mimetype, context="UploadManager._generatePreview")
@@ -161,7 +161,6 @@ class UploadManager:
                 schema_name = tmp_schema_name
                 schema_type = tmp_schema_type
             new_type = SchemaManager.addType(repo_id, schema_name, schema_type, "Type created by import", {})
-            print new_type
             if "type" in new_type:
                 type = new_type["type"]["code"]
 
@@ -174,10 +173,7 @@ class UploadManager:
 
         fields_created = {}
         # create new fields
-        print data_mapping
-        print field_names
         for i, m in enumerate(data_mapping):
-            print m
             try:
                 fid = int(m)
                 field_info = SchemaManager.getInfoForField(repo_id, type, fid)

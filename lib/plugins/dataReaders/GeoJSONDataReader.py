@@ -48,6 +48,7 @@ class GeoJSONDataReader(BaseDataReader):
           if "data" in row["properties"] and isinstance(row["properties"]["data"], dict):
             for k, v in row["properties"]["data"].iteritems():
                 headers.append(k)
+            headers.remove("data")
           headers.append("geometry")
 
           return headers
@@ -81,9 +82,10 @@ class GeoJSONDataReader(BaseDataReader):
       row_proc = row["properties"]
       row_proc["geometry"] = geometry
       if "data" in row_proc and isinstance(row_proc["data"], dict):
-        for k, v in row_proc["data"].iteritems():
+        subData = row_proc.pop("data", None)
+        for k, v in subData.iteritems():
           row_proc[k] = v
-        del row_proc["data"]
+        #del row_proc["data"]
 
       file_data.append(row_proc)
 
