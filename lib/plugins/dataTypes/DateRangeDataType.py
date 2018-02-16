@@ -64,25 +64,42 @@ class DateRangeDataType(BaseDataType):
     def validate(self, value):
         if(isinstance(value, basestring) is False):
             return False
-        value = DateRangeDataType._preprocess(value)
+
+        if re.match(r'[\d]+(?:-|_|\.|\/)[\d]+(?:-|_|\.|\/)[\d]+', value):
+            range_match = re.findall(r'([\d]+(?:-|_|\.|\/)[\d]+(?:-|_|\.|\/)[\d]+)', value)
+            if len(range_match) == 1:
+                self.parsed_date = {"start": range_match[0], "end": range_match[0]}
+            else:
+                self.parsed_date = {"start": range_match[0], "end": range_match[1]}
+            print self.parsed_date
+            return True
+        elif re.match(r'([\d]+)(?:-|_|\.|\/)([\d])', value):
+            range_match = re.findall(r'([\d]+(?:-|_|\.|\/)[\d])', value)
+        elif re.match(r'[a-zA-Z\.]+ [\d,]+ [\d]+', value):
+            range_match = re.findall(r'([a-zA-Z\.]+ [\d,]+ [\d]+)', value)
+        elif re.match(r'[\d]+ [a-zA-Z\.]+ [\d]+', value):
+            range_match = re.findall(r'([\d]+ [a-zA-Z\.]+ [\d]+)', value)
+        else:
+            return False
         d = None
-        try:
-            d = parse(value, allow_implicit=True)
-        except ParseException as e:
-            # fall back to dateutil parser
+        if len(range_match) == 1:
             try:
                 dx = dateutil.parser.parse(value)
-                if dx is not None:
-                    d = [dx, None]
             except ValueError:
-                d = None
-        if d is None:
-            #return ["Invalid date"]
-            return False
-        self.parsed_date = {"start": str(d[0]), "end": str(d[1])}
-        if d[1] is None:
-            self.parsed_date["end"] = self.parsed_date["start"]
+                return False
+            self.parsed_date = {"start": str(dx), "end": str(dx)}
+        else:
+            try:
+                d = parse(value, allow_implicit=True)
+            except ParseException as e:
+                return False
+            if d is None:
+                #return ["Invalid date"]
+                return False
+            self.parsed_date = {"start": str(d[0]), "end": str(d[1])}
+
         self.value_parsed = value
+        print self.parsed_date
         return True
 
     #
