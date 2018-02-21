@@ -32,7 +32,7 @@ class GeorefDataType(BaseDataType):
         }
     }
 
-    priority = 10
+    priority = 20
 
     settings = Settings(settings_spec)
 
@@ -60,7 +60,6 @@ class GeorefDataType(BaseDataType):
             str_coords = re.search(r'^(?:\(|\[|\{)([\d\.-]+)(?:, |,)([\d\.-]+)(?:\)|\]|\})$', value)
             if str_coords:
                 json_data = {"type": "point", "coordinates": [float(str_coords.group(2)), float(str_coords.group(1))]}
-                print json_data
             else:
                 try:
                     json_data = json.loads(value.lower())

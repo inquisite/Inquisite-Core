@@ -8,6 +8,7 @@ import json
 import operator
 import pandas as pd
 import numpy as np
+from copy import copy
 
 from lib.utils.Db import db
 from lib.exceptions.ValidationError import ValidationError
@@ -87,8 +88,11 @@ class AnalyzerManager:
         for x in SchemaManager.getDataTypes():
             p = SchemaManager.getDataTypeInstance(x)
             dataTypePlugins.append(p)
+            dataTypes[p.name] = 0
         for column in columns:
-            colTypes = {'Integer': 0, 'Float': 0, 'Text': 0, 'Date range': 0, 'Georeference': 0}
+            print column
+            print dataTypes
+            colTypes = copy(dataTypes)
             colList = frame[column].tolist()
             tmpPlugin = None
             for cell in colList:
@@ -104,6 +108,7 @@ class AnalyzerManager:
                         break
                 tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
+            print sortedTypes
             dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
         return stats

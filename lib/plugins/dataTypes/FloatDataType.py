@@ -29,7 +29,7 @@ class FloatDataType(BaseDataType):
         }
     }
 
-    priority = 30
+    priority = 40
 
     settings = Settings(settings_spec)
 

@@ -33,7 +33,7 @@ class DateRangeDataType(BaseDataType):
         }
     }
 
-    priority = 40
+    priority = 50
 
     settings = Settings(settings_spec)
 
