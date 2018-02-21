@@ -33,9 +33,10 @@ def importData():
     schema_name = request.form.get('schema_name')
     data_types = request.form.get('column_types').split("|")
     field_descriptions = request.form.get('field_descriptions').split("|")
+    search_display_fields = request.form.get('field_search_display').split("|")
 
     try:
-        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions), message="File imported")
+        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields), message="File imported")
     except UploadError as e:
         return makeResponse(error=e)
 

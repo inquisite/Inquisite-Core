@@ -131,7 +131,7 @@ class UploadManager:
     #
     #
     @staticmethod
-    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, start=0):
+    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         mt = getMimetypeForFile(upload_filepath)
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mt, rows=1000000, start=start)
@@ -192,7 +192,7 @@ class UploadManager:
                     mField = ''
                     if field_descriptions[i]:
                         mField = field_descriptions[i]
-                    new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField,{})
+                    new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField,{"search_display": search_display_fields[i]})
                     if new_field is not None:
                         data_mapping[i] = new_field["code"]
                         fields_created[typecode] = new_field
