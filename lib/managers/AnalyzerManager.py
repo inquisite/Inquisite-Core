@@ -90,8 +90,6 @@ class AnalyzerManager:
             dataTypePlugins.append(p)
             dataTypes[p.name] = 0
         for column in columns:
-            print column
-            print dataTypes
             colTypes = copy(dataTypes)
             colList = frame[column].tolist()
             tmpPlugin = None
@@ -106,9 +104,11 @@ class AnalyzerManager:
                     if plugin.validate(cell) is True:
                         colTypes[plugin.name] += 1
                         break
-                tmpPlugin = plugin
+                if tmpPlugin is None:
+                    tmpPlugin = plugin
+                elif colTypes[plugin.name] > colTypes[tmpPlugin.name]:
+                    tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
-            print sortedTypes
             dataType = sortedTypes[0][0]
             stats[column]['type'] = dataType
         return stats
