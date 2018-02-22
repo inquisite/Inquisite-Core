@@ -3,10 +3,10 @@
   "database_url": "db://whatever",
   "database_user": "user",
   "database_pass": "sample-pass",
-  
+
   "unit_test_user": "steve@bionic.org",
   "unit_test_pass": "bionicman",
-	
+
   "registration_email_domains": ["nyu.edu", "whirl-i-gig.com"],
 
   "smtp_server": "smtp.email.com",
@@ -16,5 +16,8 @@
 
   "email_from_address": "admin@inquisite.org",
 
-  "base_url": "http://localhost:8080"
+  "base_url": "http://localhost:8080",
+
+  "google_maps_api": "google_maps_api_key",
+  "libpostal_url": "libpostal_rest_service"
 }

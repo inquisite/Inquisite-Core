@@ -3,6 +3,7 @@ from lib.utils.Settings import Settings
 import json
 import numbers
 import re
+import requests
 
 class GeorefDataType(BaseDataType):
     name = "Georeference"
@@ -38,6 +39,9 @@ class GeorefDataType(BaseDataType):
 
     def __init__(self, value=None):
         super(GeorefDataType, self).__init__(value)
+        config = json.load(open('./config.json'));
+        self.map_key = config["google_maps_api"]
+        self.libpostal = config["libpostal_url"]
 
     #
     # Validate a value for the data type subject to settings. Return True on success, list of errors on failure.
@@ -60,7 +64,32 @@ class GeorefDataType(BaseDataType):
             str_coords = re.search(r'^(?:\(|\[|\{)([\d\.-]+)(?:, |,)([\d\.-]+)(?:\)|\]|\})$', value)
             if str_coords:
                 json_data = {"type": "point", "coordinates": [float(str_coords.group(2)), float(str_coords.group(1))]}
+
             else:
+                #address_match = parse_address(value)
+                req_val = json.dumps({"query": value})
+                address_match_resp = requests.post(self.libpostal, data=req_val)
+                address_dict = {}
+                if address_match_resp.status_code == 200:
+                    address_array = address_match_resp.json()
+                    for element in address_array:
+                        address_dict[element['label']] = element['value']
+                else:
+                    errors.append("Could not query libpostal local service for address parsing")
+                    return False
+                if 'house_number' in address_dict and 'road' in address_dict and ('state' in address_dict or 'state_district' in address_dict) and ('city' in address_dict or 'city_district' in address_dict) and 'postcode' in address_dict:
+                #address_match = re.search(r'[\dA-Za-z]+[ ](?:[A-Za-z0-9.-]+[ ]?)+(?:Avenue|Lane|Road|Boulevard|Drive|Street|Ave|Dr|Rd|Blvd|Ln|St)\.?[\s,]+(?:[A-Z][a-z.-]+[ ]?)+,[ ](?:Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii| Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan| Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New[ ]Hampshire|New[ ]Jersey|New[ ]Mexico |New[ ]York|North[ ]Carolina|North[ ]Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode[ ]Island |South[ ]Carolina|South[ ]Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West[ ]Virginia |Wisconsin|Wyoming|AL|AK|AS|AZ|AR|CA|CO|CT|DE|DC|FM|FL|GA|GU|HI|ID|IL|IN|IA|KS|KY|LA|ME|MH|MD|MA|MI|MN|MS|MO|MT |NE|NV|NH|NJ|NM|NY|NC|ND|MP|OH|OK|OR|PW|PA|PR|RI|SC|SD|TN|TX|UT|VT|VI|VA|WA|WV|WI|WY)[ ]\b\d{5}(?:-\d{4})?\b', value)
+                    address_resp = requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=\%(address)s&key=%(key)s" % {"address": value, "key": self.map_key})
+                    if address_resp.status_code == 200:
+                        address_parse = address_resp.json()
+                        if 'results' in address_parse:
+                            result_lon = address_parse['results'][0]['geometry']['location']['lng']
+                            result_lat = address_parse['results'][0]['geometry']['location']['lat']
+                            json_data = {"type": "point", "coordinates": [float(result_lon), float(result_lat)]}
+                    else:
+                        errors.append("Could not query Google Georeference API, returned error ")
+
+            if not json_data:
                 try:
                     json_data = json.loads(value.lower())
                     if ("coordinates" not in json_data) or ("type" not in json_data) \
