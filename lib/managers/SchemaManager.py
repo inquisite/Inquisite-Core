@@ -95,10 +95,13 @@ class SchemaManager:
 
                     t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type'], 'settings': {}}
 
-                    for s in ft.getSettingsList():
-                        if "settings_" + s in r['props']:
+                    #for s in ft.getSettingsList():
+                        #if "settings_" + s in r['props']:
                             #t["settings_" + s] = r['props']["settings_" + s]
-                            t["settings"][s] = r['props']["settings_" + s]
+                    for prop_name, prop_value in r['props'].iteritems():
+                        check_settings = re.match(r'settings_.*', prop_name)
+                        if check_settings:
+                            t["settings"][prop_name] = r['props'][prop_name]
 
                     fieldlist.append(t)
             info["fields"] = fieldlist
@@ -206,7 +209,6 @@ class SchemaManager:
         field_status = {}
         for k in fields:
             settings = {f.replace("settings_", ""): v for f, v in fields[k].iteritems() if 'settings_' in f}
-
             if 'id' in fields[k]:
                 # edit existing field
                 fret = SchemaManager.editField(repo_id, code, fields[k].get('id', ''), fields[k].get('name', ''), fields[k].get('code', ''), fields[k].get('type', ''),
