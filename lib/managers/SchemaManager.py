@@ -95,14 +95,10 @@ class SchemaManager:
 
                     t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type'], 'settings': {}}
 
-                    #for s in ft.getSettingsList():
-                        #if "settings_" + s in r['props']:
-                            #t["settings_" + s] = r['props']["settings_" + s]
-                    for prop_name, prop_value in r['props'].iteritems():
-                        check_settings = re.match(r'settings_.*', prop_name)
-                        if check_settings:
-                            t["settings"][prop_name] = r['props'][prop_name]
-
+                    for s in ft.getSettingsList():
+                        if "settings_" + s in r['props']:
+                            t["settings_" + s] = r['props']["settings_" + s]
+                            t["settings"][s] = r["props"]["settings_" + s]
                     fieldlist.append(t)
             info["fields"] = fieldlist
             return info
@@ -340,7 +336,6 @@ class SchemaManager:
 
     @staticmethod
     def editField(repo_id, typecode, field_id, name, code, fieldtype, description, settings):
-
         if code is None or len(code) == 0:
             raise ValidationError(message="Field code is required", context="Schema.editField")
 

@@ -6,7 +6,7 @@ class TextDataType(BaseDataType):
     description = "Text value"
 
     settings_spec = {
-        "order": ["min_length", "max_length"],
+        "order": ["search_display", "min_length", "max_length"],
         "settings": {
             "min_length": {
                 "type": "integer",
@@ -25,6 +25,12 @@ class TextDataType(BaseDataType):
                 "default": 65535,
                 "render": "field",
                 "width": "200px"
+            },
+            "search_display": {
+               "type": "boolean",
+               "label": "Search display",
+               "description": "Toggle to set if this field should be displayed in search results.",
+               "render": "select",
             }
         }
     }

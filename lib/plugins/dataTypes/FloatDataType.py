@@ -6,7 +6,7 @@ class FloatDataType(BaseDataType):
     description = "Floating point (decimal) numeric value"
 
     settings_spec = {
-        "order": ["min_value", "max_value"],
+        "order": ["search_display", "min_value", "max_value"],
         "settings": {
             "min_value": {
                 "type": "float",
@@ -25,6 +25,12 @@ class FloatDataType(BaseDataType):
                 "default": None,
                 "render": "field",
                 "width": "100px"
+            },
+            "search_display": {
+               "type": "boolean",
+               "label": "Search display",
+               "description": "Toggle to set if this field should be displayed in search results.",
+               "render": "select",
             }
         }
     }

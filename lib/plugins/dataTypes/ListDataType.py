@@ -8,7 +8,7 @@ class ListDataType(BaseDataType):
     description = "List of distinct values (e.g. tags or other repeating data)"
 
     settings_spec = {
-        "order": ["min_length", "max_length"],
+        "order": ["search_display", "min_length", "max_length"],
         "settings": {
             "min_length": {
                 "type": "integer",
@@ -27,6 +27,12 @@ class ListDataType(BaseDataType):
                 "default": 1024,
                 "render": "list",
                 "width": "200px"
+            },
+            "search_display": {
+               "type": "boolean",
+               "label": "Search display",
+               "description": "Toggle to set if this field should be displayed in search results.",
+               "render": "select",
             }
         }
     }

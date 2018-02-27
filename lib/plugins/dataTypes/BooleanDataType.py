@@ -6,7 +6,7 @@ class BooleanDataType(BaseDataType):
     description = "Boolean (True/False) Value"
 
     settings_spec = {
-        "order": ["min_value", "max_value"],
+        "order": ["search_display", "min_value", "max_value"],
         "settings": {
             "min_value": {
                 "type": "integer",
@@ -25,6 +25,12 @@ class BooleanDataType(BaseDataType):
                 "default": 1,
                 "render": "list",
                 "width": "100px"
+            },
+            "search_display": {
+               "type": "boolean",
+               "label": "Search display",
+               "description": "Toggle to set if this field should be displayed in search results.",
+               "render": "select",
             }
         }
     }

@@ -10,7 +10,7 @@ class DateRangeDataType(BaseDataType):
     description = "Date range value"
 
     settings_spec = {
-        "order": ["min_date", "max_date"],
+        "order": ["search_display", "min_date", "max_date"],
         "settings": {
             "min_date": {
                 "type": "text",
@@ -29,6 +29,12 @@ class DateRangeDataType(BaseDataType):
                 "default": "",
                 "render": "field",
                 "width": "100px"
+            },
+            "search_display": {
+               "type": "boolean",
+               "label": "Search display",
+               "description": "Toggle to set if this field should be displayed in search results.",
+               "render": "select",
             }
         }
     }
