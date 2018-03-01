@@ -2,7 +2,7 @@ import os
 import os.path
 import hashlib
 from lib.utils.Db import db
-from flask import Blueprint, request
+from flask import Blueprint, request, session
 from lib.exceptions.UploadError import UploadError
 from lib.exceptions.ImportError import ImportError
 from lib.utils.FileHelpers import getMimetypeForFile
@@ -10,11 +10,10 @@ from lib.managers.DataManager import DataManager
 from lib.managers.SchemaManager import SchemaManager
 from lib.managers.DataReaderManager import DataReaderManager
 from lib.managers.AnalyzerManager import AnalyzerManager
+from api.sockets.socket_resp import pass_message
 import time
 import humanize
 import re
-
-
 UPLOAD_FOLDER = os.path.dirname(os.path.realpath(__file__)) + "/../../uploads"
 ALLOWED_MIMETYPES = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain', 'text/json']
 
@@ -40,6 +39,7 @@ class UploadManager:
             filename = "repo_" + str(repo_id) + "_" + hash_object.hexdigest()
 
             upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
+            pass_message('upload_step', {"step": "Uploading File", "pos": 10})
             try:
                 input_file.save(upload_filepath)
             except Exception as e:
@@ -55,9 +55,13 @@ class UploadManager:
                 os.remove(upload_filepath)
                 raise UploadError(message="File type " + mimetype + " is not allowed",
                                   context="UploadManager.processUpload")
-
+            pass_message('upload_step', {"step": "Generating Preview", "pos": 20})
+            pass_message('upload_status', {"status": "Starting Preview", "pos": 0})
             preview = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mimetype)
+            pass_message('upload_step', {"step": "Generating Analysis", "pos": 30})
+            pass_message('upload_status', {"status": "Starting Analysis", "pos": 0})
             rowCount, columnCount, columns, stats, recommendedSchema = UploadManager._generateAnalysis(repo_id=repo_id, filepath=upload_filepath, mimetype=mimetype)
+            pass_message('upload_step', {"step": "Upload Complete", "pos": 100})
             return {
                 "filesize": os.path.getsize(upload_filepath),
                 "filename": filename,
@@ -134,11 +138,12 @@ class UploadManager:
     def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         mt = getMimetypeForFile(upload_filepath)
+        pass_message('import_step', {"step": "Gathering data", "pos": 25})
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mt, rows=1000000, start=start)
         print("UPLOADED FILE: " + str(len(data["data"])) + " rows")
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
-
+        pass_message('import_step', {"step": "Getting/Generating Schema", "pos": 50})
         if str(type) == "-1":
             # create type
             if schema_name:
@@ -216,7 +221,13 @@ class UploadManager:
 
         # TODO: record original file name, file size, file type
         upload_uuid = UploadManager.createImportEvent(repo_id, type_info["code"], upload_filepath, original_filename, data["type"], import_rows)
+        pass_message('import_step', {"step": "Importing Data", "pos": 75})
+        cell_chunk = 100/float(import_rows)
+        import_display = 0
+        error_display = 0
         for line, r in enumerate(data["data"]):
+            pass_message('import_status', {"status": "Importing Row " + str(line), "pos": import_display})
+            import_display += cell_chunk
             fields = {}
             for i, fid in enumerate(data_mapping):
                 if fid not in fieldmap:
@@ -235,8 +246,11 @@ class UploadManager:
                     errors[line] = []
                 errors[line].append(e.message)
                 num_errors = num_errors + 1
+                pass_message('error_status', {"status": "Error in Row " + str(line) + ": " + e.message, "pos": error_display})
+                error_display += cell_chunk
 
         UploadManager.closeImportEvent(upload_uuid)
+        pass_message('import_step', {"step": "Import Complete", "pos": 100})
         return {"errors": errors, "error_count": num_errors, "mapping": data_mapping,
                 "fields_created": fields_created, "counts": counts, "filename": filename}
 

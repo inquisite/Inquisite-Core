@@ -13,7 +13,6 @@ upload_blueprint = Blueprint('upload', __name__)
 @jwt_required
 def uploadData():
     repo_id = int(request.form.get('repo_id'))
-
     try:
         return makeResponse(payload=UploadManager.processUpload(repo_id), message="File uploaded")
     except UploadError as e:
