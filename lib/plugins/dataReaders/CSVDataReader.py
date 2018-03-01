@@ -43,7 +43,11 @@ class CSVDataReader(BaseDataReader):
             self.headers = h
             break
           self.input_file.seek(0)
-
+        print self.headers
+        for pos, head in enumerate(self.headers):
+            if isinstance(head, str):
+                self.headers[pos] = head.decode('utf-8').replace(u'\ufeff', '')
+                print self.headers[pos].encode('raw_unicode_escape')
         super(CSVDataReader, self).read(filepath)
 
 
@@ -65,6 +69,7 @@ class CSVDataReader(BaseDataReader):
                     continue
                 if rows is not None and c > rows:
                     break
+                row = dict(map(lambda x: ((x[0], x[1].decode('utf-8')) if isinstance(x[1], str) else (x[0], x[1])), row.iteritems()))
                 file_data.append(row)
 
         return file_data

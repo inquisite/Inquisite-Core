@@ -66,9 +66,9 @@ class XLSDataReader(BaseDataReader):
       row = []
       for cx in range(ncols):
         row.append(self.input_file.cell_value(rowx=rx, colx=cx))
-
+      if row == self.headers:
+          continue
       file_data.append(row)
 
 
     return file_data
-

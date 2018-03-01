@@ -101,6 +101,7 @@ class UploadManager:
             reader.read(filepath)
             data = reader.getRows(rows=rows, start=start)
             headers = reader.getHeaders()
+            print headers
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
                               context="UploadManager._generatePreview")
@@ -225,8 +226,11 @@ class UploadManager:
         cell_chunk = 100/float(import_rows)
         import_display = 0
         error_display = 0
+        timer = time.time()
         for line, r in enumerate(data["data"]):
-            pass_message('import_status', {"status": "Importing Row " + str(line), "pos": import_display})
+            if timer+0.5 > time.time():
+                pass_message('import_status', {"status": "Importing Row " + str(line), "pos": import_display})
+                timer = time.time()
             import_display += cell_chunk
             fields = {}
             for i, fid in enumerate(data_mapping):

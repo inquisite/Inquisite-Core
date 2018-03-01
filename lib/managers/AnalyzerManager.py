@@ -35,6 +35,13 @@ class AnalyzerManager:
         #    return 0, 0, 0, -1
         frame = pd.DataFrame(data)
         columnCount, columns = AnalyzerManager.getColumns(frame)
+        col_clean = {}
+        for col in columns:
+            if isinstance(col, str):
+                col_clean[col] = col.decode('utf-8')
+                continue
+            col_clean[col] = col
+        frame.rename(index=str, columns=col_clean)
         pass_message('upload_step', {"step": "Column Statistics", "pos": 40})
         pass_message('upload_status', {"status": "Getting stats for columns", "pos": 0})
         statistics = AnalyzerManager.getColumnStats(columns, frame, rowCount, columnCount)
@@ -60,19 +67,20 @@ class AnalyzerManager:
         statistics = {}
         colNo = 1
         for column in columns:
+            if isinstance(column, str):
+                disp_column = column.decode('utf-8')
+            else:
+                disp_column = column
             data_pos = round((float(colNo)/colCount)*100)
-            pass_message('upload_status', {"status": "Getting stats for column " + column, "pos": data_pos})
+            pass_message('upload_status', {"status": "Getting stats for column " + str(column), "pos": data_pos})
             # Gets rid of empty strings so that pandas doesn't analyze them
             col = frame[column].apply(lambda x: np.nan if isinstance(x, basestring) and (x.isspace() or x == "") else x)
-            #try:
-            #    stats = col.describe().to_dict() # Cast the returned panda Series to a dict
-            #    valueFrequency = col.value_counts()
-            #except TypeError:
-            stats = col.astype(str).describe().to_dict()
-            valueFrequency = col.astype(str).value_counts()
+
+            stats = col.astype('unicode').describe().to_dict()
+            valueFrequency = col.astype('unicode').value_counts()
             highFreqValues = valueFrequency.iloc[0:3].to_dict()
             sortedValues = sorted(highFreqValues.items(), key=operator.itemgetter(1), reverse=True)
-            statistics[column] = {
+            statistics[disp_column] = {
                 "Total Values": stats['count'],
                 "Unique Values": stats['unique'],
                 "Null Values": rowCount - stats['count'],
@@ -98,7 +106,11 @@ class AnalyzerManager:
             dataTypePlugins.append(p)
             dataTypes[p.name] = 0
         for column in columns:
-            pass_message('upload_step', {"step": "Getting type of column " + column, "pos": col_pos})
+            if isinstance(column, str):
+                disp_column = column.decode('utf-8')
+            else:
+                disp_column = column
+            pass_message('upload_step', {"step": "Getting type of column " + str(column), "pos": col_pos})
             colTypes = copy(dataTypes)
             colList = frame[column].tolist()
             tmpPlugin = None
@@ -113,7 +125,6 @@ class AnalyzerManager:
             chunk_display = chunk_count
             for cell in colList:
                 cell_count += 1
-                print cell_count, cell_chunk
                 if cell_count % cell_chunk == 0:
                     status_str = "Analyzing type of cells " + str(cell_count) + "-" + str(cell_count+cell_chunk)
                     pass_message('upload_status', {"status": status_str, "pos": int(chunk_display)})
@@ -134,7 +145,7 @@ class AnalyzerManager:
                     tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
             dataType = sortedTypes[0][0]
-            stats[column]['type'] = dataType
+            stats[disp_column]['type'] = dataType
             col_pos += colStep
         return stats
 
