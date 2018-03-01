@@ -15,8 +15,12 @@ from lib.utils.Db import db
 
 from lib.exceptions.AuthError import AuthError
 from lib.exceptions.FindError import FindError
+from lib.exceptions.DbError import DbError
+from lib.exceptions.SaveError import SaveError
+from lib.exceptions.ValidationError import ValidationError
 from lib.utils.RequestHelpers import makeResponse
 from lib.managers.AuthManger import AuthManager
+from lib.managers.PeopleManager import PeopleManager
 
 auth_blueprint = Blueprint('auth', __name__)
 
@@ -69,7 +73,7 @@ def logout():
 #
 # Reset user password
 #
-@auth_blueprint.route('/people/<email_address>/reset_password', methods=['POST'])
+@auth_blueprint.route('/reset_password/<email_address>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def sendPasswordReset(email_address):
     try:
@@ -81,6 +85,32 @@ def sendPasswordReset(email_address):
     except AuthError as e:
         return makeResponse(error=e)
 
+#
+# Register new user
+#
+@auth_blueprint.route('/register', methods=['POST'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+def register():
+    surname = request.form.get('surname')
+    forename = request.form.get('forename')
+    location = request.form.get('location')
+    email = request.form.get('email')
+    url = request.form.get('url')
+    tagline = request.form.get('tagline')
+    password = request.form.get('password')
+    nyunetid = request.form.get('nyunetid')
+
+    try:
+        ret = PeopleManager.addPerson(forename, surname, location, email, nyunetid, url, tagline, password)
+        return makeResponse(payload=ret, message="Added person")
+    except DbError as e:
+        return makeResponse(error=e)
+    except SaveError as e:
+        return makeResponse(error=e)
+    except FindError as e:
+        return makeResponse(error=e)
+    except ValidationError as e:
+        return makeResponse(error=e)
 #
 # Reset user password
 #
