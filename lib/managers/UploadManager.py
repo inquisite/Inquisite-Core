@@ -101,7 +101,6 @@ class UploadManager:
             reader.read(filepath)
             data = reader.getRows(rows=rows, start=start)
             headers = reader.getHeaders()
-            print headers
         else:
             raise UploadError(message="Cannot extract preview data for unsupported file type " + mimetype,
                               context="UploadManager._generatePreview")
@@ -228,7 +227,7 @@ class UploadManager:
         error_display = 0
         timer = time.time()
         for line, r in enumerate(data["data"]):
-            if timer+0.5 > time.time():
+            if time.time() > timer+0.5:
                 pass_message('import_status', {"status": "Importing Row " + str(line), "pos": import_display})
                 timer = time.time()
             import_display += cell_chunk
@@ -282,7 +281,6 @@ class UploadManager:
         result = db.run(
             "MATCH (e:ImportEvent { uuid: {uuid}}) SET e.ended_on = {time} RETURN e.uuid as uuid",
             {"uuid": uuid, "time": time.time()})
-        print result
         if result is None:
             return False
         r = result.peek()

@@ -38,7 +38,7 @@ class AnalyzerManager:
         col_clean = {}
         for col in columns:
             if isinstance(col, str):
-                col_clean[col] = col.decode('utf-8')
+                col_clean[col] = unicode(col, errors="ignore")
                 continue
             col_clean[col] = col
         frame.rename(index=str, columns=col_clean)
@@ -68,11 +68,11 @@ class AnalyzerManager:
         colNo = 1
         for column in columns:
             if isinstance(column, str):
-                disp_column = column.decode('utf-8')
+                disp_column = unicode(column, errors="ignore")
             else:
-                disp_column = column
+                disp_column = str(column)
             data_pos = round((float(colNo)/colCount)*100)
-            pass_message('upload_status', {"status": "Getting stats for column " + str(column), "pos": data_pos})
+            pass_message('upload_status', {"status": "Getting stats for column " + disp_column, "pos": data_pos})
             # Gets rid of empty strings so that pandas doesn't analyze them
             col = frame[column].apply(lambda x: np.nan if isinstance(x, basestring) and (x.isspace() or x == "") else x)
 
@@ -107,10 +107,10 @@ class AnalyzerManager:
             dataTypes[p.name] = 0
         for column in columns:
             if isinstance(column, str):
-                disp_column = column.decode('utf-8')
+                disp_column = unicode(column, errors="ignore")
             else:
-                disp_column = column
-            pass_message('upload_step', {"step": "Getting type of column " + str(column), "pos": col_pos})
+                disp_column = str(column)
+            pass_message('upload_step', {"step": "Getting type of column " + disp_column, "pos": col_pos})
             colTypes = copy(dataTypes)
             colList = frame[column].tolist()
             tmpPlugin = None
