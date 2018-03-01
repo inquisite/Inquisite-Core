@@ -55,19 +55,19 @@ class ListDataType(BaseDataType):
 
         split_regex = r'[,;|\/]{1}'
         value_array = re.split(split_regex, value)
-        print value_array
+        #print value_array
         if len(value_array) < 2 or len(value_array) > 1024:
-            print "Array length out of range"
+            #print "Array length out of range"
             return False
 
         if len(set(value_array)) != len(value_array):
             # There are duplicates in the "list" so probably not a real list
-            print "Duplicates invalidate the list"
+            #print "Duplicates invalidate the list"
             return False
 
         for term in value_array:
             if len(term) > 20:
-                print "A term is too long"
+                #print "A term is too long"
                 return False
 
         self.parsed_value = ', '.join(value_array)
