@@ -177,15 +177,16 @@ class PeopleManager:
         raise DbError(message="Could not look up user", context="People.addPerson", dberror=e.message)
 
       if result:
-        return {
-          "exists": True,
-          "user_id": result['id'],
-          "surname": result['surname'],
-          "forename": result['forename'],
-          "name": str(result['forename']) + " " + str(result['surname']),
-          "email": result['email'],
-          "nyunetid": result['nyunetid']
-        }
+        raise SaveError(message="User already exists with this email address", context="People.addPerson")
+        # return {
+        #   "exists": True,
+        #   "user_id": result['id'],
+        #   "surname": result['surname'],
+        #   "forename": result['forename'],
+        #   "name": str(result['forename']) + " " + str(result['surname']),
+        #   "email": result['email'],
+        #   "nyunetid": result['nyunetid']
+        # }
       else:
         try:
           result = db.run(
