@@ -21,6 +21,7 @@ from lib.exceptions.ValidationError import ValidationError
 from lib.utils.RequestHelpers import makeResponse
 from lib.managers.AuthManger import AuthManager
 from lib.managers.PeopleManager import PeopleManager
+from lib.managers.SchemaManager import SchemaManager
 
 auth_blueprint = Blueprint('auth', __name__)
 
@@ -67,6 +68,37 @@ def logout():
         return makeResponse(payload={}, message="Logged out")
     except KeyError as e:
         return makeResponse(error=e)
+    except Exception as e:
+        return makeResponse(error=e)
+
+#
+# Data required on app load
+#
+@auth_blueprint.route('/boot', methods=['POST'])
+@crossdomain(origin='*', headers=['Authorization'])
+@jwt_required
+def boot():
+    current_user = get_jwt_identity()
+    repo_id = request.form.get('repo_id')
+
+    try:
+        repo_id = int(repo_id)
+    except:
+        repo_id = None
+
+    payload = {'repos': PeopleManager.getReposForPerson(current_user)}
+
+    try:
+        # Try to get first repo_id
+        if repo_id is None or repo_id == 0:
+            repo_id = payload['repos']['repos'][0]['id']
+
+        payload['schema'] = {'types': SchemaManager.getTypes(repo_id)}
+    except:
+        pass
+
+    try:
+        return makeResponse(payload=payload)
     except Exception as e:
         return makeResponse(error=e)
 
