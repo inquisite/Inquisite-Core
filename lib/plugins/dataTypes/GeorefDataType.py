@@ -151,7 +151,9 @@ class GeorefDataType(BaseDataType):
         if self.validate(value) is False:
             return False
 
-        if self.parsed_value is not None:
+        if self.parsed_value is not None and self.parsed_value != value:
+            return {"geoJSON": json.dumps(self.parsed_value)}
+        else:
             return json.dumps(self.parsed_value)
         return False
 
