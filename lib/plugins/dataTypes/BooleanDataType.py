@@ -48,26 +48,18 @@ class BooleanDataType(BaseDataType):
     #
     def validate(self, value):
 
-        #try:
-        #    value = int(value)
-        #except ValueError:
-        #    pass
-        #print value
         if isinstance(value, basestring):
             check_value = value.lower()
             if check_value in ['yes', 'true', 't', 'y']:
                 self.parsed_value = {"boolean": 1}
-                print "Found text boolean"
                 return True
             elif check_value in ['no', 'false', 'f', 'n']:
                 self.parsed_value = {"boolean": 0}
-                print "Found text boolean"
                 return True
 
         if isinstance(value, int):
             if value == 1 or value == 0:
                 self.parsed_value = {"boolean": value}
-                print "Found int boolean"
                 return True
 
         return False

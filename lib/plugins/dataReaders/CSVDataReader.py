@@ -1,4 +1,5 @@
 import csv
+import re
 from lib.plugins.dataReaders.BaseDataReader import BaseDataReader
 from lib.exceptions.FileError import FileError
 

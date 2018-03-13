@@ -240,7 +240,10 @@ class UploadManager:
                     continue
                 if data["headers"][i] not in r:
                     continue
-                fields[fid] = r[data["headers"][i]]
+                if r[data["headers"][i]] and r[data["headers"][i]] != '':
+                    fields[fid] = r[data["headers"][i]]
+                else:
+                    fields[fid] = None
             try:
                 DataManager.add(repo_id, type, fields, upload_uuid)
                 counts['total'] = counts['total'] + 1

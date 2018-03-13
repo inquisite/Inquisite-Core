@@ -74,10 +74,10 @@ class AnalyzerManager:
             data_pos = round((float(colNo)/colCount)*100)
             pass_message('upload_status', {"status": "Getting stats for column " + disp_column, "pos": data_pos})
             # Gets rid of empty strings so that pandas doesn't analyze them
-            col = frame[column].apply(lambda x: np.nan if isinstance(x, basestring) and (x.isspace() or x == "") else x)
-
-            stats = col.astype('unicode').describe().to_dict()
-            valueFrequency = col.astype('unicode').value_counts()
+            #col = frame[column].apply(lambda x: None if isinstance(x, basestring) and (x.isspace() or x == "") else unicode(str(x), errors="ignore"))
+            col = AnalyzerManager._parseColumn(frame[column])
+            stats = col.describe(include='all', exclude=[np.nan]).to_dict()
+            valueFrequency = col.value_counts()
             highFreqValues = valueFrequency.iloc[0:3].to_dict()
             sortedValues = sorted(highFreqValues.items(), key=operator.itemgetter(1), reverse=True)
             statistics[disp_column] = {
@@ -121,7 +121,7 @@ class AnalyzerManager:
             cell_count = 1
             chunk_count = 1
             if cell_chunk == 1:
-                chunk_count = 100/cell_total
+                chunk_count = 100.0/cell_total
             chunk_display = chunk_count
             for cell in colList:
                 cell_count += 1
@@ -144,7 +144,11 @@ class AnalyzerManager:
                 elif colTypes[plugin.name] > colTypes[tmpPlugin.name]:
                     tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
-            dataType = sortedTypes[0][0]
+            if sortedTypes[0][1] == 0:
+                dataType = 'Text'
+            else:
+                dataType = sortedTypes[0][0]
+
             stats[disp_column]['type'] = dataType
             col_pos += colStep
         return stats
@@ -156,7 +160,7 @@ class AnalyzerManager:
     @staticmethod
     def getBestSchema(repoID, columns, frame, stats, headers):
         colCount = len(headers)
-        headers = [head.replace(' ', '_').lower() for head in headers]
+        headers = [re.sub(r'[^A-Za-z0-9_]+', '_', head).lower() for head in headers]
         fieldMatches = 0
         for schema in SchemaManager.getTypes(repoID):
             schemaInfo = SchemaManager.getInfoForType(repoID, schema['id'])
@@ -167,3 +171,19 @@ class AnalyzerManager:
             if fieldMatches >= int(colCount * 0.9):
                 return {"id": schema['id'], "name": schema["name"]}
         return False
+
+    @staticmethod
+    def _parseColumn(column):
+        ret_col = []
+        for cell in column:
+            if isinstance(cell, basestring):
+                if cell == '':
+                    ret_col.append(None)
+                else:
+                    ret_col.append(cell)
+            else:
+                if isinstance(cell, int):
+                    ret_col.append(str(int(cell)))
+                else:
+                    ret_col.append(str(cell))
+        return pd.Series(ret_col)

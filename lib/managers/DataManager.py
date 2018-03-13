@@ -68,7 +68,6 @@ class DataManager:
                 if isinstance(v, basestring) is False:  # force non-string values to string prior to casting to unicode
                     v = str(v)
                 v = unicode(v, errors='replace')
-
             if v is not None and v != '':
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
                 dtv = dt.validate(v)
@@ -92,7 +91,7 @@ class DataManager:
                 else:
                     # simple scalar value is assigned direct
                     data_proc[f['code']] = parsed_value
-                print data_proc
+                SchemaManager.getDataTypeInstanceForField.reset()
             else:
                 data_proc[f['code']] = v
             if len(row_errors) > 0:

@@ -37,10 +37,10 @@ class XLSDataReader(BaseDataReader):
     h = self.input_file.row(0)
 
     h = [str(a.value) for a in h]
-
+    print h
     if len(filter(lambda x: re.match(r'^[\d]$', x), h)) > 0 or len(set(h)) < len(h):
       # no headers
-      self.headers = range(1, len(h))
+      self.headers = [str(x) for x in range(1, len(h))]
     else:
       self.headers = h
 
@@ -65,10 +65,14 @@ class XLSDataReader(BaseDataReader):
 
       row = []
       for cx in range(ncols):
-        row.append(self.input_file.cell_value(rowx=rx, colx=cx))
-      if row == self.headers:
-          continue
-      file_data.append(row)
+        cell = self.input_file.cell_value(rowx=rx, colx=cx)
+        if isinstance(cell, float):
+          if int(cell) == cell:
+              cell = int(cell)
 
+        row.append(cell)
+      if row == self.headers:
+        continue
+      file_data.append(row)
 
     return file_data

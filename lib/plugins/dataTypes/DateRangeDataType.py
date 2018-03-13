@@ -70,21 +70,22 @@ class DateRangeDataType(BaseDataType):
     def validate(self, value):
         if(isinstance(value, basestring) is False):
             return False
-
         if re.match(r'[\d]+(?:-|_|\.|\/)[\d]+(?:-|_|\.|\/)[\d]+', value):
             range_match = re.findall(r'([\d]+(?:-|_|\.|\/)[\d]+(?:-|_|\.|\/)[\d]+)', value)
             if len(range_match) == 1:
                 self.parsed_date = {"start": range_match[0], "end": range_match[0]}
             else:
                 self.parsed_date = {"start": range_match[0], "end": range_match[1]}
-            print self.parsed_date
             return True
-        elif re.match(r'([\d]+)(?:-|_|\.|\/)([\d])', value):
-            range_match = re.findall(r'([\d]+(?:-|_|\.|\/)[\d])', value)
+        elif re.match(r'(?:((?<![\d])[\d]{1,2})(?:-|_|\.|\/)([\d]+)|([\d]+)(?:-|_|\.|\/)([\d]{1,2})(?![\d]))', value):
+            range_match = re.findall(r'([\d]+(?:-|_|\.|\/)[\d]+)', value)
         elif re.match(r'[a-zA-Z\.]+ [\d,]+ [\d]+', value):
             range_match = re.findall(r'([a-zA-Z\.]+ [\d,]+ [\d]+)', value)
         elif re.match(r'[\d]+ [a-zA-Z\.]+ [\d]+', value):
             range_match = re.findall(r'([\d]+ [a-zA-Z\.]+ [\d]+)', value)
+        elif re.match(r'[\d]{4}', value):
+            range_match = [value, value] # Force pyparsing to handle any YYYY or YYYY-YYYY values as dateutil mangles them
+
         else:
             return False
         d = None
