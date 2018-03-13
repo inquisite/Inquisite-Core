@@ -65,6 +65,8 @@ class GeorefDataType(BaseDataType):
         geotype = None
 
         # Is it a GeoJSON geometry object as text?
+        # Is it an address
+        # Is it a single coordinate
         json_data = None
         if isinstance(value, basestring):
             str_coords = re.search(r'^(?:\(|\[|\{)([\d\.-]+)(?:, |,)([\d\.-]+)(?:\)|\]|\})$', value)
@@ -72,7 +74,6 @@ class GeorefDataType(BaseDataType):
                 json_data = {"type": "point", "coordinates": [float(str_coords.group(2)), float(str_coords.group(1))]}
 
             else:
-                #address_match = parse_address(value)
                 req_val = json.dumps({"query": value})
                 address_match_resp = requests.post(self.libpostal, data=req_val)
                 address_dict = {}
@@ -84,7 +85,6 @@ class GeorefDataType(BaseDataType):
                     errors.append("Could not query libpostal local service for address parsing")
                     return False
                 if 'house_number' in address_dict and 'road' in address_dict and ('state' in address_dict or 'state_district' in address_dict) and ('city' in address_dict or 'city_district' in address_dict) and 'postcode' in address_dict:
-                #address_match = re.search(r'[\dA-Za-z]+[ ](?:[A-Za-z0-9.-]+[ ]?)+(?:Avenue|Lane|Road|Boulevard|Drive|Street|Ave|Dr|Rd|Blvd|Ln|St)\.?[\s,]+(?:[A-Z][a-z.-]+[ ]?)+,[ ](?:Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii| Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan| Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New[ ]Hampshire|New[ ]Jersey|New[ ]Mexico |New[ ]York|North[ ]Carolina|North[ ]Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode[ ]Island |South[ ]Carolina|South[ ]Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West[ ]Virginia |Wisconsin|Wyoming|AL|AK|AS|AZ|AR|CA|CO|CT|DE|DC|FM|FL|GA|GU|HI|ID|IL|IN|IA|KS|KY|LA|ME|MH|MD|MA|MI|MN|MS|MO|MT |NE|NV|NH|NJ|NM|NY|NC|ND|MP|OH|OK|OR|PW|PA|PR|RI|SC|SD|TN|TX|UT|VT|VI|VA|WA|WV|WI|WY)[ ]\b\d{5}(?:-\d{4})?\b', value)
                     address_resp = requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=\%(address)s&key=%(key)s" % {"address": value, "key": self.map_key})
                     if address_resp.status_code == 200:
                         address_parse = address_resp.json()
@@ -98,14 +98,19 @@ class GeorefDataType(BaseDataType):
             if not json_data:
                 try:
                     json_data = json.loads(value.lower())
-                    if ("coordinates" not in json_data) or ("type" not in json_data) \
-                            or (json_data["type"] not in ["point", "polygon"]) \
-                            or ((len(json_data["coordinates"]) == 0) or (GeorefDataType.isCoordinateList(json_data["coordinates"], json_data["type"]) is False)):
+                    if ("coordinates" in json_data) and ("type" in json_data) \
+                            and (json_data["type"] in ["point", "polygon"]) \
+                            and ((len(json_data["coordinates"]) > 0) and (GeorefDataType.isCoordinateList(json_data["coordinates"], json_data["type"]) is True)):
+                        pass
+                    elif ("type" in json_data) and (json_data["type"] == "feature") and ("geometry" in json_data):
+                        json_data = json_data["geometry"]
+                    else:
                         return False
+
                 except Exception as e:
                     errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
                     pass
-
+            #print json_data
         # Is it a GeoJSON geometry object
         if isinstance(value, dict):
             value = {k.lower(): v for k, v in value.items()}
@@ -113,23 +118,19 @@ class GeorefDataType(BaseDataType):
                 if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon"]) \
                         and ((len(value["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"], value["type"].lower())):
                     json_data = value
+                elif ("type" in json_data) and (json_data["type"].lower() == "feature") and ("geometry" in json_data):
+                    json_data = value["geometry"]
                 else:
                     return False
             except Exception as e:
                 errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
         if json_data is None:
             return False
-        #print json.dumps(json_data, indent=4, sort_keys=True)
-
-        # Is the value a single coordinate?
-
         # Is it a list of coordinates?
 
         # Is the value an array of coordinates (a single path)?
 
         # Is the value a series of paths?
-
-        # Is the value a text address? If so try to geolocate it
 
         # Normalize to array of arrays
 
