@@ -158,12 +158,10 @@ class ListManager:
                 else:
                     raise DbError(message="Could not add List Item", context="List.addListItem", dberror="")
         except Exception as e:
-            print e.message
             raise DbError(message="Could not add List Item", context="List.addListItem", dberror=e.message)
 
     @staticmethod
     def editListItem(repo_id, code, item_id, display, item_code, description=None):
-        print display, item_code, code
         if code is None or len(code) == 0:
             raise ValidationError(message="List code is required", context="List.editListItem")
 
@@ -178,7 +176,6 @@ class ListManager:
             "MATCH (i:ListItem {code: {item_code}})--(l:List {code: {code}})--(r:Repository) WHERE ID(r) = {repo_id} AND ID(i) <> {item_id}  RETURN ID(i) as id, i.display as display",
             {"item_code": item_code, "code": code, "repo_id": int(repo_id), "item_id": int(item_id)}).peek()
         if result is not None:
-            print result
             ret['msg'] = "List Item already exists"
             ret['item_id'] = result['id']
             ret['display'] = result['display']
@@ -186,7 +183,6 @@ class ListManager:
         else:
             flds = ["i.display = {display}", "i.code = {item_code}", "i.description = {description}"]
             params = {"code": code, "repo_id": int(repo_id), "display": display, "item_code": item_code, "description": description, "item_id": int(item_id)}
-            print flds, params
             result = db.run(
                 "MATCH (r:Repository)--(l:List {code: {code}})--(i:ListItem) WHERE ID(r) = {repo_id} AND ID(i) = {item_id} SET " + ", ".join(flds) + " RETURN ID(i) as id, i.display as display",
                 params)
