@@ -8,6 +8,7 @@ from lib.exceptions.ImportError import ImportError
 from lib.utils.FileHelpers import getMimetypeForFile
 from lib.managers.DataManager import DataManager
 from lib.managers.SchemaManager import SchemaManager
+from lib.managers.ListManager import ListManager
 from lib.managers.DataReaderManager import DataReaderManager
 from lib.managers.AnalyzerManager import AnalyzerManager
 from api.sockets.socket_resp import pass_message
@@ -197,7 +198,12 @@ class UploadManager:
                     mField = ''
                     if field_descriptions[i]:
                         mField = field_descriptions[i]
-                    new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField,{"search_display": search_display_fields[i]})
+                    settings = {"search_display": search_display_fields[i]}
+                    if data_types[i] == 'ListDataType':
+                        new_list = ListManager.addList(repo_id, m, mCode+'_list')
+                        list_code = new_list['type']['code']
+                        settings['list_code'] = list_code
+                    new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField, settings)
                     if new_field is not None:
                         data_mapping[i] = new_field["code"]
                         fields_created[typecode] = new_field

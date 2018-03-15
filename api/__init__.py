@@ -51,6 +51,7 @@ def create_app():
     from data import data_blueprint
     from search import search_blueprint
     from upload import upload_blueprint
+    from list import list_blueprint
     from .sockets import sockets as socket_blueprint
 
     # register API modules
@@ -64,6 +65,7 @@ def create_app():
     app.register_blueprint(data_blueprint)
     app.register_blueprint(upload_blueprint)
     app.register_blueprint(socket_blueprint)
+    app.register_blueprint(list_blueprint)
 
     x_socketio.init_app(app)
     return app, jwt

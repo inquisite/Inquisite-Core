@@ -1,5 +1,5 @@
 import re
-
+from lib.managers.ListManager import ListManager
 from lib.plugins.dataTypes.BaseDataType import BaseDataType
 from lib.utils.Settings import Settings
 
@@ -8,7 +8,7 @@ class ListDataType(BaseDataType):
     description = "List of distinct values (e.g. tags or other repeating data)"
 
     settings_spec = {
-        "order": ["search_display", "min_length", "max_length"],
+        "order": ["list_code", "search_display", "min_length", "max_length"],
         "settings": {
             "min_length": {
                 "type": "integer",
@@ -33,6 +33,13 @@ class ListDataType(BaseDataType):
                "label": "Search display",
                "description": "Toggle to set if this field should be displayed in search results.",
                "render": "select",
+            },
+            "list_code": {
+                "type": "text",
+                "label": "List Code",
+                "description": "Internal List Code that sets controlled list of terms available for this field",
+                "render": "select",
+                "source": "list"
             }
         }
     }
@@ -44,6 +51,7 @@ class ListDataType(BaseDataType):
     def __init__(self, value=None):
         super(ListDataType, self).__init__(value)
         self.parsed_value = None
+        self.tmp_value = None
 
     #
     # Validate a value for the data type subject to settings. Return True on success, list of errors on failure.
@@ -70,20 +78,32 @@ class ListDataType(BaseDataType):
                 #print "A term is too long"
                 return False
 
-        self.parsed_value = ', '.join(value_array)
+        self.tmp_value = value_array
 
         return True
 
     #
     #
     #
-    def parse(self, value):
-        if value == self.parsed_value: # avoid reparsing dates already processed by validation
-            return self.parsed_value
+    def parse(self, value, list_code, repo_id):
+        if value != self.tmp_value: # avoid reparsing dates already processed by validation
+            self.validate(value)
 
-        self.validate(value)
-        d = self.getParsedValue()
+        items = []
+        print list_code, repo_id
+        print self.tmp_value
+        if isinstance(self.tmp_value, list):
+            for item in self.tmp_value:
+                item_code = re.sub(r'[^A-Za-z0-9_]+', '_', item).lower()
+                list_item = ListManager.addListItem(repo_id, list_code, item, item_code)
+                print list_item
+                items.append(str(list_item["item_id"]))
+        else:
+            item_code = re.sub(r'[^A-Za-z0-9_]+', '_', self.tmp_value).lower()
+            list_item = ListManager.addListItem(repo_id, list_code, self.tmp_value, item_code)
+            items.append(list_item["id"])
 
+        d = self.parsed_value = {"list_items": ', '.join(items)}
         if d is not None:
             return d
         return False
@@ -91,8 +111,18 @@ class ListDataType(BaseDataType):
     #
     #
     #
+    def set(self, value):
+        if self.validate(value) is False:
+            return False
+        self.val = value
+
+    #
+    #
+    #
     def getParsedValue(self):
         return self.parsed_value
+
+
 
     #
     # Float-specific settings validation
