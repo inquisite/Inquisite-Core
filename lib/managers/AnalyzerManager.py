@@ -16,6 +16,7 @@ from lib.exceptions.FindError import FindError
 from pluginbase import PluginBase
 from lib.decorators.Memoize import memoized
 from lib.managers.SchemaManager import SchemaManager
+from lib.managers.ListManager import ListManager
 from api.sockets.socket_resp import pass_message
 class AnalyzerManager:
 
@@ -145,6 +146,15 @@ class AnalyzerManager:
                     tmpPlugin = plugin
             sortedTypes = sorted(colTypes.items(), key=operator.itemgetter(1), reverse=True)
             dataType = sortedTypes[0][0]
+            # If this is text, check to see if it can be considered a list
+            if dataType == 'Text':
+                listTest = set(colList)
+                uCount = ListManager.uniqueValueCount(listTest)
+                if uCount:
+                    if colCount*0.2 > uCount:
+                        stats[disp_column]['type'] = 'List'
+                        col_pos += colStep
+                        continue
             stats[disp_column]['type'] = dataType
             col_pos += colStep
         return stats

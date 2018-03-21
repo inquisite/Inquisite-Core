@@ -269,3 +269,22 @@ class ListManager:
         except Exception as e:
             print e.message
             raise DbError(message="Could not get list items for list", context="List.getInfoForList", dberror=e.message)
+
+    #
+    # Get number of unique values in a list
+    #
+    @staticmethod
+    def uniqueValueCount(valueSet):
+        uValues = set()
+        if isinstance(valueSet, list):
+            valueSet = set(valueSet)
+        for value in valueSet:
+            if not isinstance(value, basestring):
+                continue
+            split_regex = r'[,;|\/]{1}'
+            value_array = re.split(split_regex, value)
+            for va in value_array:
+                uValues.add(va)
+        if len(uValues) > 0:
+            return len(uValues)
+        return False

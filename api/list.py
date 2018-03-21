@@ -39,7 +39,6 @@ def editList(repo_id, list_id):
 
     items = extractRepeatingParameterBlocksFromRequest(request, 'items')
     delete_items = extractRepeatingParameterFromRequest(request, 'itemsToDelete')
-    print items, delete_items
     try:
         return makeResponse(payload=ListManager.editList(repo_id, list_id, name, code, description, items, delete_items))
     except Exception as e:

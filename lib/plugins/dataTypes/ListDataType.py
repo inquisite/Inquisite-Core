@@ -44,7 +44,7 @@ class ListDataType(BaseDataType):
         }
     }
 
-    priority = 60
+    priority = 70
 
     settings = Settings(settings_spec)
 
@@ -64,7 +64,7 @@ class ListDataType(BaseDataType):
         split_regex = r'[,;|\/]{1}'
         value_array = re.split(split_regex, value)
         #print value_array
-        if len(value_array) < 2 or len(value_array) > 1024:
+        if len(value_array) > 1024:
             #print "Array length out of range"
             return False
 
@@ -72,11 +72,6 @@ class ListDataType(BaseDataType):
             # There are duplicates in the "list" so probably not a real list
             #print "Duplicates invalidate the list"
             return False
-
-        for term in value_array:
-            if len(term) > 20:
-                #print "A term is too long"
-                return False
 
         self.tmp_value = value_array
 
@@ -122,7 +117,11 @@ class ListDataType(BaseDataType):
     def getParsedValue(self):
         return self.parsed_value
 
-
+    #
+    #
+    #
+    def getTmpValue(self):
+        return self.tmp_value
 
     #
     # Float-specific settings validation
