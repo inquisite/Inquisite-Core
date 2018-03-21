@@ -122,7 +122,6 @@ class ListManager:
         try:
             if code is None or len(code) == 0:
                 raise ValidationError(message="List code is required", context="List.addListItem")
-
             list_info = ListManager.getInfoForList(repo_id, code)
             if list_info is None:
                 raise ValidationError(message="List code is invalid", context="List.addListItem")
@@ -237,7 +236,7 @@ class ListManager:
         repo_id = int(repo_id)
         try:
             code = int(code)
-        except VaueError:
+        except ValueError:
             pass
         try:
             if isinstance(code, int):
