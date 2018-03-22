@@ -127,6 +127,19 @@ class ListManager:
                           dberror="")
 
     @staticmethod
+    def deleteList(repo_id, list_id):
+        try:
+            result = db.run("MATCH (l:List)-[x]-(r:Repository) WHERE ID(r) = {repo_id} AND ID(l) = {list_id} OPTIONAL MATCH (i:ListItem)-[y]-(l) DELETE x,y,l,i",
+                            {"list_id": int(list_id), "repo_id": int(repo_id)})
+
+            if result is not None:
+                return {"list_id": list_id}
+            else:
+                raise FindError(message="Could not find list", context="Schema.deleteList", dberror="")
+        except Exception as e:
+            raise DbError(message="Could not delete list", context="Schema.deleteList", dberror=e.message)
+
+    @staticmethod
     def addListItem(repo_id, code, display, item_code, description=None):
         try:
             repo_id = int(repo_id)

@@ -63,7 +63,6 @@ def addList(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def deleteList(repo_id, list_id):
-
     try:
         return makeResponse(payload=ListManager.deleteList(repo_id, list_id))
     except Exception as e:
