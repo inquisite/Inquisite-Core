@@ -44,10 +44,10 @@ def editList(repo_id, list_id):
     except Exception as e:
         return makeResponse(error=e)
 
-@list_blueprint.route('/list/addList/<repo_id>/<list_id>', methods=['POST'])
+@list_blueprint.route('/list/addList/<repo_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
-def addList(repo_id, list_id):
+def addList(repo_id):
     name = request.form.get('name')
     code = request.form.get('code')
     description = request.form.get('description')
@@ -55,7 +55,7 @@ def addList(repo_id, list_id):
     items = extractRepeatingParameterBlocksFromRequest(request, 'items')
 
     try:
-        return makeResponse(payload=ListManager.addList(repo_id, list_id, items))
+        return makeResponse(payload=ListManager.addList(repo_id, name, code, description, items))
     except Exception as e:
         return makeResponse(error=e)
 

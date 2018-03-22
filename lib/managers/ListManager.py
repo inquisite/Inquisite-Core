@@ -13,7 +13,11 @@ class ListManager:
 
     @staticmethod
     def addList(repo_id, name, code, description='', items={}):
-
+        try:
+            repo_id = int(repo_id)
+        except TypeError:
+            raise DbError(message="Invalid repo_id provided", context="List.addList",
+                          dberror="")
         ret = {"exists": False}
         try:
             result = db.run("MATCH (l:List{code: {code}})--(r:Repository) WHERE ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"code": code, "repo_id": int(repo_id)})
@@ -67,6 +71,12 @@ class ListManager:
 
     @staticmethod
     def editList(repo_id, list_id, name, code, description, items, delete_items):
+        try:
+            repo_id = int(repo_id)
+            list_id = int(list_id)
+        except TypeError:
+            raise DbError(message="Invalid repo_id or list_id provided", context="List.addListItem",
+                          dberror="")
         result = db.run(
             "MATCH (r:Repository)--(l:List) WHERE ID(r) = {repo_id} AND ID(l) = {list_id} SET l.name = {name}, l.code = {code}, l.description = {description} RETURN ID(l) AS id",
             {"repo_id": int(repo_id), "list_id": int(list_id), "name": name, "code": code, "description": description})
@@ -118,6 +128,11 @@ class ListManager:
 
     @staticmethod
     def addListItem(repo_id, code, display, item_code, description=None):
+        try:
+            repo_id = int(repo_id)
+        except TypeError:
+            raise DbError(message="Invalid repo_id provided", context="List.addListItem",
+                          dberror="")
         ret = {}
         try:
             if code is None or len(code) == 0:
@@ -161,6 +176,11 @@ class ListManager:
 
     @staticmethod
     def editListItem(repo_id, code, item_id, display, item_code, description=None):
+        try:
+            repo_id = int(repo_id)
+        except TypeError:
+            raise DbError(message="Invalid repo_id provided", context="List.editListItem",
+                          dberror="")
         if code is None or len(code) == 0:
             raise ValidationError(message="List code is required", context="List.editListItem")
 
@@ -198,9 +218,15 @@ class ListManager:
 
     @staticmethod
     def deleteListItem(repo_id, code, item_id):
+        print repo_id, code, item_id
+        try:
+            repo_id = int(repo_id)
+        except TypeError:
+            raise DbError(message="Invalid repo_id provided", context="List.deleteListItem",
+                          dberror="")
         try:
             result = db.run(
-                "MATCH (r:Repository)--(l:List {code: {code}})-[x]-(i:ListItem) WHERE ID(r) = {repo_id} AND ID(i) = {item_id} DELETE f,x",
+                "MATCH (r:Repository)--(l:List {code: {code}})-[x]-(i:ListItem) WHERE ID(r) = {repo_id} AND ID(i) = {item_id} DELETE i,x",
                 {"repo_id": int(repo_id),  "item_id": int(item_id), "code": code})
 
             if result is not None:
