@@ -12,40 +12,59 @@ class SearchManager:
 
     # Return repository name and id for given repo code
     @staticmethod
-    def quick(expression):
+    def quick(expression, nodeTypes=None, start=0, end=100):
         client = Elasticsearch()
+        if not nodeTypes:
+            nodeTypes = [
+                "Repository",
+                "Data",
+                "SchemaType",
+                "SchemaField",
+                "List"
+                "ListItem",
+                "Person",
+            ]
+        ret = {'expression': expression, 'results': {}, 'counts': {}, 'total_counts': {}}
+        for node in nodeTypes:
+            res = SearchManager._execQuery(client, node, expression, start, end)
+            ret['results'][node] = res['results']
+            ret['counts'][node] = res['count']
+            ret['total_counts'][node] = res['total_count']
 
+        total_count = 0
+        for node in ret['counts']:
+            total_count += ret['counts'][node]
+        ret['count'] = total_count
+
+        return ret
+
+    @staticmethod
+    def _execQuery(client, doc_type, expression, start, end):
         try:
-            s = Search(using=client, index="neo4j-inquisite-node") \
+            s = Search(using=client, index="neo4j-inquisite-node", doc_type=doc_type) \
                 .query("match", _all=expression)
         except Exception as e:
             raise SearchError(e.message)
-
-        s = s[0:100]
+        sub_ret = {"results": [], "count": 0}
+        s = s[start:end]
         result = s.execute()
-
-        ret = {'expression': expression, 'results': {}, 'counts': {}}
-
+        sub_ret['total_count'] = result.hits.total
         if result:
             for r in result:
                 d = r.to_dict()
                 d['__id'] = r.meta.id
                 d['__type'] = r.meta.doc_type
                 d['__score'] = r.meta.score
-                if r.meta.doc_type not in ret['results']:
-                    ret['results'][r.meta.doc_type] = []
-                    ret['counts'][r.meta.doc_type] = 0
-                ret['results'][r.meta.doc_type].append(d)
-                ret['counts'][r.meta.doc_type] = ret['counts'][r.meta.doc_type] + 1
+                sub_ret['results'].append(d)
+                sub_ret['count'] += 1
 
+            repolist = {}
+            schemaList = []
+            uuids = []
+            for i, r in enumerate(sub_ret['results']):
+                uuids.append(r['__id'])
             # Populate repository and data type fields for data nodes
-            if 'Data' in ret['results']:
-                uuids = []
-                for i, r in enumerate(ret['results']['Data']):
-                    uuids.append(r['__id'])
-
-                repolist = {}
-                schemaList = []
+            if doc_type == 'Data':
                 try:
                     nodes = db.run(
                         "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE d.uuid IN {uuid} RETURN ID(r) as repo_id, r.name as repo_name, r.uuid as repo_uuid, d.uuid as uuid, ID(t) as schema_id, t.name as schema_name",
@@ -63,22 +82,40 @@ class SearchManager:
                         schemaFields[schemaField['schema_id']].append([schemaField['field_id'], schemaField['code'], schemaField['search_display']])
                 except Exception as e:
                     pass
-                for i, r in enumerate(ret['results']['Data']):
+                for i, r in enumerate(sub_ret['results']):
                     if r['__id'] not in repolist:
                         continue
                     repoinfo = repolist[r['__id']]
-                    ret['results']['Data'][i]['__repo_id'] = repoinfo[0]
-                    ret['results']['Data'][i]['__repo_name'] = repoinfo[1]
-                    ret['results']['Data'][i]['__repo_uuid'] = repoinfo[2]
-                    ret['results']['Data'][i]['__schema_id'] = repoinfo[3]
-                    ret['results']['Data'][i]['__schema_name'] = repoinfo[4]
+                    sub_ret['results'][i]['__repo_id'] = repoinfo[0]
+                    sub_ret['results'][i]['__repo_name'] = repoinfo[1]
+                    sub_ret['results'][i]['__repo_uuid'] = repoinfo[2]
+                    sub_ret['results'][i]['__schema_id'] = repoinfo[3]
+                    sub_ret['results'][i]['__schema_name'] = repoinfo[4]
                     schemaInfo = schemaFields[repoinfo[3]]
                     for field in schemaInfo:
-                        if field[2] == 'false':
-                            ret['results']['Data'][i].pop(field[1], None)
+                        if field[2] == 'false' or field[2] == '0':
+                            sub_ret['results'][i].pop(field[1], None)
+            elif doc_type == 'SchemaField':
+                try:
+                    nodes = db.run(
+                        "MATCH (r:Repository)--(t:SchemaType)--(f:SchemaField) WHERE f.uuid IN {uuid} RETURN ID(r) as repo_id, r.name as repo_name, r.uuid as repo_uuid, f.uuid as uuid, ID(t) as schema_id, t.name as schema_name",
+                        {"uuid": uuids})
+                    for n in nodes:
+                        repolist[n['uuid']] = [n['repo_id'], n['repo_name'], n['repo_uuid'], n['schema_id'], n['schema_name']]
+                        if n['schema_id'] not in schemaList:
+                            schemaList.append(n['schema_id'])
+                except Exception as e:
+                    print e.message
+                    pass
+                print repolist
+                for i, r in enumerate(sub_ret['results']):
+                    if r['__id'] not in repolist:
+                        continue
+                    repoinfo = repolist[r['__id']]
+                    sub_ret['results'][i]['__repo_id'] = repoinfo[0]
+                    sub_ret['results'][i]['__repo_name'] = repoinfo[1]
+                    sub_ret['results'][i]['__repo_uuid'] = repoinfo[2]
+                    sub_ret['results'][i]['__schema_id'] = repoinfo[3]
+                    sub_ret['results'][i]['__schema_name'] = repoinfo[4]
 
-            ret['count'] = len(result)
-        else:
-            ret['count'] = 0
-
-        return ret
+        return sub_ret
