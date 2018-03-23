@@ -14,3 +14,18 @@ def quick():
     return makeResponse(payload=SearchManager.quick(request.args.get('q')))
   except SearchError as e:
     return makeResponse(error=e)
+
+@search_blueprint.route('/pagingSearch', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+def paging():
+  exp = request.args.get('q')
+  node = request.args.get('n')
+  try:
+      start = int(request.args.get('s'))
+      end = int(request.args.get('e'))
+  except ValueError as e:
+      return makeResponse(error=e)
+  try:
+    return makeResponse(payload=SearchManager.quick(exp, node, start, end))
+  except SearchError as e:
+    return makeResponse(error=e)
