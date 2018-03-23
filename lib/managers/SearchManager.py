@@ -62,7 +62,7 @@ class SearchManager:
                 sub_ret['results'].append(d)
                 sub_ret['count'] += 1
             if sub_ret['count'] < (end-start):
-                sub_ret['slice'][1] = sub_ret['count']
+                sub_ret['slice'][1] = start+sub_ret['count']
             repolist = {}
             schemaList = []
             uuids = []
