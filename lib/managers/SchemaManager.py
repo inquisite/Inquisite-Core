@@ -45,6 +45,35 @@ class SchemaManager:
             raise DbError(message="Could not get types", context="Schema.getTypes", dberror=e.message)
 
     #
+    # Get specific data type in a repository
+    #
+    @staticmethod
+    def getType(repo_id, schema_id):
+        # TODO validate params
+
+        # TODO: check that repository is owned by current user
+
+        try:
+            res = db.run("MATCH (r:Repository)--(t:SchemaType) WHERE ID(r) = {repo_id} AND ID(t) = {schema_id}  RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"repo_id": int(repo_id), "schema_id": int(schema_id)}).peek()
+            if res:
+                t = { 'id': str(res['id']), 'name': res['name'], 'code': res['code'], 'description': res['description']}
+
+                count_res = db.run("MATCH (t:SchemaType)--(d:Data) WHERE ID(t) = {schema_id} RETURN count(d) as data_count", {"schema_id": int(schema_id)}).peek()
+                if count_res:
+                    t['data_count'] = count_res['data_count']
+                else:
+                    t['data_count'] = 0
+
+                # get fields
+                i = SchemaManager.getInfoForType(repo_id, res['id'])
+                t["fields"] = i["fields"]
+                print t
+                return t
+        except Exception as e:
+            print e.message
+            raise DbError(message="Could not get types", context="Schema.getType", dberror=e.message)
+
+    #
     # Return information for a schema type. The type_id parameter can be either a numeric id or string code for the type.
     # Returned value is a dict with keys for type information. A list of fields for the type is under the key "fields"
     #

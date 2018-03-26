@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, Response, make_response
 
 from lib.managers.ExportManager import ExportManager
 from lib.utils.RequestHelpers import makeResponse
@@ -12,9 +12,9 @@ export_blueprint = Blueprint('export', __name__)
 def exportData():
   try:
     type = request.form.get('type')
-    source = int(request.form.get('source'))
-    print type, source
-    return makeResponse(payload=ExportManager.export(type, source))
+    repo_id = int(request.form.get('repo'))
+    schema_id = int(request.form.get('schema'))
+    return makeResponse(payload=ExportManager.export(type, repo_id, schema_id), headers={"Content-disposition": "attachment; filename=tmp.json"})
   except Exception as e:
     print e.message
     return makeResponse(error=e)

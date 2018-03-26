@@ -58,15 +58,18 @@ def responseHandler(return_object):
     resp = return_object['payload']
   if "msg" in return_object:
     resp["msg"] = return_object["msg"]
+  headers = {}
+  if "headers" in return_object:
+    headers = return_object["headers"]
 
   if "errors" in return_object:
     resp["errors"] = return_object["errors"]
 
-  return Response(response=json.dumps(resp, encoding='latin1', ensure_ascii=False).encode('utf8', errors='ignore'), status=status_code, mimetype=mime_type)
+  return Response(response=json.dumps(resp, encoding='latin1', ensure_ascii=False).encode('utf8', errors='ignore'), status=status_code, mimetype=mime_type, headers=headers)
 #
 # returnPayload = Return raw payload instead of request. [Default is false]
 #
-def makeResponse(status=200, message=None, payload=None, returnPayload=False, error=None):
+def makeResponse(status=200, message=None, payload=None, returnPayload=False, error=None, headers=None):
     if error:
         return makeErrorResponse(error, returnPayload=returnPayload)
 
@@ -75,6 +78,8 @@ def makeResponse(status=200, message=None, payload=None, returnPayload=False, er
         resp['msg'] = message
     if payload is not None:
         resp['payload'] = payload
+    if headers is not None:
+        resp['headers'] = headers
 
     if returnPayload:
         return resp

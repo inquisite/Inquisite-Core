@@ -30,6 +30,16 @@ def getTypes(repo_id):
     except Exception as e:
         return makeResponse(error=e)
 
+@schema_blueprint.route('/schema/getType/<repo_id>/<schema_id>', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+@jwt_required
+def getType(repo_id, schema_id):
+    # TODO: check that user has access to this data
+    try:
+        return makeResponse(payload=SchemaManager.getType(repo_id, schema_id))
+    except Exception as e:
+        return makeResponse(error=e)
+
 @schema_blueprint.route('/schema/addType/<repo_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required

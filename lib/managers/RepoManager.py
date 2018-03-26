@@ -191,7 +191,7 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     repo = {}
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published",
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, n.created_on as created, n.license as license",
       {"repo_id": repo_id})
 
     for r in result:
@@ -199,6 +199,8 @@ class RepoManager:
       repo['name'] = r['name']
       repo['readme'] = r['readme']
       repo['published'] = r['published']
+      repo['created'] = r['created']
+      repo['license'] = r['license']
 
     return repo
 
@@ -258,22 +260,6 @@ class RepoManager:
       return True
 
     raise FindError(message="Could not find person or repository", context="Repositories.deleteOwner")
-
-  @staticmethod
-  def getInfo(repo_id):
-    RepoManager.validate_repo_id(repo_id)
-
-    repo = {}
-    result = dub.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.name AS name, n.url AS url, n.readme AS readme, n.published AS published",
-      {"repo_id": repo_id})
-
-    for r in result:
-      repo['name'] = r['name']
-      repo['url'] = r['url']
-      repo['readme'] = r['readme']
-      repo['published'] = r['published']
-
-    return repo
 
   @staticmethod
   def addCollaborator(repo_id, person_id, access="read-only"):
