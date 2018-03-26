@@ -264,16 +264,16 @@ class DataManager:
         try:
             id = int(node_id)
             result = db.run(
-                "MATCH (d:Data)--(t:SchemaType) WHERE ID(d) = {node_id} RETURN d, t.name as typename, t.code as typecode",
+                "MATCH (d:Data)--(t:SchemaType)--(r:Repository) WHERE ID(d) = {node_id} RETURN d, t.name as typename, t.code as typecode, ID(t) as schema_id, ID(r) as repo_id",
                 {"node_id": id})
         except:
             result = db.run(
-                "MATCH (d:Data)--(t:SchemaType) WHERE d.uuid = {uuid} RETURN d, ID(d) as node_id, t.name as typename, t.code as typecode",
+                "MATCH (d:Data)--(t:SchemaType)--(r:Repository) WHERE d.uuid = {uuid} RETURN d, ID(d) as node_id, t.name as typename, t.code as typecode, ID(t) as schema_id, ID(r) as repo_id",
                 {"uuid": node_id})
 
         if result.peek():
             for r in result:
-                    return {"node_id": r["node_id"], "typename": r["typename"], "typecode": r["typecode"], "data": r["d"].properties}
+                    return {"node_id": r["node_id"], "typename": r["typename"], "typecode": r["typecode"], "schema_id": r["schema_id"], "repo_id": r["repo_id"], "data": r["d"].properties}
         else:
             raise FindError(message="Node does not exist")
 
