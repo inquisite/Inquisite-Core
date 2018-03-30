@@ -2,6 +2,7 @@ from lib.utils.Db import db
 import re
 import datetime
 import json
+from uuid import uuid4
 from RepoManager import RepoManager
 from SchemaManager import SchemaManager
 from DataManager import DataManager
@@ -14,12 +15,13 @@ class ExportManager:
 
     # Return repository name and id for given repo code
     @staticmethod
-    def export(export_type, repo_id=None, schema_id=None, record_ids=None):
+    def export(export_name, export_user, export_type, repo_id=None, schema_id=None, record_ids=None):
+        export_name = export_name + '_' + export_type + '_export'
         export = {
-            "name": "export_placeholder",
+            "name": export_name,
             "time": str(datetime.datetime.now()),
-            "exporter": "me [for now]",
-            "uuid": '0000-000000-00000-000000-000000',
+            "exporter": export_user,
+            "uuid": uuid4().hex,
             "repos": []
         }
         if export_type == 'Repository':
@@ -32,7 +34,11 @@ class ExportManager:
 
                 # Get all data for each schema in this repo
                 for i in range(len(schema_info)):
-                    schema_data = DataManager.getDataForType(repo_id, schema_info[i]['id'])
+
+                    data_count = DataManager.getCountForType(repo_id, schema_info[i]['id'])
+                    data_total = data_count['data_count']
+
+                    schema_data = DataManager.getDataForType(repo_id, schema_info[i]['id'], 0, data_total)
                     #print schema_data
                     schema_info[i]['data'] = schema_data
 
@@ -51,9 +57,14 @@ class ExportManager:
                 # Get all field information for all schemas for this repo
                 schema_info = SchemaManager.getType(repo_id, schema_id)
 
-                # Get data for this schema
-                schema_data = DataManager.getDataForType(repo_id, schema_id)
+                # Get the total count of records for this type
 
+                data_count = DataManager.getCountForType(repo_id, schema_id)
+                data_total = data_count['data_count']
+                print repo_id, schema_id, data_total
+                # Get data for this schema
+                schema_data = DataManager.getDataForType(repo_id, schema_id, 0, data_total)
+                schema_info['data'] = schema_data
                 repo_info['schemas'] = schema_info
 
                 export['repos'].append(repo_info)

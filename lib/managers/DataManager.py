@@ -277,6 +277,20 @@ class DataManager:
         else:
             raise FindError(message="Node does not exist")
 
+    #
+    # Get the total count of Data nodes for a Schema Type
+    #
+    @staticmethod
+    def getCountForType(repo_id, type_id):
+        repo_id = int(repo_id)
+        type_id = int(type_id)
+        try:
+            q_count = db.run("MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE ID(r)={repo_id} AND ID(t)={type_id} RETURN count(d) as data_count", {"repo_id": repo_id, "type_id": type_id}).peek()
+
+            return {"repo_id": repo_id, "type_id": type_id, "data_count": q_count['data_count']}
+        except exception as e:
+            raise DbError(message="Could get type Count", context="DataManager.getCountForType", dberror=e.message)
+
     @staticmethod
     def getDataForType(repo_id, type_code, start=0, limit=100):
         repo_id = int(repo_id)

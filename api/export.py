@@ -12,6 +12,8 @@ export_blueprint = Blueprint('export', __name__)
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def exportData():
   type = request.form.get('type')
+  name = request.form.get('name')
+  user = request.form.get('user')
   try:
     repo_id = int(request.form.get('repo'))
   except TypeError:
@@ -24,8 +26,9 @@ def exportData():
     record_ids = json.loads(request.form.get('records'))
   except TypeError:
     record_ids = None
+  print repo_id, schema_id
   try:
-    return makeResponse(payload=ExportManager.export(type, repo_id, schema_id, record_ids), headers={"Content-disposition": "attachment; filename=tmp.json"})
+    return makeResponse(payload=ExportManager.export(name, user, type, repo_id, schema_id, record_ids), headers={"Content-disposition": "attachment; filename=tmp.json"})
   except Exception as e:
     print "endpoint", e.message
     return makeResponse(error=e)
