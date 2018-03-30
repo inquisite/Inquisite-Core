@@ -14,9 +14,11 @@ def exportData():
   type = request.form.get('type')
   try:
     repo_id = int(request.form.get('repo'))
-    schema_id = int(request.form.get('schema'))
   except TypeError:
     repo_id = None
+  try:
+    schema_id = int(request.form.get('schema'))
+  except TypeError:
     schema_id = None
   try:
     record_ids = json.loads(request.form.get('records'))
