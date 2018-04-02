@@ -71,7 +71,6 @@ class DataManager:
             if v is not None and v != '':
                 dt = SchemaManager.getDataTypeInstanceForField(repo_id, type_code, f["code"], v)
                 dtv = dt.validate(v)
-
                 if dtv is not True:
                     row_errors.append(f['code'])
                     continue
@@ -81,7 +80,11 @@ class DataManager:
                 # in the dict. This allows data types to serialize data across multiple node properties if required.
                 # This is distinct from the case where the caller submits a dict as data. In that case we convert it to
                 # JSON prior to performing any parsing.
-                parsed_value = dt.parse(v)
+                if f['type'] == 'ListDataType':
+                    list_code = f['settings']['list_code']
+                    parsed_value = dt.parse(v, list_code, repo_id)
+                else:
+                    parsed_value = dt.parse(v)
 
                 # If a dict is returned we need to stored parsed value in multiple fields
                 if isinstance(parsed_value, dict):

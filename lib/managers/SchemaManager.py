@@ -352,7 +352,6 @@ class SchemaManager:
 
             r = result.peek()
             # TODO: check query result
-
             if r:
                 ret['exists'] = False
                 ret['field_id'] = r['id']
@@ -522,11 +521,9 @@ class SchemaManager:
         if ft is None:
             # TODO: throw exception?
             return None
-
         ft.setSettings(field_info["settings"])
         if value is not None:
             ft.set(value)
-
         return ft
 
     #

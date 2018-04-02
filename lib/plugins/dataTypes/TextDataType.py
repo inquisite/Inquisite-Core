@@ -35,7 +35,7 @@ class TextDataType(BaseDataType):
         }
     }
 
-    priority = 70
+    priority = 60
 
     settings = Settings(settings_spec)
 
