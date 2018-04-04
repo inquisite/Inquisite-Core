@@ -179,6 +179,9 @@ class UploadManager:
         fields_created = {}
         # create new fields
         for i, m in enumerate(data_mapping):
+            # skip empty types
+            if len(data_types[i]) == 0:
+                continue
             try:
                 fid = int(m)
                 field_info = SchemaManager.getInfoForField(repo_id, type, fid)
@@ -191,6 +194,8 @@ class UploadManager:
                 if field_names[i] != data_mapping[i] and field_names[i] != '' and field_names[i] is not None:
                     m = field_names[i]
                 mCode = re.sub(r'[^A-Za-z0-9_]+', '_', m).lower()
+                if len(mCode) == 0:
+                    continue
                 data_mapping[i] = mCode
                 field_info = SchemaManager.getInfoForField(repo_id, type, m)
                 if field_info is None:
@@ -201,8 +206,13 @@ class UploadManager:
                     settings = {"search_display": search_display_fields[i]}
                     if data_types[i] == 'ListDataType':
                         new_list = ListManager.addList(repo_id, m, mCode+'_list')
-                        list_code = new_list['type']['code']
+                        
+                        if ('type' in new_list) and ('code' in new_list['type']):
+                            list_code = new_list['type']['code']
+                        else:
+                            list_code = None
                         settings['list_code'] = list_code
+                    
                     new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField, settings)
                     if new_field is not None:
                         data_mapping[i] = new_field["code"]
