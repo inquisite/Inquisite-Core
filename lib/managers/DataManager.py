@@ -301,7 +301,12 @@ class DataManager:
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
 
         nodes = []
-        cols = []
+        cols = list(map(lambda  x: x['code'], type_info['fields']))
+
+        colNames = {}
+        for f in type_info['fields']:
+            colNames[f['code']] = f['name']
+
         c = 0
 
         try:
@@ -314,10 +319,7 @@ class DataManager:
                     nodes.append(data.items()[0][1].properties)
                     c = c + 1
 
-                if len(nodes) > 0:
-                    cols = nodes[0].keys()
-
-            return {"data": nodes, "columns": cols, "type_id": type_info["type_id"], "repo_id": repo_id, "start": start, "limit": limit, "count": c}
+            return {"data": nodes, "columns": cols, "columnNames": colNames,  "type_id": type_info["type_id"], "repo_id": repo_id, "start": start, "limit": limit, "count": c}
         except Exception as e:
             return {"data": [], "columns": [], "type_id": type_info["type_id"], "repo_id": repo_id, "start": start,
                     "limit": limit, "count": 0}
