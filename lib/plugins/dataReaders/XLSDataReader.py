@@ -37,7 +37,6 @@ class XLSDataReader(BaseDataReader):
     h = self.input_file.row(0)
 
     h = [str(a.value) for a in h]
-    print h
     if len(filter(lambda x: re.match(r'^[\d]$', x), h)) > 0 or len(set(h)) < len(h):
       # no headers
       self.headers = [str(x) for x in range(1, len(h))]

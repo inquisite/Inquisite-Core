@@ -89,5 +89,4 @@ class GeoJSONDataReader(BaseDataReader):
 
       file_data.append(row_proc)
 
-    #print file_data
     return file_data

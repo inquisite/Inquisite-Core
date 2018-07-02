@@ -68,9 +68,8 @@ class CSVDataReader(BaseDataReader):
                     continue
                 if rows is not None and c > rows:
                     break
-                print row
                 row = dict(map(lambda x: ((unicode(x[0], errors="ignore"), unicode(x[1], errors="ignore")) if isinstance(x[1], str) else (unicode(x[0], errors="ignore"), x[1])), row.iteritems()))
-                print row
+
                 file_data.append(row)
 
         return file_data
