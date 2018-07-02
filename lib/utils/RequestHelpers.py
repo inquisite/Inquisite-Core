@@ -3,6 +3,10 @@ import json
 from collections import OrderedDict
 from flask import Response
 from flask.json import jsonify
+import sys
+import os
+import traceback
+from api.config import app_config
 
 #
 # Extract into a dictionary repeating parameters encoded thusly:
@@ -58,6 +62,11 @@ def responseHandler(return_object):
     resp = return_object['payload']
   if "msg" in return_object:
     resp["msg"] = return_object["msg"]
+
+  # Include stacktrace when in "development" mode
+  if "trace" in return_object and "mode" in app_config and app_config["mode"] == "development":
+    resp["trace"] = return_object["trace"]
+
   headers = {}
   if "headers" in return_object:
     headers = return_object["headers"]
@@ -95,10 +104,18 @@ def makeErrorResponse(e, status_code=400, returnPayload=False):
     else:
         context = ""
 
+    trace = ""
+    if "mode" in app_config and app_config["mode"] == "development":
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        trace = " (" + str(exc_type) + "; " + str(fname) + "; " + str(exc_tb.tb_lineno) + ")\n " + traceback.format_exc()
+    
+
     resp = {
         "status_code": status_code,
         "msg": e.message,
-        "context": context
+        "context": context,
+        "trace" : trace
     }
     if hasattr(e, "errors"):
         resp["errors"] = e.errors

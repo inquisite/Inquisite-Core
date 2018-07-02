@@ -17,6 +17,8 @@
   "email_from_address": "admin@inquisite.org",
 
   "base_url": "http://localhost:8080",
+  
+  "mode": "development",
 
   "google_maps_api": "google_maps_api_key",
   "libpostal_url": "libpostal_rest_service"
