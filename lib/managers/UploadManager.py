@@ -293,7 +293,9 @@ class UploadManager:
             return False
 
         r = result.peek()
-        return r['uuid']
+        if r and 'uuid' in r:
+            return r['uuid']
+        return True
 
     @staticmethod
     def closeImportEvent(uuid):
@@ -303,7 +305,9 @@ class UploadManager:
         if result is None:
             return False
         r = result.peek()
-        return r['uuid']
+        if r and 'uuid' in r:
+            return r['uuid']
+        return True
 
     @staticmethod
     def getImportEventsForRepo(repo_id):
