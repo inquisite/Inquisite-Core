@@ -75,15 +75,21 @@ class GeorefDataType(BaseDataType):
 
             else:
                 req_val = json.dumps({"query": value})
-                address_match_resp = requests.post(self.libpostal, data=req_val)
-                address_dict = {}
-                if address_match_resp.status_code == 200:
-                    address_array = address_match_resp.json()
-                    for element in address_array:
-                        address_dict[element['label']] = element['value']
-                else:
-                    errors.append("Could not query libpostal local service for address parsing")
+
+                try:
+                    address_match_resp = requests.post(self.libpostal, data=req_val)
+                    address_dict = {}
+                    if address_match_resp.status_code == 200:
+                        address_array = address_match_resp.json()
+                        for element in address_array:
+                            address_dict[element['label']] = element['value']
+                    else:
+                        errors.append("Could not query libpostal local service for address parsing")
+                        return False
+                except requests.exceptions.ConnectionError as e:
+                    errors.append("Could not connect to libpostal local service for address parsing")
                     return False
+
                 if 'house_number' in address_dict and 'road' in address_dict and ('state' in address_dict or 'state_district' in address_dict) and ('city' in address_dict or 'city_district' in address_dict) and 'postcode' in address_dict:
                     address_resp = requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=\%(address)s&key=%(key)s" % {"address": value, "key": self.map_key})
                     if address_resp.status_code == 200:
