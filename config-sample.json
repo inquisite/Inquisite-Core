@@ -21,5 +21,14 @@
   "mode": "development",
 
   "google_maps_api": "google_maps_api_key",
-  "libpostal_url": "libpostal_rest_service"
+  "libpostal_url": "libpostal_rest_service",
+
+
+  // Content used when auto-creating user repository
+  "default_repo_information": {
+      "name": "My data repository",
+      "description": "This is an automatically created repository. Add your data here, or create additional repositories for different projects.",
+      "license": "cc0",
+      "url": ""
+  }
 }

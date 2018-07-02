@@ -1,6 +1,5 @@
 import json
 
-from lib.managers.RepoManager import RepoManager
 from lib.utils.Db import db
 from lib.exceptions.DbError import DbError
 from lib.exceptions.SaveError import SaveError
@@ -14,6 +13,7 @@ from validate_email import validate_email
 from lib.utils.UtilityHelpers import email_domain_is_allowed
 from lib.utils.MailHelpers import send_mail
 from api.config import app_config
+import lib.managers.RepoManager
 
 
 class PeopleManager:
@@ -90,9 +90,9 @@ class PeopleManager:
 
     for item in result:
 
-      owner = RepoManager.getOwner(int(item['id']))
-      data  = RepoManager.getData(int(item['id']))
-      users = RepoManager.getUsers(int(item['id']))
+      owner = lib.managers.RepoManager.RepoManager.getOwner(int(item['id']))
+      data  = lib.managers.RepoManager.RepoManager.getData(int(item['id']))
+      users = lib.managers.RepoManager.RepoManager.getUsers(int(item['id']))
 
       repos.append({
         "id": item['id'],

@@ -9,6 +9,8 @@ from lib.utils.Db import db
 from lib.exceptions.ValidationError import ValidationError
 from lib.exceptions.DbError import DbError
 from lib.exceptions.FindError import FindError
+import lib.managers.PeopleManager
+from api.config import app_config
 
 
 class RepoManager:
@@ -208,9 +210,18 @@ class RepoManager:
   def delete(repo_id):
     RepoManager.validate_repo_id(repo_id)
 
+    owner = RepoManager.getOwner(repo_id)
+
     # TODO: clean up all repo nodes (currently schema and data nodes are not removed)
     result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
     summary = result.consume()
+
+    # Was this the only repo for that owner?
+    if "id" in owner:
+      repos = lib.managers.PeopleManager.PeopleManager.getRepos(owner["id"])
+      if len(repos) == 0:
+        # create new default repo because user just deleted their only one.
+        RepoManager.create(app_config['default_repo_information']['url'], app_config['default_repo_information']['name'], app_config['default_repo_information']['description'], app_config['default_repo_information']['license'], 0, owner['id'], "ID(p) = {identity}")
 
     if summary.counters.nodes_deleted >= 1:
       return True
