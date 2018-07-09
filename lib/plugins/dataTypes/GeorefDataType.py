@@ -56,7 +56,6 @@ class GeorefDataType(BaseDataType):
         # min_length = self.settings.getValue("min_length")
         # max_length = self.settings.getValue("max_length")
         # l = len(value)
-
         errors = []
 
         self.parsed_value = None
@@ -104,31 +103,43 @@ class GeorefDataType(BaseDataType):
             if not json_data:
                 try:
                     json_data = json.loads(value.lower())
-                    if ("coordinates" in json_data) and ("type" in json_data) \
-                            and (json_data["type"] in ["point", "polygon"]) \
-                            and ((len(json_data["coordinates"]) > 0) and (GeorefDataType.isCoordinateList(json_data["coordinates"], json_data["type"]) is True)):
-                        pass
-                    elif ("type" in json_data) and (json_data["type"] == "feature") and ("geometry" in json_data):
+                    #if ("coordinates" in json_data) and ("type" in json_data) \
+                    #        and (json_data["type"] in ["point", "polygon", "multipolygon", "linestring", "multilinestring"]) \
+                    #        and ((len(json_data["coordinates"]) > 0) and (GeorefDataType.isCoordinateList(json_data["coordinates"], json_data["type"]) is True)):
+                    if ("type" in json_data) and (json_data["type"] == "feature") and ("geometry" in json_data):
                         json_data = json_data["geometry"]
+                    print json_data
+                    if ("coordinates" in json_data) and ("type" in json_data) \
+                            and (json_data["type"] in ["point", "polygon", "multipolygon", "linestring", "multilinestring"]) \
+                            and ((len(json_data["coordinates"]) > 0) and (GeorefDataType.validateCoordinates(json_data["coordinates"]) is True)):
+                        print "VALID geoJSON"
+                        pass
                     else:
+                        print "INVALID"
                         return False
 
                 except Exception as e:
+                    print e.message
                     errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
                     pass
-            #print json_data
         # Is it a GeoJSON geometry object
         if isinstance(value, dict):
             value = {k.lower(): v for k, v in value.items()}
             try:
-                if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon"]) \
-                        and ((len(value["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"], value["type"].lower())):
+                #if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon"]) \
+                #        and ((len(value["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"], value["type"].lower())):
+                if ("type" in json_data) and (json_data["type"] == "feature") and ("geometry" in json_data):
+                    json_data = json_data["geometry"]
+                print json_data
+                if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon", "multipolygon", "linestring", "multilinestring"]) \
+                        and ((len(value["coordinates"]) > 0) and GeorefDataType.validateCoordinates(value["coordinates"])):
                     json_data = value
-                elif ("type" in json_data) and (json_data["type"].lower() == "feature") and ("geometry" in json_data):
-                    json_data = value["geometry"]
+                    print "VALID"
                 else:
+                    print "INVALID"
                     return False
             except Exception as e:
+                print e.message
                 errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
         if json_data is None:
             return False
@@ -185,10 +196,39 @@ class GeorefDataType(BaseDataType):
     # Utilities
     #
     @classmethod
+    def validateCoordinates(cls, l):
+        for v in l:
+            if isinstance(v, numbers.Number):
+                t = l[1]
+                if isinstance(t, numbers.Number):
+                    return True
+            else:
+                return GeorefDataType.validateCoordinates(v)
+
+        print "RETURNING NO"
+        return False
+
+
+        #v = l[0]
+        #if isinstance(v, numbers.Number):
+        #    t = l[1]
+        #    if isinstance(t, numbers.Number):
+        #        return True
+        #elif ((type(v) is list) or (type(v) is tuple)) and ((len(v) == 2) or (len(v) == 3)) and isinstance(v[0], #numbers.Number) and isinstance(v[1], numbers.Number):
+        #     return True
+        #elif ((type(v) is list) or (type(v) is tuple)) and (len(v) > 3):
+        #     return validateCoordinates(cls, v)
+
+        #return False
+
+
+
     def isCoordinateList(cls, l, geoType):
         if geoType == 'polygon':
             l = l[0]
             if (type(l) is list) and (len(l) > 0):
+                m = l[0]
+
                 coords = [v for v in l if ((type(v) is list) or (type(v) is tuple)) and ((len(v) == 2) or (len(v) == 3))
                      and isinstance(v[0], numbers.Number) and isinstance(v[1], numbers.Number)]
         else:
