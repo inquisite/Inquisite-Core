@@ -163,7 +163,15 @@ class SchemaManager:
     @memoized
     def checkFieldForData(repo_id, type_id, field_code):
         try:
-            result = db.run("MATCH (r:Repository)--(s:SchemaType)--(d:Data) WHERE ID(r) = {repo_id} AND ID(s) = {type_id} AND d." + field_code + " <> '' return count(d) as data_count", {"repo_id": repo_id, "type_id": type_id}).peek()
+            type_id = int(type)
+        except Exception:
+            type_id = str(type)
+
+        try:
+            if isinstance(type_id, int):
+                result = db.run("MATCH (r:Repository)--(s:SchemaType)--(d:Data) WHERE ID(r) = {repo_id} AND ID(s) = {type_id} AND d." + field_code + " <> '' return count(d) as data_count", {"repo_id": repo_id, "type_id": type_id}).peek()
+            else:
+                result = db.run("MATCH (r:Repository)--(s:SchemaType)--(d:Data) WHERE ID(r) = {repo_id} AND s.code = {type_id} AND d." + field_code + " <> '' return count(d) as data_count", {"repo_id": repo_id, "type_id": type_id}).peek()
             if result is not None:
                 data_count = result['data_count']
                 ret = {"data": False, "total": data_count}

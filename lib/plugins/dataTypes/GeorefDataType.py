@@ -68,7 +68,7 @@ class GeorefDataType(BaseDataType):
         # Is it a single coordinate
         json_data = None
         if isinstance(value, basestring):
-            str_coords = re.search(r'^(?:\(|\[|\{)([\d\.-]+)(?:, |,)([\d\.-]+)(?:\)|\]|\})$', value)
+            str_coords = re.search(r'^(?:\(|\[|\{|)([-+]?[1-8]?\d(?:\.\d+)?|[-+]?90(?:\.0+)?),\s*([-+]?180(?:\.0+)?|[-+]?(?:(?:1[0-7]\d)|[-+]?(?:[1-9]?\d))(?:\.\d+)?)(?:\)|\]|\}|)$', value)
             if str_coords:
                 json_data = {"type": "point", "coordinates": [float(str_coords.group(2)), float(str_coords.group(1))]}
 
