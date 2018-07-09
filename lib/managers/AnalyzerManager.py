@@ -153,6 +153,7 @@ class AnalyzerManager:
 
             # If this is text, check to see if it can be considered a list
             if dataType == 'Text':
+                colList = [str(item) for item in colList]
                 listTest = set(colList)
                 uCount = ListManager.uniqueValueCount(listTest)
                 if uCount:

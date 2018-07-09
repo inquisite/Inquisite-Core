@@ -141,7 +141,6 @@ class UploadManager:
         mt = getMimetypeForFile(upload_filepath)
         pass_message('import_step', {"step": "Gathering data", "pos": 25})
         data = UploadManager._generatePreview(filepath=upload_filepath, mimetype=mt, rows=1000000, start=start)
-        print("UPLOADED FILE: " + str(len(data["data"])) + " rows")
         if data is None:
             raise ImportError(message="Could not read file", context="UploadManager.importData")
         pass_message('import_step', {"step": "Getting/Generating Schema", "pos": 50})
@@ -206,13 +205,13 @@ class UploadManager:
                     settings = {"search_display": search_display_fields[i]}
                     if data_types[i] == 'ListDataType':
                         new_list = ListManager.addList(repo_id, m, mCode+'_list')
-                        
+
                         if ('type' in new_list) and ('code' in new_list['type']):
                             list_code = new_list['type']['code']
                         else:
                             list_code = None
                         settings['list_code'] = list_code
-                    
+
                     new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField, settings)
                     if new_field is not None:
                         data_mapping[i] = new_field["code"]

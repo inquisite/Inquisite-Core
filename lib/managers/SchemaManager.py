@@ -26,7 +26,6 @@ class SchemaManager:
         # TODO validate params
 
         # TODO: check that repository is owned by current user
-
         try:
             result = db.run("MATCH (t:SchemaType)--(r:Repository) WHERE ID(r) = {repo_id}  RETURN ID(t) as id, t.name as name, t.code as code, t.description as description", {"repo_id": int(repo_id)})
 
@@ -67,10 +66,8 @@ class SchemaManager:
                 # get fields
                 i = SchemaManager.getInfoForType(repo_id, res['id'])
                 t["fields"] = i["fields"]
-                print t
                 return t
         except Exception as e:
-            print e.message
             raise DbError(message="Could not get types", context="Schema.getType", dberror=e.message)
 
     #
@@ -124,6 +121,9 @@ class SchemaManager:
 
                     t = {'id': str(r['id']), 'name': r['name'], 'code': r['code'], 'description': r['description'], 'type': r['type'], 'settings': {}}
 
+                    dc = SchemaManager.checkFieldForData(repo_id, type_id, r['code'])
+                    t['has_data'] = dc['data']
+
                     for s in ft.getSettingsList():
                         if "settings_" + s in r['props']:
                             t["settings_" + s] = r['props']["settings_" + s]
@@ -156,6 +156,23 @@ class SchemaManager:
                 return f
         return None
 
+    #
+    # Check if field has data
+    #
+    @staticmethod
+    @memoized
+    def checkFieldForData(repo_id, type_id, field_code):
+        try:
+            result = db.run("MATCH (r:Repository)--(s:SchemaType)--(d:Data) WHERE ID(r) = {repo_id} AND ID(s) = {type_id} AND d." + field_code + " <> '' return count(d) as data_count", {"repo_id": repo_id, "type_id": type_id}).peek()
+            if result is not None:
+                data_count = result['data_count']
+                ret = {"data": False, "total": data_count}
+                if data_count > 0:
+                    ret['data'] = True
+                return ret
+        except Exception as e:
+            raise DbError(message="Could not get data count: " + e.message, context="Schema.checkFieldForData",
+                          dberror=e.message)
 
     #
     #

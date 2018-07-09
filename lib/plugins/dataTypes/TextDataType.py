@@ -54,6 +54,8 @@ class TextDataType(BaseDataType):
             return False
         except ValueError:
             pass
+        except TypeError:
+            pass
 
         try:
             l = len(unicode(value, errors='replace'))

@@ -63,14 +63,11 @@ class ListDataType(BaseDataType):
 
         split_regex = r'[,;|\/]{1}'
         value_array = re.split(split_regex, value)
-        #print value_array
         if len(value_array) > 1024:
-            #print "Array length out of range"
             return False
 
         if len(set(value_array)) != len(value_array):
             # There are duplicates in the "list" so probably not a real list
-            #print "Duplicates invalidate the list"
             return False
 
         self.tmp_value = value_array
@@ -85,13 +82,10 @@ class ListDataType(BaseDataType):
             self.validate(value)
 
         items = []
-        print list_code, repo_id
-        print self.tmp_value
         if isinstance(self.tmp_value, list):
             for item in self.tmp_value:
                 item_code = re.sub(r'[^A-Za-z0-9_]+', '_', item).lower()
                 list_item = ListManager.addListItem(repo_id, list_code, item, item_code)
-                print list_item
                 items.append(str(list_item["item_id"]))
         else:
             item_code = re.sub(r'[^A-Za-z0-9_]+', '_', self.tmp_value).lower()

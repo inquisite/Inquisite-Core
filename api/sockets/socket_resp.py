@@ -22,7 +22,10 @@ def test_disconnect():
 
 @x_socketio.on("send_user_id")
 def new_user(data):
-    emit('entered_response', {'data': 'new room!'})
+    join_room(data['id'])
+    session['user_room'] = data['id']
+    emit('entered_response', {'data': 'new room for ' + str(data['id'])})
+    session.modified = True
 
 @x_socketio.on("start_upload_process")
 def start_upload():
