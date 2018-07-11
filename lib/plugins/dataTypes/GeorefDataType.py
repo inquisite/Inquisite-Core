@@ -103,43 +103,30 @@ class GeorefDataType(BaseDataType):
             if not json_data:
                 try:
                     json_data = json.loads(value.lower())
-                    #if ("coordinates" in json_data) and ("type" in json_data) \
-                    #        and (json_data["type"] in ["point", "polygon", "multipolygon", "linestring", "multilinestring"]) \
-                    #        and ((len(json_data["coordinates"]) > 0) and (GeorefDataType.isCoordinateList(json_data["coordinates"], json_data["type"]) is True)):
                     if ("type" in json_data) and (json_data["type"] == "feature") and ("geometry" in json_data):
                         json_data = json_data["geometry"]
-                    print json_data
                     if ("coordinates" in json_data) and ("type" in json_data) \
                             and (json_data["type"] in ["point", "polygon", "multipolygon", "linestring", "multilinestring"]) \
                             and ((len(json_data["coordinates"]) > 0) and (GeorefDataType.validateCoordinates(json_data["coordinates"]) is True)):
-                        print "VALID geoJSON"
                         pass
                     else:
-                        print "INVALID"
                         return False
 
                 except Exception as e:
-                    print e.message
                     errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
                     pass
         # Is it a GeoJSON geometry object
         if isinstance(value, dict):
             value = {k.lower(): v for k, v in value.items()}
             try:
-                #if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon"]) \
-                #        and ((len(value["coordinates"]) > 0) and GeorefDataType.isCoordinateList(value["coordinates"], value["type"].lower())):
-                if ("type" in json_data) and (json_data["type"] == "feature") and ("geometry" in json_data):
-                    json_data = json_data["geometry"]
-                print json_data
+                if ("type" in value) and (value["type"].lower() == "feature") and ("geometry" in value):
+                    json_data = value["geometry"]
                 if ("coordinates" in value) and ("type" in value) and (value["type"].lower() in ["point", "polygon", "multipolygon", "linestring", "multilinestring"]) \
                         and ((len(value["coordinates"]) > 0) and GeorefDataType.validateCoordinates(value["coordinates"])):
                     json_data = value
-                    print "VALID"
                 else:
-                    print "INVALID"
                     return False
             except Exception as e:
-                print e.message
                 errors.append("Could not parse %(value)s into geoJSON object" % {"value": value})
         if json_data is None:
             return False

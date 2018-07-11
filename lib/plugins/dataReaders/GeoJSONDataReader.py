@@ -21,7 +21,7 @@ class GeoJSONDataReader(BaseDataReader):
         if "type" in d and "features" in d and d["type"] == "FeatureCollection" and len(d["features"]) > 0:
           return True
     except Exception as e:
-        pass
+        raise FileError("Invalid GeoJSON file, please review the uploaded file", "GeoJSONDataReader.identify")
     return False
 
   #
