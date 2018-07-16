@@ -50,10 +50,10 @@ class BooleanDataType(BaseDataType):
 
         if isinstance(value, basestring):
             check_value = value.lower()
-            if check_value in ['yes', 'true', 't', 'y']:
+            if check_value in ['yes', 'true', 't', 'y', '1']:
                 self.parsed_value = {"boolean": 1}
                 return True
-            elif check_value in ['no', 'false', 'f', 'n']:
+            elif check_value in ['no', 'false', 'f', 'n', '0']:
                 self.parsed_value = {"boolean": 0}
                 return True
 
