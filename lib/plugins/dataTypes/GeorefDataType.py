@@ -88,7 +88,6 @@ class GeorefDataType(BaseDataType):
                 except requests.exceptions.ConnectionError as e:
                     errors.append("Could not connect to libpostal local service for address parsing")
                     return False
-                print address_dict
                 if (('house_number' in address_dict and 'road' in address_dict) or 'house' in address_dict) and ('state' in address_dict or 'state_district' in address_dict) and ('city' in address_dict or 'city_district' in address_dict) and 'postcode' in address_dict:
                     address_resp = requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=\%(address)s&key=%(key)s" % {"address": value, "key": self.map_key})
                     if address_resp.status_code == 200:
