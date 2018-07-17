@@ -136,7 +136,7 @@ class UploadManager:
     #
     #
     @staticmethod
-    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields, start=0):
+    def importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields, allow_list_merge, start=0):
         upload_filepath = os.path.join(UPLOAD_FOLDER, filename)
         mt = getMimetypeForFile(upload_filepath)
         pass_message('import_step', {"step": "Gathering data", "pos": 25})
@@ -204,7 +204,8 @@ class UploadManager:
                         mField = field_descriptions[i]
                     settings = {"search_display": search_display_fields[i]}
                     if data_types[i] == 'ListDataType':
-                        new_list = ListManager.addList(repo_id, m, mCode+'_list')
+                        merge_setting = search_display_fields[i]
+                        new_list = ListManager.addList(repo_id, m, mCode+'_list', merge_setting)
 
                         if ('type' in new_list) and ('code' in new_list['type']):
                             list_code = new_list['type']['code']
@@ -269,6 +270,7 @@ class UploadManager:
                 num_errors = num_errors + 1
                 pass_message('error_status', {"status": "Error in Row " + str(line) + ": " + e.message, "pos": error_display})
                 error_display += cell_chunk
+                print errors
 
         UploadManager.closeImportEvent(upload_uuid)
         pass_message('import_step', {"step": "Import Complete", "pos": 100})

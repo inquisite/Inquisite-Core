@@ -33,9 +33,10 @@ def importData():
     data_types = request.form.get('column_types').split("|")
     field_descriptions = request.form.get('field_descriptions').split("|")
     search_display_fields = request.form.get('field_search_display').split("|")
+    allow_list_merge = request.form.get('allow_list_merge').split("|")
 
     try:
-        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields), message="File imported")
+        return makeResponse(payload=UploadManager.importData(repo_id, type, filename, original_filename, data_mapping, ignore_first, field_names, schema_name, data_types, field_descriptions, search_display_fields, allow_list_merge), message="File imported")
     except UploadError as e:
         return makeResponse(error=e)
 

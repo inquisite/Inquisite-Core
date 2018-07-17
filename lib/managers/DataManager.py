@@ -24,6 +24,7 @@ class DataManager:
     @staticmethod
     def add(repo_id, type_code, data, import_uuid=None):
         # TODO: does user have access to this repo?
+        print repo_id, type_code, data, import_uuid
         data_proc, type_info = DataManager._validateData(repo_id, type_code, data)
         try:
             q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) AS id"
@@ -39,6 +40,7 @@ class DataManager:
             #DataManager.logChange("I", data_proc)
             return data_id
         except Exception as e:
+            print e.message
             raise DbError(message="Could not create data (" + e.__class__.__name__ + ") " + e.message, context="DataManager.add", dberror=e.message)
 
     #
@@ -83,6 +85,9 @@ class DataManager:
                 if f['type'] == 'ListDataType':
                     list_code = f['settings']['list_code']
                     parsed_value = dt.parse(v, list_code, repo_id)
+                    if len(parsed_value['rejected_items']) > 0:
+                        bad_items = "The following items do not appear in the current list and merges are not allowed: " + ', '.join(parsed_value['rejected_items'])
+                        row_errors.append(f['code'] + ' ' + bad_items)
                 else:
                     parsed_value = dt.parse(v)
 

@@ -36,11 +36,12 @@ def editList(repo_id, list_id):
     name = request.form.get('name')
     code = request.form.get('code')
     description = request.form.get('description')
+    allow_merge = request.form.get('merge_allowed')
 
     items = extractRepeatingParameterBlocksFromRequest(request, 'items')
     delete_items = extractRepeatingParameterFromRequest(request, 'itemsToDelete')
     try:
-        return makeResponse(payload=ListManager.editList(repo_id, list_id, name, code, description, items, delete_items))
+        return makeResponse(payload=ListManager.editList(repo_id, list_id, name, code, description, items, delete_items, allow_merge))
     except Exception as e:
         return makeResponse(error=e)
 

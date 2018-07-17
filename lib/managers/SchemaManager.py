@@ -430,6 +430,9 @@ class SchemaManager:
                 flds.append("f.settings_" + s + " = {settings_" + s + "}")
                 params["settings_" + s] = settings[s]
 
+            #if fieldtype == 'ListDataType':
+                # TODO Delete data that doesn't exist in new datatype unless the merge setting is allowed.
+
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repo_id} AND ID(f) = {field_id} SET " + ", ".join(flds) + " RETURN ID(f) as id, f.name as name",
                 params)

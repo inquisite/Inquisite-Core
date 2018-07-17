@@ -78,21 +78,39 @@ class ListDataType(BaseDataType):
     #
     #
     def parse(self, value, list_code, repo_id):
-        if value != self.tmp_value: # avoid reparsing dates already processed by validation
+        if value != self.tmp_value:
             self.validate(value)
 
+        list_info = ListManager.getInfoForList(repo_id, list_code)
+        merge_allowed = list_info['merge_allowed']
+        if not merge_allowed:
+            merge_allowed = 0
+        else:
+            merge_allowed = int(merge_allowed)
+        if merge_allowed == 0:
+            check_items = []
+            for item in list_info['items']:
+                check_items.append(item['code'])
         items = []
+        rejected = []
+
         if isinstance(self.tmp_value, list):
             for item in self.tmp_value:
                 item_code = re.sub(r'[^A-Za-z0-9_]+', '_', item).lower()
+                if merge_allowed == 0 and item_code not in check_items:
+                    rejected.append(item_code)
+                    continue
                 list_item = ListManager.addListItem(repo_id, list_code, item, item_code)
                 items.append(str(list_item["item_id"]))
         else:
             item_code = re.sub(r'[^A-Za-z0-9_]+', '_', self.tmp_value).lower()
-            list_item = ListManager.addListItem(repo_id, list_code, self.tmp_value, item_code)
-            items.append(list_item["id"])
+            if merge_allowed == 0 and item_code not in check_items:
+                rejected.append(item_code)
+            else:
+                list_item = ListManager.addListItem(repo_id, list_code, self.tmp_value, item_code)
+                items.append(list_item["id"])
 
-        d = self.parsed_value = {"list_items": ', '.join(items)}
+        d = self.parsed_value = {"list_items": ', '.join(items), "rejected_items": rejected}
         if d is not None:
             return d
         return False

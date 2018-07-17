@@ -12,7 +12,7 @@ class ListManager:
         pass
 
     @staticmethod
-    def addList(repo_id, name, code, description='', items={}):
+    def addList(repo_id, name, code, merge_setting, description='', items={}):
         try:
             repo_id = int(repo_id)
         except TypeError:
@@ -24,9 +24,7 @@ class ListManager:
 
             if result.peek() is not None and len(list(result)):
                 ret["exists"] = True
-                print result.peek(), list(result)
                 for r in result:
-                    print r
                     ret["type"] = {
                         "id": r['id'],
                         "code": r['code'],
@@ -34,12 +32,10 @@ class ListManager:
                         'description': r['description']
                     }
                     break
-                print "Returing existing List"
                 return ret
             else:
-                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (l:List {name: {name}, code: {code}, description: {description}, storage: 'Graph'})-[:PART_OF]->(r) return ID(l) as id", {"repo_id": repo_id, "name": name, "code": code, "description": description})
+                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (l:List {name: {name}, code: {code}, description: {description}, merge_allowed: {merge}, storage: 'Graph'})-[:PART_OF]->(r) return ID(l) as id", {"repo_id": repo_id, "name": name, "code": code, "description": description, "merge": merge_setting})
         except Exception as e:
-            print e.message
             raise DbError(message="Could not add list: " + e.message, context="List.addList",
                           dberror=e.message)
 
@@ -70,7 +66,7 @@ class ListManager:
         return ret
 
     @staticmethod
-    def editList(repo_id, list_id, name, code, description, items, delete_items):
+    def editList(repo_id, list_id, name, code, description, items, delete_items, merge_setting):
         try:
             repo_id = int(repo_id)
             list_id = int(list_id)
@@ -78,14 +74,12 @@ class ListManager:
             raise DbError(message="Invalid repo_id or list_id provided", context="List.addListItem",
                           dberror="")
         result = db.run(
-            "MATCH (r:Repository)--(l:List) WHERE ID(r) = {repo_id} AND ID(l) = {list_id} SET l.name = {name}, l.code = {code}, l.description = {description} RETURN ID(l) AS id",
-            {"repo_id": int(repo_id), "list_id": int(list_id), "name": name, "code": code, "description": description})
+            "MATCH (r:Repository)--(l:List) WHERE ID(r) = {repo_id} AND ID(l) = {list_id} SET l.name = {name}, l.code = {code}, l.description = {description}, l.merge_allowed = {merge} RETURN ID(l) AS id",
+            {"repo_id": int(repo_id), "list_id": int(list_id), "name": name, "code": code, "description": description, "merge": merge_setting})
 
         # add/edit fields
         item_status = {}
-        print items
         for k in items:
-            print items[k]
             if 'id' in items[k]:
                 # edit existing field
                 li_ret = ListManager.editListItem(repo_id, code, items[k].get('id', ''), items[k].get('display', ''), items[k].get('code', ''), items[k]['description'])
@@ -231,7 +225,6 @@ class ListManager:
 
     @staticmethod
     def deleteListItem(repo_id, code, item_id):
-        print repo_id, code, item_id
         try:
             repo_id = int(repo_id)
         except TypeError:
@@ -254,14 +247,15 @@ class ListManager:
         repo_id = int(repo_id)
         ret = {'lists': []}
         try:
-            lists_res = db.run("MATCH (r:Repository)--(l:List) WHERE ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"repo_id": repo_id})
+            lists_res = db.run("MATCH (r:Repository)--(l:List) WHERE ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description, l.merge_allowed as merge_allowed", {"repo_id": repo_id})
             if lists_res:
                 for i_list in lists_res:
                     list_ret = {
                         'id': i_list['id'],
                         'name': i_list['name'],
                         'code': i_list['code'],
-                        'description': i_list['description']
+                        'description': i_list['description'],
+                        'merge_allowed': i_list['merge_allowed']
                     }
                     ret['lists'].append(list_ret)
                 return ret
@@ -279,21 +273,19 @@ class ListManager:
             pass
         try:
             if isinstance(code, int):
-                list_res = db.run("MATCH (r:Repository)--(l:List) WHERE ID(l) = {code} AND ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"code" :code, "repo_id": repo_id}).peek()
-                print list_res
+                list_res = db.run("MATCH (r:Repository)--(l:List) WHERE ID(l) = {code} AND ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description, l.merge_allowed as merge_allowed", {"code" :code, "repo_id": repo_id}).peek()
                 if list_res is None:
                     return None
 
                 items_res = db.run("MATCH (i:ListItem)--(l:List)--(r:Repository) WHERE ID(l) = {code} AND ID(r) = {repo_id} RETURN ID(i) as id, i.display as display, i.code as code, i.description as description", {"code": code, "repo_id": repo_id})
             else:
-                list_res = db.run("MATCH (r:Repository)--(l:List) WHERE l.code = {code} AND ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"code" :code, "repo_id": repo_id}).peek()
-                print list_res
+                list_res = db.run("MATCH (r:Repository)--(l:List) WHERE l.code = {code} AND ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description, l.merge_allowed as merge_allowed", {"code" :code, "repo_id": repo_id}).peek()
                 if list_res is None:
                     return None
 
                 items_res = db.run("MATCH (i:ListItem)--(l:List)--(r:Repository) WHERE l.code = {code} AND ID(r) = {repo_id} RETURN ID(i) as id, i.display as display, i.code as code, i.description as description", {"code": code, "repo_id": repo_id})
 
-            info = {'list_id': list_res['id'], 'name': list_res['name'], 'code': list_res['code'], 'description': list_res['description']}
+            info = {'list_id': list_res['id'], 'name': list_res['name'], 'code': list_res['code'], 'description': list_res['description'], 'merge_allowed': list_res['merge_allowed']}
 
             item_list = []
             if items_res:
@@ -305,7 +297,6 @@ class ListManager:
             return info
 
         except Exception as e:
-            print e.message
             raise DbError(message="Could not get list items for list", context="List.getInfoForList", dberror=e.message)
 
     #
