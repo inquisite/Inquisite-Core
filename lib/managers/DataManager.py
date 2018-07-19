@@ -22,10 +22,9 @@ class DataManager:
     # Returns id of newly created node
     #
     @staticmethod
-    def add(repo_id, type_code, data, import_uuid=None):
+    def add(repo_id, type_code, data, import_uuid=None, fields_created=None):
         # TODO: does user have access to this repo?
-        print repo_id, type_code, data, import_uuid
-        data_proc, type_info = DataManager._validateData(repo_id, type_code, data)
+        data_proc, type_info = DataManager._validateData(repo_id, type_code, data, fields_created)
         try:
             q = "MATCH (t:SchemaType) WHERE ID(t) = {type_id} CREATE (n:Data " + makeDataMapForCypher(data_proc) + ")-[:IS]->(t) RETURN ID(n) AS id"
 
@@ -40,14 +39,13 @@ class DataManager:
             #DataManager.logChange("I", data_proc)
             return data_id
         except Exception as e:
-            print e.message
             raise DbError(message="Could not create data (" + e.__class__.__name__ + ") " + e.message, context="DataManager.add", dberror=e.message)
 
     #
     #
     #
     @staticmethod
-    def _validateData(repo_id, type_code, data):
+    def _validateData(repo_id, type_code, data, fields_created=None):
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
         if type_info is None:
             raise FindError("Could not load type info")
@@ -84,7 +82,12 @@ class DataManager:
                 # JSON prior to performing any parsing.
                 if f['type'] == 'ListDataType':
                     list_code = f['settings']['list_code']
-                    parsed_value = dt.parse(v, list_code, repo_id)
+                    override_merge = False
+                    if fields_created:
+                        new_fields = [x+"_list" for x in fields_created.keys()]
+                        if list_code in new_fields:
+                            override_merge = True
+                    parsed_value = dt.parse(v, list_code, repo_id, override_merge)
                     if len(parsed_value['rejected_items']) > 0:
                         bad_items = "The following items do not appear in the current list and merges are not allowed: " + ', '.join(parsed_value['rejected_items'])
                         row_errors.append(f['code'] + ' ' + bad_items)
@@ -300,7 +303,7 @@ class DataManager:
             raise DbError(message="Could get type Count", context="DataManager.getCountForType", dberror=e.message)
 
     @staticmethod
-    def getDataForType(repo_id, type_code, start=0, limit=100):
+    def getDataForType(repo_id, type_code, start=0, limit=None):
         repo_id = int(repo_id)
         RepoManager.validate_repo_id(repo_id)
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
@@ -314,11 +317,16 @@ class DataManager:
 
         c = 0
 
+
         try:
             # TODO: implement start/limit rather than fixed limit
-            q = "MATCH (r:Repository)--(t:SchemaType)--(n:Data) WHERE ID(r)={repo_id} AND ID(t)={type_id} RETURN n SKIP {start} LIMIT {limit}"
+            q = "MATCH (r:Repository)--(t:SchemaType)--(n:Data) WHERE ID(r)={repo_id} AND ID(t)={type_id} RETURN n SKIP {start}"
+            q_values = {"repo_id": repo_id, "type_id": type_info["type_id"],  "start": start}
+            if limit is not None:
+                q = q + " LIMIT {limit}"
+                q_values['limit'] = limit
 
-            result = db.run(q, {"repo_id": repo_id, "type_id": type_info["type_id"],  "start": start, "limit": limit})
+            result = db.run(q, q_values)
             if result is not None:
                 for data in result:
                     nodes.append(data.items()[0][1].properties)

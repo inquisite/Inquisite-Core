@@ -216,7 +216,7 @@ class UploadManager:
                     new_field = SchemaManager.addField(repo_id, type, m, mCode, data_types[i], mField, settings)
                     if new_field is not None:
                         data_mapping[i] = new_field["code"]
-                        fields_created[typecode] = new_field
+                        fields_created[new_field["code"]] = new_field
                     else:
                         data_mapping[i] = 0
                 else:
@@ -261,7 +261,7 @@ class UploadManager:
                 else:
                     fields[fid] = None
             try:
-                DataManager.add(repo_id, type, fields, upload_uuid)
+                DataManager.add(repo_id, type, fields, upload_uuid, fields_created)
                 counts['total'] = counts['total'] + 1
             except Exception as e:
                 if line not in errors:
@@ -270,7 +270,6 @@ class UploadManager:
                 num_errors = num_errors + 1
                 pass_message('error_status', {"status": "Error in Row " + str(line) + ": " + e.message, "pos": error_display})
                 error_display += cell_chunk
-                print errors
 
         UploadManager.closeImportEvent(upload_uuid)
         pass_message('import_step', {"step": "Import Complete", "pos": 100})

@@ -77,7 +77,7 @@ class ListDataType(BaseDataType):
     #
     #
     #
-    def parse(self, value, list_code, repo_id):
+    def parse(self, value, list_code, repo_id, override_merge=False):
         if value != self.tmp_value:
             self.validate(value)
 
@@ -93,18 +93,17 @@ class ListDataType(BaseDataType):
                 check_items.append(item['code'])
         items = []
         rejected = []
-
         if isinstance(self.tmp_value, list):
             for item in self.tmp_value:
                 item_code = re.sub(r'[^A-Za-z0-9_]+', '_', item).lower()
-                if merge_allowed == 0 and item_code not in check_items:
+                if merge_allowed == 0 and override_merge is False and item_code not in check_items:
                     rejected.append(item_code)
                     continue
                 list_item = ListManager.addListItem(repo_id, list_code, item, item_code)
                 items.append(str(list_item["item_id"]))
         else:
             item_code = re.sub(r'[^A-Za-z0-9_]+', '_', self.tmp_value).lower()
-            if merge_allowed == 0 and item_code not in check_items:
+            if merge_allowed == 0 and override_merge is False and item_code not in check_items:
                 rejected.append(item_code)
             else:
                 list_item = ListManager.addListItem(repo_id, list_code, self.tmp_value, item_code)

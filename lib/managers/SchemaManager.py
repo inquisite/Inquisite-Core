@@ -263,7 +263,6 @@ class SchemaManager:
                 # edit existing field
                 fret = SchemaManager.editField(repo_id, code, fields[k].get('id', ''), fields[k].get('name', ''), fields[k].get('code', ''), fields[k].get('type', ''),
                                                fields[k]['description'], settings)
-
                 if 'field_id' in fret:
                     field_status[fields[k]['code']] = {'status_code': 200, 'field_id': fret['field_id'],
                                                        'msg': 'Edited field'}
@@ -430,8 +429,31 @@ class SchemaManager:
                 flds.append("f.settings_" + s + " = {settings_" + s + "}")
                 params["settings_" + s] = settings[s]
 
-            #if fieldtype == 'ListDataType':
-                # TODO Delete data that doesn't exist in new datatype unless the merge setting is allowed.
+            if fieldtype == 'ListDataType':
+                field_info = SchemaManager.getInfoForField(repo_id, typecode, field_id)
+                if settings['list_code'] != field_info['settings_list_code']:
+                    from lib.managers.DataManager import DataManager
+                    from lib.managers.ListManager import ListManager
+
+                    schema_data = DataManager.getDataForType(repo_id, typecode)
+                    list_data = ListManager.getInfoForList(repo_id, settings['list_code'])
+
+
+                    list_items = [li['display'] for li in list_data['items']]
+                    for data in schema_data['data']:
+                        if code not in data:
+                            continue
+                        list_entry = data[code]
+                        if not list_data['merge_allowed'] or list_data['merge_allowed'] != 0:
+                            if list_entry not in list_items:
+                                data[code] = None
+                                DataManager.update(data['id'], data)
+                        else:
+                            if list_entry in list_items:
+                                continue
+                            list_entry_code =item_code = re.sub(r'[^A-Za-z0-9_]+', '_', list_entry).lower()
+                            ListManager.addListItem(repo_id, settings['list_code'], list_entry, list_entry_code)
+
 
             result = db.run(
                 "MATCH (r:Repository)--(t:SchemaType {code: {typecode}})--(f:SchemaField) WHERE ID(r) = {repo_id} AND ID(f) = {field_id} SET " + ", ".join(flds) + " RETURN ID(f) as id, f.name as name",
@@ -439,7 +461,6 @@ class SchemaManager:
             r = result.peek()
 
             # TODO: check query result
-
             if r:
                 ret['field_id'] = r['id']
                 ret['name'] = r['name']
