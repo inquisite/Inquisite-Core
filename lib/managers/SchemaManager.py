@@ -37,7 +37,7 @@ class SchemaManager:
                     # get fields
                     i = SchemaManager.getInfoForType(repo_id, r['id'])
                     t["fields"] = i["fields"]
-
+                    t["data_count"] = i["data_count"]
                     typelist.append(t)
                 return typelist
         except Exception as e:
@@ -130,6 +130,9 @@ class SchemaManager:
                             t["settings"][s] = r["props"]["settings_" + s]
                     fieldlist.append(t)
             info["fields"] = fieldlist
+
+            data_count = SchemaManager.getRecordCountForDataType(repo_id, type_id)
+            info["data_count"] = data_count
             return info
         except Exception as e:
             raise DbError(message="Could not get fields for types", context="Schema.getFieldsForType", dberror=e.message)
@@ -575,6 +578,30 @@ class SchemaManager:
             ft.set(value)
         return ft
 
+    #
+    #
+    #
+    @staticmethod
+    def getRecordCountForDataType(repo_id, type):
+        repo_id = int(repo_id)
+
+        try:
+            type_id = int(type)
+        except Exception:
+            type_id = str(type)
+
+        # TODO: check that repository is owned by current user
+        try:
+            if isinstance(type_id, int):
+                count_obj = db.run(
+                    "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE ID(t) = {type_id} AND ID(r) = {repo_id} RETURN COUNT(d) as data_count", {"type_id": type_id, "repo_id": repo_id}).peek()
+            else:
+                count_obj = db.run(
+                    "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE t.code = {type_id} AND ID(r) = {repo_id} RETURN COUNT(d) as data_count", {"type_id": type_id, "repo_id": repo_id}).peek()
+
+            return count_obj['data_count']
+        except Exception as e:
+            raise DbError(message="Could not get data count for Data Type", context="Schema.getRecordCountForDataType", dberror=e.message)
     #
     #
     #
