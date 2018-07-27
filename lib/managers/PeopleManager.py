@@ -73,7 +73,7 @@ class PeopleManager:
       person['is_disabled'] = p['is_disabled']
       person['nyunetid'] = p['nyunetid']
       person['repo_count'] = repo_count
-    
+
     return person
 
   @staticmethod
@@ -118,10 +118,15 @@ class PeopleManager:
           item['data_element_count'] = r['data_element_count']
 
       result = db.run(
-        "MATCH (n:Repository)--(t:SchemaType)--(f:SchemaField) WHERE ID(n) = {repo_id} RETURN count(DISTINCT(t)) as schema_type_count, count(DISTINCT(f)) as schema_field_count",
+        "MATCH (n:Repository)--(t:SchemaType)WHERE ID(n) = {repo_id} RETURN count(DISTINCT(t)) as schema_type_count",
         {"repo_id": int(item['id'])})
       for r in result:
         item['schema_type_count'] = r['schema_type_count']
+
+      result = db.run(
+        "MATCH (n:Repository)--(t:SchemaType)--(f:SchemaField) WHERE ID(n) = {repo_id} RETURN count(DISTINCT(t)) as schema_type_count, count(DISTINCT(f)) as schema_field_count",
+        {"repo_id": int(item['id'])})
+      for r in result:
         item['schema_field_count'] = r['schema_field_count']
     return repos
 
