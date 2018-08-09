@@ -15,6 +15,14 @@ def quick():
   except SearchError as e:
     return makeResponse(error=e)
 
+@search_blueprint.route('/portalSearch', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+def portal():
+  try:
+    return makeResponse(payload=SearchManager.portalSearch(request.args.get('q')))
+  except SearchError as e:
+    return makeResponse(error=e)
+
 @search_blueprint.route('/pagingSearch', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def paging():
