@@ -257,3 +257,13 @@ def getRepoDataCounts():
       return makeResponse(error=e)
   except DbError as e:
       return makeResponse(error=e)
+
+@repositories_blueprint.route('/repositories/portalGetRepo/<repo_uuid>', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+def getRepoForPortal(repo_uuid):
+  try:
+      return makeResponse(payload=RepoManager.getRepoForPortal(repo_uuid))
+  except FindError as e:
+      return makeResponse(error=e)
+  except DbError as e:
+      return makeResponse(error=e)

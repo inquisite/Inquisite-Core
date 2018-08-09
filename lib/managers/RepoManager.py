@@ -163,11 +163,11 @@ class RepoManager:
       raise FindError(message="Could not find repository", context="Repositories.edit")
 
   @staticmethod
-  def getData(repo_id):
+  def getData(repo_id, limit=20):
     RepoManager.validate_repo_id(repo_id)
 
     nodes = []
-    result = db.run("MATCH (r:Repository)--(f:SchemaType)--(n:Data) WHERE ID(r)={repo_id} RETURN n LIMIT 20", {"repo_id": int(repo_id)})
+    result = db.run("MATCH (r:Repository)--(f:SchemaType)--(n:Data) WHERE ID(r)={repo_id} RETURN n LIMIT {limit}", {"repo_id": int(repo_id), "limit": limit})
 
     for data in result:
       nodes.append(data.items()[0][1].properties)
@@ -246,12 +246,12 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     owner = {}
-    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN ID(p) AS id, p.name AS name, p.email as email, p.url AS url, " +
+    result = db.run("MATCH (n)<-[:OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN ID(p) AS id, p.forename AS forename, p.surname as surname, p.email as email, p.url AS url, " +
       "p.location AS location, p.tagline AS tagline", {"repo_id": repo_id})
 
     for r in result:
       owner['id'] = r['id']
-      owner['name'] = r['name']
+      owner['name'] = r['forename'] + ' ' + r['surname']
       owner['location'] = r['location']
       owner['email'] = r['email']
       owner['url'] = r['url']
@@ -392,3 +392,23 @@ class RepoManager:
       raise ValidationError(message="Repository id is not set", context="Repositories.validate_repo_id")
 
     return True
+
+  @staticmethod
+  def getRepoForPortal(repo_uuid):
+    try:
+      result = db.run("MATCH (r:Repository {uuid: {uuid}}) RETURN ID(r) AS id, r.name as name, r.readme as description", {"uuid": repo_uuid}).peek()
+      if result:
+        repo_id = result['id']
+        name = result['name']
+        description = result['description']
+    except:
+      raise FindError("Could not load repository with UUID")
+
+    repo_owner = RepoManager.getOwner(repo_id)
+    owner_name = repo_owner['name']
+    owner_location = repo_owner['location']
+    owner_tagline = repo_owner['tagline']
+
+    data = RepoManager.getData(repo_id, 48)
+
+    return {"repo": repo_id, "repo_name": name, "description": description, "data": data, "owner": owner_name, "location": owner_location, "tagline": owner_tagline}
