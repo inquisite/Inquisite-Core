@@ -9,6 +9,7 @@ from lib.exceptions.SearchError import SearchError
 export_blueprint = Blueprint('export', __name__)
 
 @export_blueprint.route('/export', methods=['POST'])
+@export_blueprint.route('/portalExport', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def exportData():
   type = request.form.get('type')
