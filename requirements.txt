@@ -33,3 +33,4 @@ daterangeparser==1.3
 elasticsearch-dsl==5.3
 humanize==0.5.1
 eventlet==0.22.1
+pyparsing==2.2.0
