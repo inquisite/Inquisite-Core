@@ -23,6 +23,14 @@ def portal():
   except SearchError as e:
     return makeResponse(error=e)
 
+@search_blueprint.route('/portalBrowse', methods=['GET'])
+@crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
+def portalBrowse():
+  try:
+    return makeResponse(payload=SearchManager.portalBrowse(request.args.get('type')))
+  except SearchError as e:
+    return makeResponse(error=e)
+
 @search_blueprint.route('/pagingSearch', methods=['GET'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 def paging():

@@ -60,9 +60,10 @@ def editRepo(repo_id):
     readme = request.form.get('readme')
     license = request.form.get('license')
     published = request.form.get('published')
+    featured = request.form.get('featured')
 
     try:
-        return makeResponse(payload=RepoManager.edit(repo_id, name, url, readme, license, published), message="Edited repository")
+        return makeResponse(payload=RepoManager.edit(repo_id, name, url, readme, license, published, featured), message="Edited repository")
     except FindError as e:
         return makeResponse(error=e)
     except ValidationError as e:

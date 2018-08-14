@@ -22,14 +22,19 @@ class RepoManager:
   def getAll():
 
     repos = []
-    result = db.run("MATCH (n:Repository) RETURN n.url AS url, n.name AS name, n.readme AS readme")
+    result = db.run("MATCH (n:Repository) RETURN ID(n) as repo_id, n.url AS url, n.name AS name, n.readme AS readme, n.published as published, n.created_on as created_on")
 
     for r in result:
+      repo_owner = RepoManager.getOwner(r['repo_id'])
       repos.append({
         "name": r['name'],
         "url": r['url'],
         "readme": r['readme'],
-        "published": r['published']
+        "published": r['published'],
+        "created_on": r['created_on'],
+        "owner": repo_owner['name'],
+        "location": repo_owner['location'],
+        "email": repo_owner['email']
       })
 
     return repos
@@ -72,7 +77,7 @@ class RepoManager:
       return True
 
   @staticmethod
-  def create(url, name, readme, license, published, identity, ident_str):
+  def create(url, name, readme, license, published, identity, ident_str, featured=0, published_on=None):
       ts = time.time()
       created_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -90,10 +95,10 @@ class RepoManager:
 
       new_repo = {}
       result = db.run("CREATE (n:Repository {url: {url}, name: {name}, readme: {readme}, created_on: {created_on}, "
-                      "published: {published}, license: {license}}) " +
+                      "published: {published}, license: {license}, featured: {featured}, published_on: {published_on}}) " +
                       "RETURN n.url AS url, n.name AS name, n.readme AS readme, n.license AS license, n.published AS published, ID(n) AS repo_id",
                       {"url": url, "name": name, "readme": readme, "created_on": created_on,
-                       "published": published, "license": license})
+                       "published": published, "license": license, "featured": featured, "published_on": published_on})
 
       for r in result:
         new_repo['id'] = r['repo_id']
@@ -114,7 +119,7 @@ class RepoManager:
       return new_repo
 
   @staticmethod
-  def edit(repo_id, name, url, readme, license, published):
+  def edit(repo_id, name, url, readme, license, published, featured):
     if url is None or name is None or readme is None:
       raise ValidationError(message="Name, URL and README must be set", context="Repositories.edit")
 
@@ -131,8 +136,16 @@ class RepoManager:
     if readme is not None:
       update.append("n.readme = {readme}")
 
+    if featured is not None:
+      update.append("n.featured = {featured}")
+
+    published_on = None
     if ((int(published) != 0) and (int(published) != 1)) or published is None:
       published = 0
+    elif int(published) == 1:
+      ts = time.time()
+      published_on = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+      update.append("n.published_on = {published_on}")
     if license not in RepoManager.licenses:
       license = ''
 
@@ -143,9 +156,9 @@ class RepoManager:
 
     if update_str:
       result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
-                      " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.license AS license, n.published AS published, ID(n) AS id",
+                      " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.license AS license, n.published AS published, n.featured as featured, n.published_on as published_on, ID(n) AS id",
                       {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme, "published": published,
-                       "license": license})
+                       "license": license, "featured": featured, "published_on": published_on})
 
       updated_repo = {}
       for r in result:
@@ -155,6 +168,8 @@ class RepoManager:
         updated_repo['readme'] = r['readme']
         updated_repo['license'] = r['license']
         updated_repo['published'] = r['published']
+        updated_repo['published_on'] = r['published_on']
+        updated_repo['featured'] = r['featured']
 
       summary = result.consume()
       if summary.counters.properties_set >= 1:
@@ -193,7 +208,7 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     repo = {}
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, n.created_on as created, n.license as license",
+    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} RETURN n.url AS url, n.name AS name, n.readme AS readme, n.published AS published, n.created_on as created, n.license as license, n.published_on as published_on, n.featured as featured",
       {"repo_id": repo_id})
 
     for r in result:
@@ -203,6 +218,8 @@ class RepoManager:
       repo['published'] = r['published']
       repo['created'] = r['created']
       repo['license'] = r['license']
+      repo['featured'] = r['featured']
+      repo['published_on'] = r['published_on']
 
     return repo
 
@@ -308,7 +325,7 @@ class RepoManager:
     RepoManager.validate_repo_id(repo_id)
 
     users = []
-    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.name AS name, p.email as email, rel.access AS access, p.is_admin AS is_admin, ID(p) AS id",
+    result = db.run("MATCH (n)<-[rel:COLLABORATES_WITH|OWNED_BY]-(p) WHERE ID(n)={repo_id} RETURN type(rel) AS role, p.forename AS forename, p.surname as surname, p.email as email, rel.access AS access, p.is_admin AS is_admin, ID(p) AS id",
       {"repo_id": repo_id})
 
     for p in result:
@@ -320,7 +337,7 @@ class RepoManager:
 
       users.append({
         "id": p['id'],
-        "name": p['name'],
+        "name": p['forename'] + " " + p['surname'],
         "email": p['email'],
         "access": p['access'],
         "role": user_role,
@@ -412,3 +429,21 @@ class RepoManager:
     data = RepoManager.getData(repo_id, 48)
 
     return {"repo": repo_id, "repo_name": name, "description": description, "data": data, "owner": owner_name, "location": owner_location, "tagline": owner_tagline}
+
+    #
+    # ADMIN ONLY
+    # Set a repository to be featured
+    @staticmethod
+    def setFeaturedRepo(repo_id, featured):
+        RepoManager.validate_repo_id(repo_id)
+
+        if int(featured) != 0 and int(featured) != 1:
+            featured = 0
+
+        result = db.run("MATCH (r:Repository) WHERE ID(r)={repo_id} SET r.published = {featured} RETURN ID(r), r.featured as featured", {"repo_id": int(repo_id), "featured": featured}).peek()
+
+        if result:
+            if result['featured'] == featured:
+                return True
+
+        return False

@@ -1,5 +1,7 @@
 from lib.utils.Db import db
 import re
+import json
+from datetime import datetime
 from lib.exceptions.SearchError import SearchError
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Q
@@ -84,6 +86,52 @@ class SearchManager:
             return ret
         else:
             return ret
+
+    @staticmethod
+    def portalBrowse(type):
+        ret = []
+        if type == 'featured':
+            match_string = "r.featured = {featured}"
+            match_values = {"featured": "1"}
+            qString = "MATCH (r:Repository) WHERE " + match_string + " RETURN r.uuid as repo_id, r.name as repo_name, r.readme as readme"
+            repos = db.run(qString, match_values)
+            for repo in repos:
+                ret.append({
+                    'type': 'Repository',
+                    'id': repo['repo_id'],
+                    'name': repo['repo_name'],
+                    'description': repo['readme']
+                })
+        elif type == 'published':
+            qString = "MATCH (r:Repository) WHERE r.published = {published} RETURN r.uuid as repo_id, r.name as repo_name, r.readme as readme, r.published_on as published_on"
+            repos = db.run(qString, {"published": "1"})
+            for repo in repos:
+                ret.append({
+                    'type': 'Repository',
+                    'id': repo['repo_id'],
+                    'name': repo['repo_name'],
+                    'description': repo['readme'],
+                    'published_on': repo['published_on']
+                })
+            print ret
+            ret.sort(key=lambda x: datetime.strptime(x['published_on'], "%Y-%m-%d %H:%M:%S"), reverse=True)
+            ret = ret[0:6]
+        elif type == 'updated':
+            qString = 'MATCH (r:Repository)<-[:IMPORTED_INTO]-(i:ImportEvent) WHERE r.published = {published} WITH r, max(i.started_on) as max RETURN max, r.uuid as repo_id, r.name as repo_name, r.readme as readme, r.published_on as published_on'
+            repos = db.run(qString, {"published": "1"})
+            for repo in repos:
+                ret.append({
+                    'type': 'Repository',
+                    'id': repo['repo_id'],
+                    'name': repo['repo_name'],
+                    'description': repo['readme'],
+                    'published_on': repo['published_on'],
+                    'imported_on': repo['max']
+                })
+            ret.sort(key=lambda x: x['imported_on'], reverse=True)
+            ret = ret[0:6]
+
+        return {"nodes": ret}
 
     @staticmethod
     def _getDataUUIDsForRepo(repo_id):

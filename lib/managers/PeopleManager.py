@@ -86,7 +86,7 @@ class PeopleManager:
       ident_str = "p.email={identity}"
 
     result = db.run("MATCH (n:Repository)<-[x:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS id, n.name AS name, n.readme AS readme, n.published AS published, n.license AS license, " +
-      "n.url AS url, n.created_on AS created_on, x.access AS access", {"identity": identity})
+      "n.url AS url, n.created_on AS created_on, n.published_on as published_on, n.featured as featured, x.access AS access", {"identity": identity})
 
     for item in result:
 
@@ -99,6 +99,8 @@ class PeopleManager:
         "name": item['name'],
         "readme": item['readme'],
         "created_on": item['created_on'],
+        "published_on": item['published_on'],
+        "featured": item['featured'],
         "url": item['url'],
         "data": data,
         "users": users,
