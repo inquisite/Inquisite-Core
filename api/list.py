@@ -52,11 +52,11 @@ def addList(repo_id):
     name = request.form.get('name')
     code = request.form.get('code')
     description = request.form.get('description')
-
+    merge_setting = request.form.get('merge_allowed')
     items = extractRepeatingParameterBlocksFromRequest(request, 'items')
 
     try:
-        return makeResponse(payload=ListManager.addList(repo_id, name, code, description, items))
+        return makeResponse(payload=ListManager.addList(repo_id, name, code, merge_setting, description, items))
     except Exception as e:
         return makeResponse(error=e)
 
