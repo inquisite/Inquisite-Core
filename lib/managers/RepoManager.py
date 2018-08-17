@@ -229,8 +229,7 @@ class RepoManager:
 
     owner = RepoManager.getOwner(repo_id)
 
-    # TODO: clean up all repo nodes (currently schema and data nodes are not removed)
-    result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} OPTIONAL MATCH (n)-[r]-() DELETE r,n", {"repo_id": repo_id})
+    result = db.run("MATCH (n:Repository) WHERE ID(n) = {repo_id} WITH n OPTIONAL MATCH (n)--(s:SchemaType)--(f:SchemaField) WITH n, s, f OPTIONAL MATCH (s)--(d:Data) DETACH DELETE n, s, f, d", {"repo_id": repo_id})
     summary = result.consume()
 
     # Was this the only repo for that owner?
