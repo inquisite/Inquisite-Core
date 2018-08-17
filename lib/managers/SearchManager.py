@@ -152,7 +152,6 @@ class SearchManager:
                 .query("match", _all=expression)
         except Exception as e:
             raise SearchError(e.message)
-        print doc_type, expression, start, end, checkPub
         sub_ret = {"results": [], "count": 0, "slice": [(start+1), end]}
         s = s[start:end]
         result = s.execute()
@@ -164,9 +163,6 @@ class SearchManager:
                 d['__type'] = r.meta.doc_type
                 d['__score'] = r.meta.score
                 sub_ret['results'].append(d)
-                sub_ret['count'] += 1
-            if sub_ret['count'] < (end-start):
-                sub_ret['slice'][1] = start+sub_ret['count']
             repolist = {}
             schemaList = []
             uuids = []
@@ -176,7 +172,6 @@ class SearchManager:
             if doc_type == 'Data':
                 try:
                     if checkPub:
-                        print "Query Here!"
                         qString = "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE d.uuid IN {uuid} AND r.published = 1 RETURN ID(r) as repo_id, r.name as repo_name, r.uuid as repo_uuid, d.uuid as uuid, ID(t) as schema_id, t.name as schema_name"
                     else:
                         qString = "MATCH (r:Repository)--(t:SchemaType)--(d:Data) WHERE d.uuid IN {uuid} RETURN ID(r) as repo_id, r.name as repo_name, r.uuid as repo_uuid, d.uuid as uuid, ID(t) as schema_id, t.name as schema_name"
@@ -196,7 +191,9 @@ class SearchManager:
                     pass
                 for i, r in enumerate(sub_ret['results']):
                     if r['__id'] not in repolist:
+                        rem = sub_ret['results'][i] = None
                         continue
+                    sub_ret['count'] += 1
                     repoinfo = repolist[r['__id']]
                     sub_ret['results'][i]['__repo_id'] = repoinfo[0]
                     sub_ret['results'][i]['__repo_name'] = repoinfo[1]
@@ -229,7 +226,9 @@ class SearchManager:
                     pass
                 for i, r in enumerate(sub_ret['results']):
                     if r['__id'] not in repolist:
+                        sub_ret['results'][i] = None
                         continue
+                    sub_ret['count'] += 1
                     repoinfo = repolist[r['__id']]
                     sub_ret['results'][i]['__repo_id'] = repoinfo[0]
                     sub_ret['results'][i]['__repo_name'] = repoinfo[1]
@@ -249,7 +248,9 @@ class SearchManager:
                     pass
                 for i, r in enumerate(sub_ret['results']):
                     if r['__id'] not in repolist:
+                        sub_ret['results'][i] = None
                         continue
+                    sub_ret['count'] += 1
                     repoinfo = repolist[r['__id']]
                     sub_ret['results'][i]['__repo_id'] = repoinfo[0]
                     sub_ret['results'][i]['__repo_name'] = repoinfo[1]
@@ -271,9 +272,18 @@ class SearchManager:
                     pass
                 for i, r in enumerate(sub_ret['results']):
                     if r['__id'] not in repos:
+                        sub_ret['results'][i] = None
                         continue
+                    sub_ret['count'] += 1
+                    sub_ret['results'][i].pop("password")
+                    sub_ret['results'][i].pop("is_disabled")
+                    sub_ret['results'][i].pop("is_admin")
+                    sub_ret['results'][i].pop("created_on")
+                    sub_ret['results'][i].pop("nyunetid")
+                    sub_ret['results'][i].pop("prefs")
                     sub_ret['results'][i]['__repos'] = []
                     for repo in repos[r['__id']]:
                         sub_ret['results'][i]['__repos'].append(repo[0])
-
+            if sub_ret['count'] < (end-start):
+                sub_ret['slice'][1] = start+sub_ret['count']
         return sub_ret
