@@ -22,11 +22,12 @@ class RepoManager:
   def getAll():
 
     repos = []
-    result = db.run("MATCH (n:Repository) RETURN ID(n) as repo_id, n.url AS url, n.name AS name, n.readme AS readme, n.published as published, n.created_on as created_on")
+    result = db.run("MATCH (n:Repository) RETURN ID(n) as repo_id, n.url AS url, n.name AS name, n.readme AS readme, n.published as published, n.created_on as created_on, n.featured as featured")
 
     for r in result:
       repo_owner = RepoManager.getOwner(r['repo_id'])
       repos.append({
+        "id": r['repo_id'],
         "name": r['name'],
         "url": r['url'],
         "readme": r['readme'],
@@ -34,7 +35,8 @@ class RepoManager:
         "created_on": r['created_on'],
         "owner": repo_owner['name'],
         "location": repo_owner['location'],
-        "email": repo_owner['email']
+        "email": repo_owner['email'],
+        "featured": r['featured']
       })
 
     return repos
@@ -155,6 +157,7 @@ class RepoManager:
     update_str = "%s" % ", ".join(map(str, update))
 
     if update_str:
+      print update_str, featured
       result = db.run("MATCH (n:Repository) WHERE ID(n)={repo_id} SET " + update_str +
                       " RETURN n.name AS name, n.url AS url, n.readme AS readme, n.license AS license, n.published AS published, n.featured as featured, n.published_on as published_on, ID(n) AS id",
                       {"repo_id": int(repo_id), "name": name, "url": url, "readme": readme, "published": published,
@@ -162,6 +165,7 @@ class RepoManager:
 
       updated_repo = {}
       for r in result:
+        print r
         updated_repo['repo_id'] = r['id']
         updated_repo['name'] = r['name']
         updated_repo['url'] = r['url']
