@@ -433,7 +433,12 @@ class SchemaManager:
                 params["settings_" + s] = settings[s]
 
             if fieldtype == 'ListDataType':
+
                 field_info = SchemaManager.getInfoForField(repo_id, typecode, field_id)
+                print field_info, settings
+                if 'settings_list_code' not in field_info:
+                    field_info['list_code'] = settings['list_code']
+                    field_info['settings_list_code'] = settings['list_code']
                 if settings['list_code'] != field_info['settings_list_code']:
                     from lib.managers.DataManager import DataManager
                     from lib.managers.ListManager import ListManager

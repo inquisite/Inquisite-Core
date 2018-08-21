@@ -22,7 +22,7 @@ class ListManager:
         try:
             result = db.run("MATCH (l:List{code: {code}})--(r:Repository) WHERE ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"code": code, "repo_id": int(repo_id)})
 
-            if result.peek() is not None and len(list(result)):
+            if result:
                 ret["exists"] = True
                 for r in result:
                     ret["type"] = {
