@@ -20,21 +20,20 @@ class ListManager:
                           dberror="")
         ret = {"exists": False}
         try:
-            result = db.run("MATCH (l:List{code: {code}})--(r:Repository) WHERE ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"code": code, "repo_id": int(repo_id)})
+            result = db.run("MATCH (l:List{code: {code}})--(r:Repository) WHERE ID(r) = {repo_id} RETURN ID(l) as id, l.name as name, l.code as code, l.description as description", {"code": code, "repo_id": int(repo_id)}).peek()
 
             if result:
-                ret["exists"] = True
-                for r in result:
-                    ret["type"] = {
-                        "id": r['id'],
-                        "code": r['code'],
-                        "name": r['name'],
-                        'description': r['description']
-                    }
-                    break
+                print result
+                ret = {
+                    "exists": True,
+                    "id": result['id'],
+                    "code": result['code'],
+                    "name": result['name'],
+                    'description': result['description']
+                }
                 return ret
             else:
-                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (l:List {name: {name}, code: {code}, description: {description}, merge_allowed: {merge}, storage: 'Graph'})-[:PART_OF]->(r) return ID(l) as id", {"repo_id": repo_id, "name": name, "code": code, "description": description, "merge": merge_setting})
+                result = db.run("MATCH (r:Repository) WHERE ID(r) = {repo_id} CREATE (l:List {name: {name}, code: {code}, description: {description}, merge_allowed: {merge}, storage: 'Graph'})-[:PART_OF]->(r) return ID(l) as id", {"repo_id": repo_id, "name": name, "code": code, "description": description, "merge": merge_setting}).peek()
         except Exception as e:
             raise DbError(message="Could not add list: " + e.message, context="List.addList",
                           dberror=e.message)
@@ -50,15 +49,13 @@ class ListManager:
                 item_status[item['code']] = {'status_code': 200, 'item_id': None, 'msg': 'Could not create list item'}
 
         if result:
-            for r in result:
-                ret["type"] = {
-                    'id': r['id'],
-                    'name': name,
-                    'code': code,
-                    'description': description,
-                    'list_status': item_status
-                }
-                break
+            ret = {
+                'id': result['id'],
+                'name': name,
+                'code': code,
+                'description': description,
+                'list_status': item_status
+            }
         else:
             raise DbError(message="Could not add list", context="List.addList",
                           dberror="")

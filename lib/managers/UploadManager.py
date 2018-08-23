@@ -206,9 +206,8 @@ class UploadManager:
                     if data_types[i] == 'ListDataType':
                         merge_setting = search_display_fields[i]
                         new_list = ListManager.addList(repo_id, m, mCode+'_list', merge_setting)
-
-                        if ('type' in new_list) and ('code' in new_list['type']):
-                            list_code = new_list['type']['code']
+                        if new_list:
+                            list_code = new_list['code']
                         else:
                             list_code = None
                         settings['list_code'] = list_code
