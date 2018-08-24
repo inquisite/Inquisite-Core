@@ -77,6 +77,22 @@ class PeopleManager:
     return person
 
   @staticmethod
+  def getRepoIDs(identity):
+    repoIDs = []
+
+    if is_number(identity):
+      ident_str = "ID(p)={identity}"
+    else:
+      ident_str = "p.email={identity}"
+
+    result = db.run("MATCH (n:Repository)<-[x:OWNED_BY|COLLABORATES_WITH]-(p) WHERE " + ident_str + " RETURN ID(n) AS repo_id", {"identity": identity})
+
+    for item in result:
+      repoIDs.append(item['repo_id'])
+
+    return repoIDs
+
+  @staticmethod
   def getRepos(identity):
     repos = []
 
@@ -323,3 +339,21 @@ class PeopleManager:
       return {"repos": repos, "userinfo": user}
 
     raise FindError(message="Could not find person", context="People.getReposForPerson")
+
+
+  #
+  # INTERNAL ONLY
+  # Check if a user has permission to edit/contribute to a repository
+  # This should prevent users from using their tokens to edit others repos
+  # which seems to be possible currently
+  @staticmethod
+  def checkRepoPermissions(user_name, repo_id):
+    repo_list = PeopleManager.getRepoIDs(user_name)
+    print repo_list, repo_id
+    try:
+        repo_id = int(repo_id)
+    except:
+        raise FindError(message="Need integer repo_id", context="People.checkRepoPermissions")
+    if repo_id in repo_list:
+      return True
+    return False

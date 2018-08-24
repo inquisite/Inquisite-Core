@@ -1,9 +1,10 @@
 import json
 
 from flask import Blueprint, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from lib.managers.SchemaManager import SchemaManager
+from lib.managers.PeopleManager import PeopleManager
 from lib.utils.RequestHelpers import extractRepeatingParameterBlocksFromRequest, extractRepeatingParameterFromRequest, responseHandler
 from lib.crossDomain import crossdomain
 from lib.utils.RequestHelpers import makeResponse
@@ -24,7 +25,9 @@ def getDataTypes():
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getTypes(repo_id):
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.getTypes(repo_id))
     except Exception as e:
@@ -34,7 +37,9 @@ def getTypes(repo_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 @jwt_required
 def getType(repo_id, schema_id):
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.getType(repo_id, schema_id))
     except Exception as e:
@@ -47,8 +52,9 @@ def addType(repo_id):
     name = request.form.get('name')
     code = request.form.get('code')
     description = request.form.get('description')
-
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         return makeResponse(message="Added type", payload=SchemaManager.addType(repo_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields')))
     except Exception as e:
@@ -61,8 +67,9 @@ def editType(repo_id, type_id):
     name = request.form.get('name')
     code = request.form.get('code')
     description = request.form.get('description')
-
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         return makeResponse(message="Edited type", payload=SchemaManager.editType(repo_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))
     except SettingsValidationError as e:
@@ -74,7 +81,9 @@ def editType(repo_id, type_id):
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
 #@jwt_required
 def deleteType(repo_id, type_id):
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.deleteType(repo_id, type_id), message="Deleted type")
     except Exception as e:
@@ -88,8 +97,9 @@ def addField(repo_id, typecode):
     code = request.form.get('code')
     fieldtype = request.form.get('type')
     description = request.form.get('description')
-
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.addField(repo_id, typecode, name, code, fieldtype, description), message="Added field")
     except Exception as e:
@@ -100,8 +110,9 @@ def addField(repo_id, typecode):
 @jwt_required
 def addData(repo_id, typecode):
     data = request.form.get('data')
-
-    # TODO: check that user has access to this data
+    current_user = get_jwt_identity()
+    if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
+        return makeResponse(message="You do not have permissions to access this repository!")
     try:
         if SchemaManager.addDataToRepo(repo_id, typecode, json.loads(data)):
             return makeResponse(payload={"msg": "Added data to repository"})
