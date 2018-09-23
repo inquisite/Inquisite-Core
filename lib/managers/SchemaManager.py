@@ -311,9 +311,10 @@ class SchemaManager:
         # TODO: check that repository is owned by current user
 
         try:
-            result = db.run("MATCH (t:SchemaType)-[x]-(r:Repository) WHERE ID(r) = {repo_id} AND ID(t) = {type_id} OPTIONAL MATCH (f:SchemaField)-[y]-(t) DELETE x,y,t,f",
+            result = db.run("MATCH (t:SchemaType)-[x]-(r:Repository) WHERE ID(r) = {repo_id} AND ID(t) = {type_id} OPTIONAL MATCH (f:SchemaField)-[y]-(t) OPTIONAL MATCH (d:Data)-[z]-(t) DELETE x,y,t,f,z,d",
                             {"type_id": int(type_id), "repo_id": int(repo_id)})
-
+            print "type=" + type_id
+            print "repo=" + repo_id
             if result is not None:
                 SchemaManager.resetTypeInfoCache()
                 return {"type_id": type_id}

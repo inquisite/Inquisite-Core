@@ -27,7 +27,7 @@ def getDataTypes():
 def getTypes(repo_id):
     current_user = get_jwt_identity()
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.getTypes(repo_id))
     except Exception as e:
@@ -39,7 +39,7 @@ def getTypes(repo_id):
 def getType(repo_id, schema_id):
     current_user = get_jwt_identity()
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.getType(repo_id, schema_id))
     except Exception as e:
@@ -54,7 +54,7 @@ def addType(repo_id):
     description = request.form.get('description')
     current_user = get_jwt_identity()
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         return makeResponse(message="Added type", payload=SchemaManager.addType(repo_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields')))
     except Exception as e:
@@ -68,8 +68,9 @@ def editType(repo_id, type_id):
     code = request.form.get('code')
     description = request.form.get('description')
     current_user = get_jwt_identity()
+    print current_user
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         return makeResponse(message="Edited type", payload=SchemaManager.editType(repo_id, type_id, name, code, description, extractRepeatingParameterBlocksFromRequest(request, 'fields'), extractRepeatingParameterFromRequest(request, 'fieldsToDelete')))
     except SettingsValidationError as e:
@@ -79,11 +80,11 @@ def editType(repo_id, type_id):
 
 @schema_blueprint.route('/schema/deleteType/<repo_id>/<type_id>', methods=['POST'])
 @crossdomain(origin='*', headers=['Content-Type', 'Authorization'])
-#@jwt_required
+@jwt_required
 def deleteType(repo_id, type_id):
     current_user = get_jwt_identity()
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.deleteType(repo_id, type_id), message="Deleted type")
     except Exception as e:
@@ -99,7 +100,7 @@ def addField(repo_id, typecode):
     description = request.form.get('description')
     current_user = get_jwt_identity()
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         return makeResponse(payload=SchemaManager.addField(repo_id, typecode, name, code, fieldtype, description), message="Added field")
     except Exception as e:
@@ -112,7 +113,7 @@ def addData(repo_id, typecode):
     data = request.form.get('data')
     current_user = get_jwt_identity()
     if PeopleManager.checkRepoPermissions(current_user, repo_id) == False:
-        return makeResponse(message="You do not have permissions to access this repository!")
+        return makeResponse(status=401, message="You do not have permissions to access this repository!")
     try:
         if SchemaManager.addDataToRepo(repo_id, typecode, json.loads(data)):
             return makeResponse(payload={"msg": "Added data to repository"})
