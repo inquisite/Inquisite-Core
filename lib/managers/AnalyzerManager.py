@@ -117,8 +117,14 @@ class AnalyzerManager:
             tmpPlugin = None
             cell_total = len(colList)
             cell_chunk = int(cell_total/100)
+            if cell_chunk < 100:
+                cell_chunk = 100
+                
             if cell_chunk == 0:
-                cell_chunk = 1
+                cell_chunk = 100
+            if cell_chunk > cell_total:
+                cell_chunk = cell_total
+                
             cell_count = 1
             chunk_count = 1
             if cell_chunk == 1:
@@ -153,7 +159,7 @@ class AnalyzerManager:
 
             # If this is text, check to see if it can be considered a list
             if dataType == 'Text':
-                colList = [str(item) for item in colList]
+                colList = [item.encode('utf-8') for item in colList]
                 listTest = set(colList)
                 uCount = ListManager.uniqueValueCount(listTest)
                 if uCount:
