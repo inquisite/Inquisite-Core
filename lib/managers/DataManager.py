@@ -309,14 +309,18 @@ class DataManager:
         type_info = SchemaManager.getInfoForType(repo_id, type_code)
 
         nodes = []
-        cols = list(map(lambda  x: x['code'], type_info['fields']))
+        cols = [] #list(map(lambda  x: x['code'], type_info['fields']))
 
         colNames = {}
         for f in type_info['fields']:
-            colNames[f['code']] = f['name']
+            if f['type'] == 'MediaDataType':
+                colNames[f['code'] + "_preview_path"] = {"name": f['name'], "type": "MediaDataType" }
+                cols.append(f['code'] + "_preview_path")
+            else:
+                colNames[f['code']] = {"name": f['name'], "type": f['type'] }
+                cols.append(f['code'])
 
         c = 0
-
 
         try:
             # TODO: implement start/limit rather than fixed limit
@@ -329,7 +333,12 @@ class DataManager:
             result = db.run(q, q_values)
             if result is not None:
                 for data in result:
-                    nodes.append(data.items()[0][1].properties)
+                    d = data.items()[0][1].properties
+
+                    for x in d:
+                        if (x + '_preview_path') in d:
+                            d[x + '_preview_path'] = '<img src="/' + str(d[x + '_preview_path']) + '"/>'
+                    nodes.append(d)
                     c = c + 1
 
             return {"data": nodes, "columns": cols, "columnNames": colNames,  "type_id": type_info["type_id"], "repo_id": repo_id, "start": start, "limit": limit, "count": c}

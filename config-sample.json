@@ -23,6 +23,7 @@
   "google_maps_api": "google_maps_api_key",
   "libpostal_url": "libpostal_rest_service",
 
+  "media_path": "media/",
 
   // Content used when auto-creating user repository
   "default_repo_information": {
